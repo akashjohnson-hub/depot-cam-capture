@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Depot Camera Capture</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cam Capture">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#14202E">
+<style>
+  :root {
+    --bg: #EEF1F4; --card: #FCFDFD; --ink: #14202E; --muted: #566273; --line: #D5DBE2;
+    --primary: #1F4E8C; --primary-ink: #FCFDFD; --accent: #D9701A;
+    --good: #1C7442; --fair: #9A6A00; --poor: #B23A1B; --disabled: #A8B1BC;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--ink); color: #F2F5F8;
+    padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 18px; margin: 0; flex: 1; font-weight: 700; letter-spacing: .2px; }
+  header button { background: transparent; border: 1px solid #44536A; color: #F2F5F8; border-radius: 10px;
+    padding: 6px 12px; font-size: 15px; }
+  main { padding: 12px 12px calc(env(safe-area-inset-bottom) + 28px); max-width: 640px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 0 0 10px; }
+  .card h2 .n { display: inline-block; width: 22px; height: 22px; border-radius: 11px; background: var(--primary);
+    color: var(--primary-ink); text-align: center; line-height: 22px; font-size: 13px; margin-right: 6px; }
+  label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; font-size: 17px; padding: 11px 12px; border: 1px solid var(--line);
+    border-radius: 10px; background: #FFFFFF; color: var(--ink); }
+  textarea { min-height: 64px; resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row > * { flex: 1; }
+  .row > .shrink { flex: 0 0 auto; }
+  .btn { display: block; text-align: center; width: 100%; min-height: 50px; border: 0; border-radius: 12px; font-size: 17px;
+    font-weight: 650; background: var(--primary); color: var(--primary-ink); padding: 10px 14px; }
+  .btn.secondary { background: #E3E9F1; color: var(--primary); }
+  button.btn.accent { background: var(--accent); color: #FFFFFF; }
+  button.btn:disabled { background: var(--disabled); color: #EEF1F4; }
+  button.link { background: none; border: 0; color: var(--primary); font-size: 15px; padding: 6px 0; text-decoration: underline; }
+  .hidden { display: none !important; }
+  .banner { border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 16px; }
+  .banner.info { background: #E3E9F1; }
+  .banner.new { background: #FBEBDC; border: 1px solid #EBC49E; }
+  .banner.warn { background: #FBE6E0; border: 1px solid #E9B3A4; }
+  .big-id { font-size: 26px; font-weight: 800; letter-spacing: .5px; }
+  .gps-read { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 4px; }
+  .gps-acc { font-size: 46px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .gps-tag { font-size: 16px; font-weight: 700; padding: 3px 9px; border-radius: 8px; color: #FFFFFF; }
+  .q-good { color: var(--good); } .q-fair { color: var(--fair); } .q-poor { color: var(--poor); }
+  .bg-good { background: var(--good); } .bg-fair { background: var(--fair); } .bg-poor { background: var(--poor); }
+  .meta { font-size: 15px; color: var(--muted); }
+  .bar { height: 8px; background: #DDE3EA; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+  .bar > div { height: 100%; width: 0; background: var(--primary); transition: width .25s linear; }
+  .result { border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 16px; }
+  .result.ok { background: #E1F1E7; border: 1px solid #A9D4B8; }
+  .result.weak { background: #FBE6E0; border: 1px solid #E9B3A4; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; font-size: 16px; color: var(--ink); }
+  .check input { width: 24px; height: 24px; flex: 0 0 24px; margin: 0; }
+  .thumb { width: 100%; max-height: 260px; object-fit: contain; background: #DDE3EA; border-radius: 10px; margin-top: 10px; }
+  .cam { border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-bottom: 8px; background: #FFFFFF; }
+  .cam .row input { font-size: 16px; padding: 9px 10px; }
+  .cam .x { flex: 0 0 44px; border: 0; border-radius: 10px; background: #F1E3DF; color: var(--poor); font-size: 20px; }
+  .cam .row + .row { margin-top: 6px; }
+  .submit-wrap { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%);
+    padding: 14px 0 calc(env(safe-area-inset-bottom) + 4px); }
+  .why { text-align: center; font-size: 15px; color: var(--muted); margin-top: 6px; min-height: 20px; }
+  #pending { background: #FBEBDC; border-bottom: 1px solid #EBC49E; padding: 10px 16px; font-size: 15px;
+    display: flex; gap: 10px; align-items: center; }
+  #pending span { flex: 1; }
+  #pending button { border: 0; background: var(--accent); color: #FFFFFF; border-radius: 9px; padding: 7px 12px; font-size: 15px; font-weight: 650; }
+  #toast { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 90px); z-index: 20;
+    background: var(--ink); color: #F2F5F8; border-radius: 12px; padding: 12px 14px; font-size: 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.25); max-width: 616px; margin: 0 auto; }
+  #toast.err { background: var(--poor); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Depot Camera Capture</h1>
+  <button id="settingsBtn" type="button">Settings</button>
+</header>
+<div id="pending" class="hidden"><span id="pendingText"></span><button id="flushBtn" type="button">Upload now</button></div>
+
+<main>
+  <!-- One-time setup -->
+  <section id="setup" class="card hidden">
+    <h2>Connect to the database</h2>
+    <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter the team passcode. This is saved on this phone only.</p>
+    <label for="cfgUrl">Web app link</label>
+    <input id="cfgUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+    <label for="cfgPass">Passcode</label>
+    <input id="cfgPass" type="password" autocomplete="off">
+    <div style="height:12px"></div>
+    <button id="cfgSave" class="btn" type="button">Save and test connection</button>
+    <button id="cfgCancel" class="link hidden" type="button">Cancel</button>
+  </section>
+
+  <div id="app" class="hidden">
+    <!-- 1. Pole -->
+    <section class="card">
+      <h2><span class="n">1</span>Pole</h2>
+      <label for="poleInput">Pole ID or ITB No</label>
+      <div class="row">
+        <input id="poleInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ITB-11 or P3">
+        <button id="lookupBtn" class="btn shrink" type="button" style="width:auto;padding:0 18px">Look up</button>
+      </div>
+      <button id="newPoleBtn" class="link" type="button">Unnumbered pole? Get the next Pole ID</button>
+      <div id="poleBanner"></div>
+    </section>
+
+    <div id="captureArea" class="hidden">
+      <!-- 2. Location -->
+      <section class="card">
+        <h2><span class="n">2</span>Location</h2>
+        <p class="meta" style="margin:0">Stand right at the base of the pole, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.</p>
+        <div id="locOnRecord" class="meta" style="margin-top:8px"></div>
+        <div style="height:10px"></div>
+        <button id="collectBtn" class="btn accent" type="button">Collect location</button>
+        <div id="gpsLive" class="hidden">
+          <div class="gps-read"><span id="gpsAcc" class="gps-acc">--</span><span id="gpsTag" class="gps-tag"></span></div>
+          <div class="bar"><div id="gpsBar"></div></div>
+          <div id="gpsMeta" class="meta"></div>
+        </div>
+        <div id="gpsResult"></div>
+        <label id="weakWrap" class="check hidden"><input id="weakOk" type="checkbox"><span>No better fix is possible here. Save this weak location anyway (its accuracy figure in the Sheet will flag it).</span></label>
+      </section>
+
+      <!-- 3. Photo -->
+      <section class="card">
+        <h2><span class="n">3</span>Photo</h2>
+        <p class="meta" style="margin:0">Get the sticker or ITB label and the cameras in the same shot.</p>
+        <div style="height:10px"></div>
+        <label for="photoInput" class="btn secondary" style="display:flex;align-items:center;justify-content:center;margin:0;color:var(--primary);font-size:17px;font-weight:650">Take photo</label>
+        <input id="photoInput" type="file" accept="image/*" capture="environment" class="hidden">
+        <img id="photoThumb" class="thumb hidden" alt="Pole photo preview">
+      </section>
+
+      <!-- 4. Details -->
+      <section class="card">
+        <h2><span class="n">4</span>Pole details</h2>
+        <label id="stickerWrap" class="check hidden"><input id="stickerPlaced" type="checkbox" checked><span>Sticker <b id="stickerId"></b> is on the pole</span></label>
+        <div class="row">
+          <div><label for="hasItb">Has ITB</label><select id="hasItb"><option value="">–</option><option>Yes</option><option>No</option></select></div>
+          <div><label for="itbNo">ITB No</label><input id="itbNo" autocomplete="off" autocapitalize="characters"></div>
+        </div>
+        <div class="row">
+          <div><label for="zone">Zone</label><input id="zone" autocomplete="off"></div>
+          <div><label for="phase">Phase</label><input id="phase" autocomplete="off"></div>
+        </div>
+        <label for="locDesc">Location description</label>
+        <input id="locDesc" autocomplete="off">
+        <label for="notes">New note (added to existing notes)</label>
+        <textarea id="notes"></textarea>
+      </section>
+
+      <!-- 5. Cameras -->
+      <section class="card">
+        <h2><span class="n">5</span>Cameras on this pole</h2>
+        <div id="camList"></div>
+        <button id="addCamBtn" class="btn secondary" type="button">+ Add camera</button>
+        <p class="meta" style="margin:8px 0 0">Removing a row here only skips it in this update; it isn't deleted from the Sheet.</p>
+        <datalist id="statusList"><option value="Active"><option value="Faulty"><option value="Missing"></datalist>
+      </section>
+
+      <div class="submit-wrap">
+        <button id="submitBtn" class="btn" type="button" disabled>Submit</button>
+        <div id="why" class="why"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="toast" class="hidden"></div>
+
+<script>
+'use strict';
+
+// Optional: paste the Apps Script web app link here so nobody has to type it.
+// Leave it empty if this page is hosted in a public place.
+const DEFAULT_API_URL = '';
+
+// GPS collection rules
+const GPS_MIN_MS = 15000;   // always listen at least this long
+const GPS_MAX_MS = 30000;   // never longer than this
+const GPS_KEEP_M = 10;      // readings worse than this are thrown away
+const GPS_ACCEPT_M = 8;     // Submit needs a result this good or better
+const GPS_ENOUGH = 8;       // stop early (after the minimum time) with this many good readings
+const GPS_MIN_GOOD = 3;     // fewer good readings than this = weak result
+
+const LS_CFG = 'dcc.cfg.v1';
+const LS_QUEUE = 'dcc.queue.v1';
+
+const $ = (id) => document.getElementById(id);
+const state = { pole: null, loc: null, collecting: false, photo: '', cameras: [] };
+let queue = loadQueue();
+let gps = null;
+
+// ---------- storage (never trusted to exist) ----------
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function getCfg() {
+  let c = {};
+  try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '' };
+}
+function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
+function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
+
+// ---------- UI helpers ----------
+let toastTimer = null;
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = isErr ? 'err' : '';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), isErr ? 7000 : 3500);
+}
+function el(tag, props, children) {
+  const n = document.createElement(tag);
+  if (props) Object.keys(props).forEach((k) => {
+    if (k === 'class') n.className = props[k];
+    else if (k === 'text') n.textContent = props[k];
+    else n.setAttribute(k, props[k]);
+  });
+  (children || []).forEach((c) => n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+  return n;
+}
+function busy(btn, on, label) {
+  if (on) { btn.dataset.label = btn.textContent; btn.textContent = label || 'Working…'; btn.disabled = true; }
+  else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; }
+}
+
+// ---------- backend ----------
+class NetworkError extends Error {}
+async function api(action, body) {
+  const cfg = getCfg();
+  if (!cfg.url) throw new Error('Not connected. Open Settings and add the web app link.');
+  let res;
+  try {
+    res = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // keeps it a "simple" request (no CORS preflight)
+      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode }, body || {})),
+      redirect: 'follow',
+    });
+  } catch (e) {
+    throw new NetworkError('No connection to the server. Check signal and try again.');
+  }
+  if (!res.ok) throw new NetworkError('Server error (HTTP ' + res.status + '). Try again.');
+  let j;
+  try { j = await res.json(); }
+  catch (e) { throw new Error('Unexpected reply. Check the web app link, and that the deployment\'s access is "Anyone".'); }
+  if (!j.ok) throw new Error(j.error || 'Server refused the request.');
+  return j.data;
+}
+
+// ---------- setup ----------
+function showSetup(canCancel) {
+  const cfg = getCfg();
+  $('cfgUrl').value = cfg.url;
+  $('cfgPass').value = cfg.passcode;
+  $('cfgCancel').classList.toggle('hidden', !canCancel);
+  $('setup').classList.remove('hidden');
+  $('app').classList.add('hidden');
+}
+function showApp() {
+  $('setup').classList.add('hidden');
+  $('app').classList.remove('hidden');
+}
+async function saveSetup() {
+  const url = $('cfgUrl').value.trim();
+  const passcode = $('cfgPass').value;
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(url)) {
+    toast('That doesn\'t look like an Apps Script web app link (it should end in /exec).', true);
+    return;
+  }
+  if (!passcode) { toast('Enter the passcode.', true); return; }
+  const prev = lsGet(LS_CFG);
+  lsSet(LS_CFG, JSON.stringify({ url: url, passcode: passcode }));
+  const btn = $('cfgSave');
+  busy(btn, true, 'Testing…');
+  try {
+    const r = await api('ping');
+    toast('Connected to "' + r.sheetName + '".');
+    showApp();
+    flushQueue();
+  } catch (e) {
+    if (prev) lsSet(LS_CFG, prev);
+    toast(e.message, true);
+  } finally { busy(btn, false); }
+}
+
+// ---------- step 1: pole lookup ----------
+async function lookup(blank) {
+  const typed = blank ? '' : $('poleInput').value.trim();
+  if (!blank && !typed) { toast('Type a Pole ID or ITB No, or tap "Get the next Pole ID".', true); return; }
+  const btn = blank ? $('newPoleBtn') : $('lookupBtn');
+  busy(btn, true, blank ? 'Getting next ID…' : '…');
+  try {
+    const r = await api('lookup', { poleId: typed });
+    onLookup(r, typed);
+  } catch (e) {
+    toast(e.message, true);
+  } finally { busy(btn, false); }
+}
+
+function onLookup(r, typed) {
+  resetCapture();
+  const banner = $('poleBanner');
+  banner.innerHTML = '';
+  if (r.found) {
+    const p = r.pole;
+    state.pole = { poleId: String(p.poleId), found: true };
+    $('hasItb').value = p.hasItb === 'Yes' || p.hasItb === 'No' ? p.hasItb : '';
+    $('itbNo').value = p.itbNo || '';
+    $('zone').value = p.zone || '';
+    $('phase').value = p.phase || '';
+    $('locDesc').value = p.locationDescription || '';
+    $('stickerWrap').classList.add('hidden');
+    const camCount = (r.cameras || []).length;
+    banner.appendChild(el('div', { class: 'banner info' }, [
+      el('div', { class: 'big-id', text: state.pole.poleId }),
+      el('div', { text: [p.itbNo ? 'ITB ' + p.itbNo : 'No ITB', camCount + ' camera' + (camCount === 1 ? '' : 's') + ' on record'].join(' · ') }),
+    ]));
+    if (p.latitude && p.longitude) {
+      $('locOnRecord').textContent = 'On record: ' + Number(p.latitude).toFixed(6) + ', ' + Number(p.longitude).toFixed(6) +
+        (p.gpsAccuracy ? ' (±' + p.gpsAccuracy + ' m)' : ' (accuracy not recorded)') + '. Collecting again replaces it.';
+    }
+    state.cameras = (r.cameras || []).map((c) => ({
+      cameraId: String(c.cameraId || ''), itbNo: String(c.itbNo || ''), poePort: String(c.poePort || ''),
+      status: String(c.status || 'Active'), note: '',
+    }));
+  } else {
+    const newId = String(r.suggestedPoleId);
+    state.pole = { poleId: newId, found: false };
+    $('hasItb').value = 'No';
+    $('stickerId').textContent = newId;
+    $('stickerPlaced').checked = true;
+    $('stickerWrap').classList.remove('hidden');
+    const kids = [];
+    if (typed) kids.push(el('div', { text: '"' + typed + '" isn\'t in the database.' }));
+    kids.push(el('div', { text: 'New pole. Its ID will be:' }));
+    kids.push(el('div', { class: 'big-id', text: newId }));
+    kids.push(el('div', { text: 'Put the ' + newId + ' sticker on the pole now, before collecting the location and photo.' }));
+    if (typed) {
+      const useTyped = el('button', { class: 'link', type: 'button', text: 'Use "' + typed.toUpperCase() + '" as the Pole ID instead' });
+      useTyped.addEventListener('click', () => {
+        state.pole.poleId = typed.toUpperCase();
+        $('stickerId').textContent = state.pole.poleId;
+        banner.querySelector('.big-id').textContent = state.pole.poleId;
+        useTyped.remove();
+      });
+      kids.push(useTyped);
+    }
+    banner.appendChild(el('div', { class: 'banner new' }, kids));
+    state.cameras = [{ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' }];
+  }
+  renderCameras();
+  $('captureArea').classList.remove('hidden');
+  updateSubmit();
+}
+
+function resetCapture() {
+  stopGps(false);
+  state.loc = null;
+  state.photo = '';
+  state.cameras = [];
+  ['itbNo', 'zone', 'phase', 'locDesc', 'notes'].forEach((id) => { $(id).value = ''; });
+  $('hasItb').value = '';
+  $('locOnRecord').textContent = '';
+  $('gpsLive').classList.add('hidden');
+  $('gpsResult').innerHTML = '';
+  $('weakWrap').classList.add('hidden');
+  $('weakOk').checked = false;
+  $('photoThumb').classList.add('hidden');
+  $('photoThumb').removeAttribute('src');
+  $('photoInput').value = '';
+  $('collectBtn').textContent = 'Collect location';
+}
+
+function resetAll() {
+  resetCapture();
+  state.pole = null;
+  $('poleInput').value = '';
+  $('poleBanner').innerHTML = '';
+  $('captureArea').classList.add('hidden');
+  updateSubmit();
+  window.scrollTo(0, 0);
+}
+
+// ---------- step 2: GPS collection ----------
+function median(nums) {
+  const a = nums.slice().sort((x, y) => x - y);
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+// Pure function: turns raw readings into the saved result. Exposed for testing.
+function summariseFixes(readings) {
+  if (!readings.length) return null;
+  const good = readings.filter((r) => r.acc <= GPS_KEEP_M);
+  let use = good;
+  if (good.length < GPS_MIN_GOOD) {
+    // Not enough good readings: fall back to the best few, and mark the result weak.
+    use = readings.slice().sort((a, b) => a.acc - b.acc).slice(0, 5);
+  }
+  const acc = median(use.map((r) => r.acc));
+  return {
+    lat: median(use.map((r) => r.lat)),
+    lng: median(use.map((r) => r.lng)),
+    acc: Math.round(acc * 10) / 10,
+    fixes: good.length,
+    total: readings.length,
+    weak: good.length < GPS_MIN_GOOD || acc > GPS_ACCEPT_M,
+  };
+}
+window.summariseFixes = summariseFixes;
+
+function quality(acc) {
+  if (acc <= GPS_ACCEPT_M) return ['good', 'Good'];
+  if (acc <= GPS_KEEP_M) return ['fair', 'Fair'];
+  return ['poor', 'Poor'];
+}
+
+async function startGps() {
+  if (!('geolocation' in navigator)) { toast('This phone/browser has no location access.', true); return; }
+  stopGps(false);
+  state.loc = null;
+  $('gpsResult').innerHTML = '';
+  $('weakWrap').classList.add('hidden');
+  $('weakOk').checked = false;
+  $('gpsLive').classList.remove('hidden');
+  $('gpsAcc').textContent = '--';
+  $('gpsAcc').className = 'gps-acc';
+  $('gpsTag').textContent = 'Waiting for GPS';
+  $('gpsTag').className = 'gps-tag bg-fair';
+  $('gpsMeta').textContent = '';
+  $('collectBtn').textContent = 'Stop and use what I have';
+  state.collecting = true;
+  updateSubmit();
+
+  const run = { start: Date.now(), readings: [], watchId: null, timer: null, wake: null };
+  gps = run;
+  try { if (navigator.wakeLock) run.wake = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
+  if (gps !== run) return;
+
+  run.watchId = navigator.geolocation.watchPosition((pos) => {
+    if (gps !== run) return;
+    if (pos.timestamp && pos.timestamp < run.start - 1000) return; // ignore cached fixes
+    const c = pos.coords;
+    run.readings.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy });
+    const q = quality(c.accuracy);
+    $('gpsAcc').textContent = '±' + (c.accuracy < 100 ? c.accuracy.toFixed(1) : Math.round(c.accuracy)) + ' m';
+    $('gpsAcc').className = 'gps-acc q-' + q[0];
+    $('gpsTag').textContent = q[1];
+    $('gpsTag').className = 'gps-tag bg-' + q[0];
+    tick();
+    const good = run.readings.filter((r) => r.acc <= GPS_KEEP_M).length;
+    if (Date.now() - run.start >= GPS_MIN_MS && good >= GPS_ENOUGH) finishGps();
+  }, (err) => {
+    if (gps !== run) return;
+    if (err.code === 1) {
+      stopGps(false);
+      $('gpsLive').classList.add('hidden');
+      $('gpsResult').innerHTML = '';
+      $('gpsResult').appendChild(el('div', { class: 'result weak', text:
+        'Location permission is off. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → "While Using the App", with Precise Location ON. Then try again.' }));
+      updateSubmit();
+    } else {
+      $('gpsMeta').textContent = 'GPS signal not available yet. Keep the phone up and stay still…';
+    }
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_MAX_MS });
+
+  run.timer = setInterval(tick, 250);
+  function tick() {
+    if (gps !== run) return;
+    const elapsed = Date.now() - run.start;
+    $('gpsBar').style.width = Math.min(100, (elapsed / GPS_MAX_MS) * 100) + '%';
+    const good = run.readings.filter((r) => r.acc <= GPS_KEEP_M).length;
+    $('gpsMeta').textContent = Math.floor(elapsed / 1000) + ' s · ' + good + ' good reading' + (good === 1 ? '' : 's') +
+      ' (±' + GPS_KEEP_M + ' m or better) of ' + run.readings.length;
+    if (elapsed >= GPS_MAX_MS) finishGps();
+  }
+}
+
+function stopGps(keepUi) {
+  const run = gps;
+  if (!run) return;
+  gps = null;
+  if (run.watchId !== null) navigator.geolocation.clearWatch(run.watchId);
+  clearInterval(run.timer);
+  try { if (run.wake) run.wake.release(); } catch (e) { /* ignore */ }
+  state.collecting = false;
+  if (!keepUi) $('collectBtn').textContent = 'Collect location';
+  return run;
+}
+
+function finishGps() {
+  const run = stopGps(true);
+  if (!run) return;
+  $('collectBtn').textContent = 'Collect again';
+  $('gpsLive').classList.add('hidden');
+  const res = summariseFixes(run.readings);
+  const box = $('gpsResult');
+  box.innerHTML = '';
+  if (!res) {
+    box.appendChild(el('div', { class: 'result weak', text: 'No GPS reading at all. Move into the open and try again.' }));
+    state.loc = null;
+  } else {
+    state.loc = res;
+    const where = res.lat.toFixed(6) + ', ' + res.lng.toFixed(6);
+    if (!res.weak) {
+      box.appendChild(el('div', { class: 'result ok' }, [
+        el('b', { text: 'Location locked: ±' + res.acc + ' m' }), el('br'),
+        res.fixes + ' good readings averaged · ' + where,
+      ]));
+    } else {
+      box.appendChild(el('div', { class: 'result weak' }, [
+        el('b', { text: 'Weak fix: ±' + res.acc + ' m (needs ±' + GPS_ACCEPT_M + ' m or better)' }), el('br'),
+        'Only ' + res.fixes + ' of ' + res.total + ' readings were ±' + GPS_KEEP_M + ' m or better. Step into the open, away from trains and walls, and tap "Collect again".',
+      ]));
+      $('weakWrap').classList.remove('hidden');
+    }
+  }
+  updateSubmit();
+}
+
+// ---------- step 3: photo ----------
+async function onPhoto(file) {
+  if (!file) return;
+  try {
+    state.photo = await compressImage(file, 1600, 0.8);
+    $('photoThumb').src = state.photo;
+    $('photoThumb').classList.remove('hidden');
+  } catch (e) {
+    toast('Could not read that photo. Try again.', true);
+  }
+}
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+// ---------- step 5: cameras ----------
+function renderCameras() {
+  const list = $('camList');
+  list.innerHTML = '';
+  state.cameras.forEach((cam, i) => {
+    const idIn = el('input', { placeholder: 'Camera ID', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Camera ID' });
+    idIn.value = cam.cameraId;
+    idIn.addEventListener('input', () => { cam.cameraId = idIn.value; });
+    const portIn = el('input', { placeholder: 'PoE port', autocomplete: 'off', 'aria-label': 'PoE port' });
+    portIn.value = cam.poePort;
+    portIn.addEventListener('input', () => { cam.poePort = portIn.value; });
+    const statusIn = el('input', { placeholder: 'Status', list: 'statusList', autocomplete: 'off', 'aria-label': 'Status' });
+    statusIn.value = cam.status;
+    statusIn.addEventListener('input', () => { cam.status = statusIn.value; });
+    const noteIn = el('input', { placeholder: 'Note (optional)', autocomplete: 'off', 'aria-label': 'Note' });
+    noteIn.value = cam.note;
+    noteIn.addEventListener('input', () => { cam.note = noteIn.value; });
+    const x = el('button', { class: 'x', type: 'button', 'aria-label': 'Skip this camera', text: '×' });
+    x.addEventListener('click', () => { state.cameras.splice(i, 1); renderCameras(); });
+    list.appendChild(el('div', { class: 'cam' }, [
+      el('div', { class: 'row' }, [idIn, x]),
+      el('div', { class: 'row' }, [portIn, statusIn]),
+      el('div', { class: 'row' }, [noteIn]),
+    ]));
+  });
+}
+
+// ---------- submit ----------
+function locationOk() {
+  return !!state.loc && (!state.loc.weak || $('weakOk').checked);
+}
+function updateSubmit() {
+  let why = '';
+  if (!state.pole) why = 'Look up a pole first.';
+  else if (state.collecting) why = 'Collecting location…';
+  else if (!state.loc) why = 'Collect the location first.';
+  else if (!locationOk()) why = 'Location is ±' + state.loc.acc + ' m. Needs ±' + GPS_ACCEPT_M + ' m or better.';
+  $('submitBtn').disabled = !!why;
+  $('submitBtn').textContent = state.pole ? 'Submit ' + state.pole.poleId : 'Submit';
+  $('why').textContent = why;
+}
+
+function buildPayload() {
+  return {
+    poleId: state.pole.poleId,
+    hasItb: $('hasItb').value,
+    itbNo: $('itbNo').value.trim(),
+    zone: $('zone').value.trim(),
+    phase: $('phase').value.trim(),
+    locationDescription: $('locDesc').value.trim(),
+    lat: Number(state.loc.lat.toFixed(7)),
+    lng: Number(state.loc.lng.toFixed(7)),
+    gpsAccuracy: state.loc.acc,
+    gpsFixes: state.loc.fixes,
+    stickerPlaced: state.pole.found ? '' : ($('stickerPlaced').checked ? 'Yes' : 'No'),
+    notes: $('notes').value.trim(),
+    photoDataUrl: state.photo || '',
+    cameras: state.cameras
+      .filter((c) => c.cameraId.trim())
+      .map((c) => ({ cameraId: c.cameraId.trim(), itbNo: c.itbNo, poePort: c.poePort.trim(), status: c.status.trim() || 'Active', note: c.note.trim() })),
+  };
+}
+
+async function submit() {
+  if ($('submitBtn').disabled) return;
+  const payload = buildPayload();
+  const btn = $('submitBtn');
+  busy(btn, true, 'Saving…');
+  try {
+    const r = await api('submit', { payload: payload });
+    toast(r.message || ('Saved ' + payload.poleId + '.'));
+    resetAll();
+    flushQueue();
+  } catch (e) {
+    if (e instanceof NetworkError) {
+      queue.push({ payload: payload, queuedAt: new Date().toISOString() });
+      const stored = saveQueue();
+      toast(stored
+        ? 'No signal. ' + payload.poleId + ' is saved on this phone and will upload when you\'re back online.'
+        : 'No signal, and the phone is out of space to store it. Keep the app open and tap "Upload now" when you have signal.', !stored);
+      resetAll();
+    } else {
+      toast(e.message, true);
+    }
+  } finally {
+    busy(btn, false);
+    updateSubmit();
+    renderPending();
+  }
+}
+
+// ---------- offline queue ----------
+let flushing = false;
+function renderPending() {
+  const n = queue.length;
+  $('pending').classList.toggle('hidden', n === 0);
+  $('pendingText').textContent = n + ' record' + (n === 1 ? '' : 's') + ' waiting to upload (' +
+    queue.map((q) => q.payload.poleId).join(', ') + ')';
+}
+async function flushQueue() {
+  if (flushing || !queue.length || !getCfg().url) { renderPending(); return; }
+  flushing = true;
+  busy($('flushBtn'), true, 'Uploading…');
+  try {
+    while (queue.length) {
+      const item = queue[0];
+      try {
+        await api('submit', { payload: item.payload });
+        queue.shift();
+        saveQueue();
+        toast('Uploaded ' + item.payload.poleId + '.');
+      } catch (e) {
+        if (!(e instanceof NetworkError)) toast(item.payload.poleId + ': ' + e.message, true);
+        break;
+      }
+    }
+  } finally {
+    flushing = false;
+    busy($('flushBtn'), false);
+    renderPending();
+  }
+}
+
+// ---------- wiring ----------
+$('cfgSave').addEventListener('click', saveSetup);
+$('cfgCancel').addEventListener('click', showApp);
+$('settingsBtn').addEventListener('click', () => showSetup(!!getCfg().url));
+$('lookupBtn').addEventListener('click', () => lookup(false));
+$('poleInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(false); });
+$('newPoleBtn').addEventListener('click', () => lookup(true));
+$('collectBtn').addEventListener('click', () => { if (state.collecting) finishGps(); else startGps(); });
+$('weakOk').addEventListener('change', updateSubmit);
+$('photoInput').addEventListener('change', (e) => onPhoto(e.target.files && e.target.files[0]));
+$('addCamBtn').addEventListener('click', () => {
+  state.cameras.push({ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' });
+  renderCameras();
+});
+$('submitBtn').addEventListener('click', submit);
+$('flushBtn').addEventListener('click', flushQueue);
+window.addEventListener('online', flushQueue);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQueue(); });
+
+if (getCfg().url && getCfg().passcode) { showApp(); flushQueue(); } else { showSetup(false); }
+renderPending();
+updateSubmit();
+</script>
+</body>
+</html>

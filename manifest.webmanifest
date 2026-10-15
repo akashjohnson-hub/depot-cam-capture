@@ -1,0 +1,15 @@
+{
+  "name": "Depot Camera Capture",
+  "short_name": "Cam Capture",
+  "description": "Field capture of depot pole, camera and GPS records.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF1F4",
+  "theme_color": "#14202E",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
