@@ -92,6 +92,24 @@
     font-size: 12px; font-weight: 700; padding: 1px 6px; box-shadow: none; }
   .leaflet-tooltip.pole-label::before { display: none; }
   .leaflet-tooltip.pole-label.record { background: rgba(178,58,27,.9); }
+  .strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .strip-head .meta { font-size: 14px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; background: #FFFFFF; color: var(--primary); font-size: 14px; font-weight: 600; padding: 6px 10px; }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
+  .carousel { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: 14px; padding: 2px 2px 8px;
+    margin: 0 -14px; padding-left: 14px; padding-right: 14px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .carousel::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; min-width: 104px; scroll-snap-align: start; text-align: left; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 12px; background: #FFFFFF; padding: 9px 11px; color: var(--ink); }
+  .chip .cid { display: block; font-size: 18px; font-weight: 800; letter-spacing: .3px; }
+  .chip .cst { display: block; font-size: 13px; font-weight: 600; margin-top: 2px; white-space: nowrap; }
+  .chip .ccam { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; white-space: nowrap; }
+  .chip.s-good { border-left-color: var(--good); } .chip.s-good .cst { color: var(--good); }
+  .chip.s-weak { border-left-color: var(--fair); } .chip.s-weak .cst { color: var(--fair); }
+  .chip.s-todo { border-left-color: var(--disabled); } .chip.s-todo .cst { color: var(--muted); }
+  .chip.selected { background: #E3E9F1; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary) inset; }
+  .strip-empty { font-size: 15px; color: var(--muted); padding: 6px 0 10px; }
 </style>
 </head>
 <body>
@@ -119,7 +137,15 @@
     <!-- 1. Pole -->
     <section class="card">
       <h2><span class="n">1</span>Pole</h2>
-      <label for="poleInput">Pole ID or ITB No</label>
+      <div class="strip-head">
+        <span id="stripCount" class="meta">Loading poles…</span>
+        <div class="seg" role="group" aria-label="Filter poles">
+          <button id="fAll" type="button" aria-pressed="true">All</button>
+          <button id="fTodo" type="button" aria-pressed="false">To do</button>
+        </div>
+      </div>
+      <div id="poleCarousel" class="carousel" aria-label="Poles"></div>
+      <label for="poleInput">Or type a Pole ID or ITB No</label>
       <div class="row">
         <input id="poleInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ITB-11 or P3">
         <button id="lookupBtn" class="btn shrink" type="button" style="width:auto;padding:0 18px">Look up</button>
@@ -293,6 +319,7 @@ function showSetup(canCancel) {
 function showApp() {
   $('setup').classList.add('hidden');
   $('app').classList.remove('hidden');
+  loadPoles();
 }
 async function saveSetup() {
   const url = $('cfgUrl').value.trim();
@@ -386,7 +413,7 @@ function onLookup(r, typed) {
   $('captureArea').classList.remove('hidden');
   const rec = r.found && r.pole.latitude && r.pole.longitude ? [Number(r.pole.latitude), Number(r.pole.longitude)] : [null, null];
   mapFocusPole(rec[0], rec[1]);
-  if (!MAP.polesLoaded) loadPoles();
+  if (!MAP.polesLoaded) loadPoles(); else renderCarousel();
   updateSubmit();
 }
 
@@ -590,13 +617,76 @@ function ensureMap() {
   return MAP.map;
 }
 
+function hasCoords(p) { return p.lat !== null && p.lat !== '' && p.lng !== null && p.lng !== '' && isFinite(p.lat) && isFinite(p.lng); }
+
 async function loadPoles() {
   try {
     const r = await api('poles');
-    MAP.poles = (r && r.poles) || [];
+    MAP.poles = ((r && r.poles) || []).map((p) => Object.assign({}, p, {
+      lat: p.lat === null || p.lat === '' ? null : Number(p.lat),
+      lng: p.lng === null || p.lng === '' ? null : Number(p.lng),
+    }));
     MAP.polesLoaded = true;
     renderOthers();
-  } catch (e) { /* older backend or no signal: map still works without the other pins */ }
+    renderCarousel();
+  } catch (e) {
+    if (!MAP.polesLoaded) $('stripCount').textContent = 'Pole list unavailable (' + (e instanceof NetworkError ? 'no signal' : 'update Code.gs') + ').';
+  }
+}
+
+// ---------- pole carousel ----------
+let stripFilter = 'all';
+function poleStatus(p) {
+  if (!hasCoords(p)) return ['todo', 'Not mapped'];
+  const acc = Number(p.gpsAccuracy);
+  const adjusted = /map-adjusted/i.test(String(p.positionSource || ''));
+  if (adjusted) return ['good', 'Mapped · map-set'];
+  if (!p.gpsAccuracy || !isFinite(acc)) return ['weak', 'Re-collect'];
+  if (acc <= GPS_ACCEPT_M) return ['good', 'Mapped ±' + acc + ' m'];
+  return ['weak', 'Weak ±' + acc + ' m'];
+}
+function poleSortKey(id) {
+  const m = /^([A-Z]+)[-\s]?(\d+)/i.exec(String(id));
+  if (!m) return [9, 0, String(id)];
+  const prefix = m[1].toUpperCase();
+  return [prefix === 'ITB' ? 0 : (prefix === 'P' ? 1 : 2), parseInt(m[2], 10), prefix];
+}
+function renderCarousel() {
+  const box = $('poleCarousel');
+  box.innerHTML = '';
+  const all = MAP.poles.slice().sort((a, b) => {
+    const ka = poleSortKey(a.poleId), kb = poleSortKey(b.poleId);
+    return ka[0] - kb[0] || ka[1] - kb[1] || String(ka[2]).localeCompare(String(kb[2]));
+  });
+  const done = all.filter((p) => poleStatus(p)[0] === 'good').length;
+  $('stripCount').textContent = done + ' of ' + all.length + ' poles mapped';
+  const shown = stripFilter === 'todo' ? all.filter((p) => poleStatus(p)[0] !== 'good') : all;
+  if (!shown.length) {
+    box.appendChild(el('div', { class: 'strip-empty', text: stripFilter === 'todo' ? 'Nothing left to map.' : 'No poles in the Sheet yet.' }));
+    return;
+  }
+  const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
+  shown.forEach((p) => {
+    const st = poleStatus(p);
+    const cams = Number(p.cameraCount);
+    const kids = [el('span', { class: 'cid', text: String(p.poleId) }), el('span', { class: 'cst', text: st[1] })];
+    if (isFinite(cams) && p.cameraCount !== undefined) kids.push(el('span', { class: 'ccam', text: cams + ' camera' + (cams === 1 ? '' : 's') }));
+    const chip = el('button', { type: 'button', class: 'chip s-' + st[0] + (String(p.poleId).toUpperCase() === current ? ' selected' : '') }, kids);
+    chip.setAttribute('aria-label', p.poleId + ', ' + st[1]);
+    chip.addEventListener('click', () => {
+      $('poleInput').value = String(p.poleId);
+      lookup(false);
+    });
+    box.appendChild(chip);
+  });
+  const sel = box.querySelector('.chip.selected');
+  if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+function setStripFilter(f) {
+  stripFilter = f;
+  $('fAll').setAttribute('aria-pressed', String(f === 'all'));
+  $('fTodo').setAttribute('aria-pressed', String(f === 'todo'));
+  renderCarousel();
 }
 
 function renderOthers() {
@@ -604,7 +694,7 @@ function renderOthers() {
   MAP.others.clearLayers();
   if (MAP.record) { MAP.record.remove(); MAP.record = null; }
   const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
-  MAP.poles.forEach((p) => {
+  MAP.poles.filter(hasCoords).forEach((p) => {
     const isCurrent = String(p.poleId).toUpperCase() === current;
     const m = L.circleMarker([p.lat, p.lng], {
       radius: isCurrent ? 7 : 5, color: isCurrent ? '#B23A1B' : '#14202E', weight: 2,
@@ -619,7 +709,7 @@ function mapFocusPole(lat, lng) {
   if (!ensureMap()) return;
   renderOthers();
   if (lat && lng) MAP.map.setView([lat, lng], 19);
-  else if (MAP.poles.length) MAP.map.fitBounds(L.latLngBounds(MAP.poles.map((p) => [p.lat, p.lng])).pad(0.1), { maxZoom: 18 });
+  else if (MAP.poles.some(hasCoords)) MAP.map.fitBounds(L.latLngBounds(MAP.poles.filter(hasCoords).map((p) => [p.lat, p.lng])).pad(0.1), { maxZoom: 18 });
 }
 
 function mapLive(lat, lng, acc) {
@@ -872,6 +962,8 @@ $('addCamBtn').addEventListener('click', () => {
 });
 $('submitBtn').addEventListener('click', submit);
 $('mapMeBtn').addEventListener('click', mapCentreMe);
+$('fAll').addEventListener('click', () => setStripFilter('all'));
+$('fTodo').addEventListener('click', () => setStripFilter('todo'));
 $('mapResetBtn').addEventListener('click', mapResetPin);
 $('flushBtn').addEventListener('click', flushQueue);
 window.addEventListener('online', flushQueue);
