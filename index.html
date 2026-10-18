@@ -110,6 +110,10 @@
   .chip.s-todo { border-left-color: var(--disabled); } .chip.s-todo .cst { color: var(--muted); }
   .chip.selected { background: #E3E9F1; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary) inset; }
   .strip-empty { font-size: 15px; color: var(--muted); padding: 6px 0 10px; }
+  .warnbox { background: #FBE6E0; border: 2px solid var(--poor); border-radius: 12px; padding: 12px; margin-bottom: 10px; font-size: 16px; }
+  .warnbox b { display: block; margin-bottom: 6px; color: var(--poor); }
+  .warnbox ul { margin: 0 0 10px; padding-left: 20px; }
+  .warnbox .row button { min-height: 46px; border-radius: 10px; border: 0; font-size: 16px; font-weight: 650; }
 </style>
 </head>
 <body>
@@ -126,6 +130,8 @@
     <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter the team passcode. This is saved on this phone only.</p>
     <label for="cfgUrl">Web app link</label>
     <input id="cfgUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+    <label for="cfgName">Your name (shown in the Submission Log)</label>
+    <input id="cfgName" autocomplete="name" placeholder="e.g. Akash">
     <label for="cfgPass">Passcode</label>
     <input id="cfgPass" type="password" autocomplete="off">
     <div style="height:12px"></div>
@@ -217,6 +223,7 @@
       </section>
 
       <div class="submit-wrap">
+        <div id="warnBox" class="warnbox hidden" role="alert"></div>
         <button id="submitBtn" class="btn" type="button" disabled>Submit</button>
         <div id="why" class="why"></div>
       </div>
@@ -254,7 +261,7 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e
 function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
-  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '' };
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '' };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
@@ -312,6 +319,7 @@ function showSetup(canCancel) {
   const cfg = getCfg();
   $('cfgUrl').value = cfg.url;
   $('cfgPass').value = cfg.passcode;
+  $('cfgName').value = cfg.name;
   $('cfgCancel').classList.toggle('hidden', !canCancel);
   $('setup').classList.remove('hidden');
   $('app').classList.add('hidden');
@@ -324,13 +332,15 @@ function showApp() {
 async function saveSetup() {
   const url = $('cfgUrl').value.trim();
   const passcode = $('cfgPass').value;
+  const name = $('cfgName').value.trim();
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(url)) {
     toast('That doesn\'t look like an Apps Script web app link (it should end in /exec).', true);
     return;
   }
+  if (!name) { toast('Enter your name, so your submissions can be identified in the log.', true); return; }
   if (!passcode) { toast('Enter the passcode.', true); return; }
   const prev = lsGet(LS_CFG);
-  lsSet(LS_CFG, JSON.stringify({ url: url, passcode: passcode }));
+  lsSet(LS_CFG, JSON.stringify({ url: url, passcode: passcode, name: name }));
   const btn = $('cfgSave');
   busy(btn, true, 'Testing…');
   try {
@@ -364,7 +374,9 @@ function onLookup(r, typed) {
   banner.innerHTML = '';
   if (r.found) {
     const p = r.pole;
-    state.pole = { poleId: String(p.poleId), found: true };
+    state.pole = { poleId: String(p.poleId), found: true,
+      recLat: p.latitude ? Number(p.latitude) : null, recLng: p.longitude ? Number(p.longitude) : null,
+      recAcc: p.gpsAccuracy || '' };
     $('hasItb').value = p.hasItb === 'Yes' || p.hasItb === 'No' ? p.hasItb : '';
     $('itbNo').value = p.itbNo || '';
     $('zone').value = p.zone || '';
@@ -853,6 +865,7 @@ function locationOk() {
   return !!state.loc && (!state.loc.weak || state.loc.adjusted || $('weakOk').checked);
 }
 function updateSubmit() {
+  if (warnAckKey !== currentWarnKey()) $('warnBox').classList.add('hidden');
   let why = '';
   if (!state.pole) why = 'Look up a pole first.';
   else if (state.collecting) why = 'Collecting location…';
@@ -861,6 +874,60 @@ function updateSubmit() {
   $('submitBtn').disabled = !!why;
   $('submitBtn').textContent = state.pole ? 'Submit ' + state.pole.poleId : 'Submit';
   $('why').textContent = why;
+}
+
+// ---------- wrong-pole checks ----------
+const NEAR_OTHER_M = 5;    // closer than this to a different mapped pole: ask
+const MOVED_FAR_M = 20;    // further than this from the pole's recorded point: ask
+let warnAckKey = '';
+let lastWarnings = [];
+
+function metresBetween(lat1, lng1, lat2, lng2) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function wrongPoleWarnings() {
+  const out = [];
+  if (!state.pole || !state.loc) return out;
+  const me = String(state.pole.poleId).toUpperCase();
+  let nearest = null;
+  MAP.poles.filter(hasCoords).forEach((p) => {
+    if (String(p.poleId).toUpperCase() === me) return;
+    const d = metresBetween(state.loc.lat, state.loc.lng, p.lat, p.lng);
+    if (!nearest || d < nearest.d) nearest = { id: p.poleId, d: d };
+  });
+  if (nearest && nearest.d <= NEAR_OTHER_M) {
+    out.push('You are ' + nearest.d.toFixed(1) + ' m from ' + nearest.id + '. Are you sure this pole is ' + state.pole.poleId + ', not ' + nearest.id + '?');
+  }
+  if (state.pole.recLat !== null && state.pole.recLat !== undefined && state.pole.recLng !== null) {
+    const d = metresBetween(state.loc.lat, state.loc.lng, state.pole.recLat, state.pole.recLng);
+    if (d > MOVED_FAR_M) {
+      out.push('This is ' + Math.round(d) + ' m from where ' + state.pole.poleId + ' was recorded before' +
+        (state.pole.recAcc ? ' (±' + state.pole.recAcc + ' m).' : '. The old point was never accuracy-checked, so a big move can be expected.') +
+        ' Check the ITB label or sticker on this pole.');
+    }
+  }
+  return out;
+}
+
+function showWarnings(list) {
+  const box = $('warnBox');
+  box.innerHTML = '';
+  box.appendChild(el('b', { text: 'Check before saving' }));
+  box.appendChild(el('ul', null, list.map((t) => el('li', { text: t }))));
+  const back = el('button', { type: 'button', text: 'Go back', style: 'background:#FFFFFF;color:#14202E;border:1px solid #D5DBE2' });
+  const go = el('button', { type: 'button', text: 'Yes, it\'s ' + state.pole.poleId + ', submit', style: 'background:#B23A1B;color:#FFFFFF' });
+  back.addEventListener('click', () => { box.classList.add('hidden'); });
+  go.addEventListener('click', () => { warnAckKey = currentWarnKey(); box.classList.add('hidden'); submit(); });
+  box.appendChild(el('div', { class: 'row' }, [back, go]));
+  box.classList.remove('hidden');
+  box.scrollIntoView({ block: 'center' });
+}
+function currentWarnKey() {
+  return state.pole && state.loc ? state.pole.poleId + '|' + state.loc.lat.toFixed(7) + '|' + state.loc.lng.toFixed(7) : '';
 }
 
 function buildPayload() {
@@ -876,6 +943,8 @@ function buildPayload() {
     gpsAccuracy: state.loc.acc,
     gpsFixes: state.loc.fixes,
     positionSource: state.loc.adjusted ? 'Map-adjusted (' + state.loc.adjustM + ' m)' : 'GPS',
+    submittedBy: getCfg().name,
+    warnings: lastWarnings.join(' | '),
     stickerPlaced: state.pole.found ? '' : ($('stickerPlaced').checked ? 'Yes' : 'No'),
     notes: $('notes').value.trim(),
     photoDataUrl: state.photo || '',
@@ -887,6 +956,9 @@ function buildPayload() {
 
 async function submit() {
   if ($('submitBtn').disabled) return;
+  lastWarnings = wrongPoleWarnings();
+  if (lastWarnings.length && warnAckKey !== currentWarnKey()) { showWarnings(lastWarnings); return; }
+  $('warnBox').classList.add('hidden');
   const payload = buildPayload();
   const btn = $('submitBtn');
   busy(btn, true, 'Saving…');
@@ -969,7 +1041,11 @@ $('flushBtn').addEventListener('click', flushQueue);
 window.addEventListener('online', flushQueue);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQueue(); });
 
-if (getCfg().url && getCfg().passcode) { showApp(); flushQueue(); } else { showSetup(false); }
+if (getCfg().url && getCfg().passcode) {
+  if (!getCfg().name) { showSetup(true); toast('New: add your name, so submissions show who made them.'); }
+  else { showApp(); }
+  flushQueue();
+} else { showSetup(false); }
 renderPending();
 updateSubmit();
 </script>
