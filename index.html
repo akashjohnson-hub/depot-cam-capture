@@ -71,6 +71,18 @@
   .banner .link { display: block; text-align: left; margin-top: 4px; }
   .cam.matched { border: 2px solid var(--accent); background: #FFF6EE; }
   .cam .tag { font-size: 13px; font-weight: 700; color: #8A4A0E; margin: 0 0 6px 2px; }
+  .cam { position: relative; }
+  .cam-drop { position: absolute; left: 8px; right: 60px; z-index: 30; background: #FFFFFF; border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 8px 22px rgba(20,32,46,.18); overflow: hidden; }
+  .cam-drop button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #EEF1F4; background: none; padding: 9px 12px; font-size: 16px; color: var(--ink); }
+  .cam-drop button small { display: block; color: var(--muted); font-size: 13px; }
+  .cam-info { font-size: 13px; color: var(--muted); margin: 4px 2px 0; min-height: 0; }
+  .cam-info:empty { display: none; }
+  .cam-info.dup { color: var(--poor); font-weight: 650; }
+  .sug-group { margin: 2px 0 10px; }
+  .sug-head { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .sug-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sug-chip { border: 1px dashed var(--primary); background: #F3F6FA; color: var(--primary); border-radius: 9px; padding: 6px 9px; font-size: 14px; font-weight: 650; }
   .cam .x { flex: 0 0 44px; border: 0; border-radius: 10px; background: #F1E3DF; color: var(--poor); font-size: 20px; }
   .cam .row + .row { margin-top: 6px; }
   .submit-wrap { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%);
@@ -252,6 +264,7 @@
       <section class="card">
         <h2><span class="n">5</span>Cameras on this pole</h2>
         <div id="camList"></div>
+        <div id="camSuggest"></div>
         <button id="addCamBtn" class="btn secondary" type="button">+ Add camera</button>
         <p class="meta" style="margin:8px 0 0">Removing a row here only skips it in this update; it isn't deleted from the Sheet.</p>
         <datalist id="statusList"><option value="Active"><option value="Faulty"><option value="Missing"></datalist>
@@ -410,13 +423,42 @@ async function lookup(blank) {
   busy(btn, true, blank ? 'Getting next ID…' : '…');
   try {
     const r = await api('lookup', { poleId: typed });
-    onLookup(r, typed);
+    if (r.found && r.matchedCamera) askCameraPole(r, typed);
+    else onLookup(r, typed);
   } catch (e) {
     toast(e.message, true);
   } finally { busy(btn, false); }
 }
 
-function onLookup(r, typed) {
+// A camera's ITB in the database is its network link, not proof of which
+// pole it is on, so ask before opening that pole.
+function askCameraPole(r, typed) {
+  resetCapture();
+  state.pole = null;
+  $('captureArea').classList.add('hidden');
+  updateSubmit();
+  const banner = $('poleBanner');
+  banner.innerHTML = '';
+  const pid = String(r.pole.poleId);
+  const yes = el('button', { class: 'btn', type: 'button', text: 'Yes, I\'m at ' + pid });
+  const no = el('button', { class: 'btn secondary', type: 'button', text: 'No, different pole' });
+  yes.addEventListener('click', () => onLookup(r, typed));
+  no.addEventListener('click', async () => {
+    busy(no, true, '…');
+    try {
+      const fresh = await api('lookup', { poleId: '' });
+      onLookup(fresh, '', { prefillCamera: camRecord(r.matchedCamera) || { cameraId: String(r.matchedCamera) } });
+    } catch (e) { toast(e.message, true); busy(no, false); }
+  });
+  banner.appendChild(el('div', { class: 'banner new' }, [
+    el('b', { text: r.matchedCamera + ' is listed under ' + pid + ' in the database.' }),
+    el('div', { text: 'That\'s its network link, so it may or may not be on this pole. Is the pole you\'re at ' + pid + '?' }),
+    el('div', { class: 'row', style: 'margin-top:10px' }, [no, yes]),
+  ]));
+}
+
+function onLookup(r, typed, opts) {
+  opts = opts || {};
   resetCapture();
   const banner = $('poleBanner');
   banner.innerHTML = '';
@@ -451,10 +493,8 @@ function onLookup(r, typed) {
     if (matched) {
       const n = state.cameras.length;
       banner.appendChild(el('div', { class: 'banner new' }, [
-        el('b', { text: 'Camera ' + r.matchedCamera + ' is on ' + state.pole.poleId + '.' }),
-        el('div', { text: n > 1
-          ? 'All ' + n + ' cameras on record for this pole are listed in step 5. Check which ones you can see on the pole, remove any that aren\'t there, and add any missing.'
-          : 'It is the only camera on record for this pole. Add any others you can see in step 5.' }),
+        el('b', { text: 'Cameras on record for ' + state.pole.poleId + ' are listed in step 5 (' + n + ').' }),
+        el('div', { text: 'Keep the ones you can actually see on this pole, remove the rest with ×, and add any missing. Whatever is listed when you submit is grouped onto ' + state.pole.poleId + '.' }),
       ]));
     }
   } else {
@@ -492,9 +532,16 @@ function onLookup(r, typed) {
       kids.push(asCam);
     }
     banner.appendChild(el('div', { class: 'banner new' }, kids));
-    state.cameras = r.cameraUnlinked
-      ? [{ cameraId: String(r.matchedCamera), itbNo: String(r.cameraItbNo || ''), poePort: '', status: 'Active', note: '', matched: true }]
-      : [{ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' }];
+    if (opts.prefillCamera) {
+      const c = opts.prefillCamera;
+      state.cameras = [{ cameraId: String(c.cameraId), itbNo: String(c.itbNo || ''), poePort: String(c.poePort || ''),
+        status: String(c.status || 'Active'), note: '', matched: true }];
+      banner.querySelector('.banner.new').insertBefore(el('div', { text: c.cameraId + ' is added to this new pole\'s camera list.' }), banner.querySelector('.banner.new').firstChild);
+    } else {
+      state.cameras = r.cameraUnlinked
+        ? [{ cameraId: String(r.matchedCamera), itbNo: String(r.cameraItbNo || ''), poePort: '', status: 'Active', note: '', matched: true }]
+        : [{ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' }];
+    }
   }
   renderCameras();
   $('captureArea').classList.remove('hidden');
@@ -714,6 +761,8 @@ async function loadPoles() {
       lng: p.lng === null || p.lng === '' ? null : Number(p.lng),
     }));
     MAP.polesLoaded = true;
+    CAMS = (r && r.cameras) ? r.cameras
+      : [].concat.apply([], MAP.poles.map((p) => (p.cameras || []).map((c) => Object.assign({ poleId: p.poleId, itbNo: p.itbNo }, c))));
     renderOthers();
     renderCarousel();
     if (OV.open) ovRender();
@@ -1076,13 +1125,97 @@ function compressImage(file, maxDim, quality) {
 }
 
 // ---------- step 5: cameras ----------
+let CAMS = [];   // every camera in the Cameras tab: { cameraId, poleId, itbNo, poePort, status }
+const compactId = (v) => String(v || '').toUpperCase().replace(/[\s-]/g, '');
+function camRecord(id) { const k = compactId(id); return CAMS.find((c) => compactId(c.cameraId) === k) || null; }
+function camWhere(c) {
+  const bits = [];
+  if (c.itbNo) bits.push(c.itbNo);
+  if (c.poePort) bits.push('port ' + c.poePort);
+  if (c.poleId && compactId(c.poleId) !== compactId(c.itbNo)) bits.push('now on ' + c.poleId);
+  return bits.join(' · ') || 'no ITB recorded';
+}
+function camMatches(q, exclude) {
+  q = compactId(q);
+  if (q.length < 2) return [];
+  return CAMS.filter((c) => compactId(c.cameraId).indexOf(q) >= 0 && !exclude.has(compactId(c.cameraId)))
+    .sort((a, b) => (compactId(a.cameraId).indexOf(q) - compactId(b.cameraId).indexOf(q)) || String(a.cameraId).localeCompare(String(b.cameraId), undefined, { numeric: true }))
+    .slice(0, 6);
+}
+function listedIds(except) {
+  return new Set(state.cameras.filter((c) => c !== except).map((c) => compactId(c.cameraId)).filter(Boolean));
+}
+function applyCamRecord(cam, rec) {
+  cam.cameraId = String(rec.cameraId);
+  cam.itbNo = String(rec.itbNo || '');
+  if (!cam.poePort) cam.poePort = String(rec.poePort || '');
+  if (rec.status) cam.status = String(rec.status);
+}
+
+// Cameras listed under the same ITB(s) as the ones already on this pole,
+// offered as one-tap adds.
+function renderCamSuggest() {
+  const box = $('camSuggest');
+  box.innerHTML = '';
+  const have = listedIds();
+  const itbs = [];
+  state.cameras.forEach((c) => {
+    const rec = c.cameraId ? camRecord(c.cameraId) : null;
+    const itb = (rec && rec.itbNo) || c.itbNo;
+    if (itb && itbs.indexOf(itb) < 0) itbs.push(itb);
+  });
+  itbs.forEach((itb) => {
+    const sib = CAMS.filter((c) => compactId(c.itbNo) === compactId(itb) && !have.has(compactId(c.cameraId)))
+      .sort((a, b) => String(a.cameraId).localeCompare(String(b.cameraId), undefined, { numeric: true }));
+    if (!sib.length) return;
+    const chips = sib.slice(0, 24).map((c) => {
+      const b = el('button', { type: 'button', class: 'sug-chip', text: '+ ' + c.cameraId + (c.poePort ? ' (p' + c.poePort + ')' : '') });
+      b.addEventListener('click', () => {
+        const empty = state.cameras.find((x) => !x.cameraId.trim());
+        const cam = empty || { cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' };
+        applyCamRecord(cam, c);
+        if (!empty) state.cameras.push(cam);
+        renderCameras();
+      });
+      return b;
+    });
+    box.appendChild(el('div', { class: 'sug-group' }, [
+      el('div', { class: 'sug-head', text: 'Also listed under ' + itb + ' (' + sib.length + '). Tap to add only if it\'s on this pole:' }),
+      el('div', { class: 'sug-chips' }, chips),
+    ]));
+  });
+}
+
 function renderCameras() {
   const list = $('camList');
   list.innerHTML = '';
   state.cameras.forEach((cam, i) => {
-    const idIn = el('input', { placeholder: 'Camera ID', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Camera ID' });
+    const idIn = el('input', { placeholder: 'Camera ID (type to search)', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Camera ID' });
     idIn.value = cam.cameraId;
-    idIn.addEventListener('input', () => { cam.cameraId = idIn.value; });
+    const drop = el('div', { class: 'cam-drop hidden' });
+    const info = el('div', { class: 'cam-info' });
+    const showInfo = () => {
+      const rec = cam.cameraId ? camRecord(cam.cameraId) : null;
+      const dup = cam.cameraId && listedIds(cam).has(compactId(cam.cameraId));
+      info.textContent = dup ? 'Already listed above.' : (rec ? 'In database: ' + camWhere(rec) : (cam.cameraId.trim().length >= 3 && CAMS.length ? 'Not in the database: will be added as a new camera.' : ''));
+      info.className = 'cam-info' + (dup ? ' dup' : '');
+    };
+    const showDrop = () => {
+      drop.innerHTML = '';
+      const res = camMatches(idIn.value, listedIds(cam));
+      const exact = res.length === 1 && compactId(res[0].cameraId) === compactId(idIn.value);
+      if (!res.length || exact) { drop.classList.add('hidden'); return; }
+      res.forEach((c) => {
+        const b = el('button', { type: 'button' }, [el('b', { text: String(c.cameraId) }), el('small', { text: camWhere(c) })]);
+        b.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus so blur doesn't eat the tap
+        b.addEventListener('click', () => { applyCamRecord(cam, c); drop.classList.add('hidden'); renderCameras(); });
+        drop.appendChild(b);
+      });
+      drop.classList.remove('hidden');
+    };
+    idIn.addEventListener('input', () => { cam.cameraId = idIn.value; const rec = camRecord(idIn.value); if (rec) cam.itbNo = String(rec.itbNo || ''); showInfo(); showDrop(); });
+    idIn.addEventListener('focus', showDrop);
+    idIn.addEventListener('blur', () => { setTimeout(() => drop.classList.add('hidden'), 150); renderCamSuggest(); });
     const portIn = el('input', { placeholder: 'PoE port', autocomplete: 'off', 'aria-label': 'PoE port' });
     portIn.value = cam.poePort;
     portIn.addEventListener('input', () => { cam.poePort = portIn.value; });
@@ -1097,10 +1230,14 @@ function renderCameras() {
     list.appendChild(el('div', { class: 'cam' + (cam.matched ? ' matched' : '') }, [
       cam.matched ? el('div', { class: 'tag', text: 'The camera you searched for' }) : el('span'),
       el('div', { class: 'row' }, [idIn, x]),
+      drop,
+      info,
       el('div', { class: 'row' }, [portIn, statusIn]),
       el('div', { class: 'row' }, [noteIn]),
     ]));
+    showInfo();
   });
+  renderCamSuggest();
 }
 
 // ---------- submit ----------
