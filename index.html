@@ -132,12 +132,14 @@
   .warnbox .row button { min-height: 46px; border-radius: 10px; border: 0; font-size: 16px; font-weight: 650; }
   #overview { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--bg); display: flex; flex-direction: column; }
   .ov-top { position: relative; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); z-index: 1001; }
+  .ov-back { display: block; width: 100%; text-align: left; border: 0; background: #E3E9F1; color: var(--primary); border-radius: 10px;
+    padding: 10px 12px; font-size: 16px; font-weight: 700; margin-bottom: 8px; }
   .ov-search { display: flex; gap: 8px; }
   .ov-search input { flex: 1; }
   .ov-search button { flex: 0 0 48px; border: 1px solid var(--line); border-radius: 10px; background: #FFFFFF; color: var(--primary); font-size: 22px; }
   .ov-summary { font-size: 14px; color: var(--muted); margin-top: 6px; }
   .ov-summary b { color: var(--ink); }
-  .ov-results { position: absolute; left: 12px; right: 12px; top: 62px; background: #FFFFFF; border: 1px solid var(--line); border-radius: 12px;
+  .ov-results { position: absolute; left: 12px; right: 12px; top: 112px; background: #FFFFFF; border: 1px solid var(--line); border-radius: 12px;
     box-shadow: 0 8px 24px rgba(20,32,46,.18); max-height: 50vh; overflow-y: auto; }
   .ov-results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #EEF1F4; background: none; padding: 11px 14px; font-size: 16px; color: var(--ink); }
   .ov-results button small { display: block; color: var(--muted); font-size: 13px; }
@@ -280,6 +282,7 @@
 </main>
 <section id="overview" class="hidden" aria-label="Overview map">
   <div class="ov-top">
+    <button id="ovBack" class="ov-back" type="button">← Back to Capture</button>
     <div class="ov-search">
       <input id="ovSearch" type="search" placeholder="Search camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <button id="ovRefresh" type="button" aria-label="Refresh">↻</button>
@@ -940,6 +943,8 @@ async function openOverview() {
   ov.style.top = document.querySelector('header').offsetHeight + 'px';
   ov.classList.remove('hidden');
   $('overviewBtn').textContent = 'Capture';
+  const busyWith = state.pole ? String(state.pole.poleId) : '';
+  $('ovBack').textContent = busyWith ? '← Back to ' + busyWith + (state.collecting ? ' (still collecting location)' : '') : '← Back to Capture';
   if (!window.L) { $('ovSummary').textContent = 'Map could not load (no connection?).'; return; }
   if (!OV.map) {
     OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: true }).setView([1.3521, 103.8198], 12);
@@ -1417,6 +1422,7 @@ $('mapMeBtn').addEventListener('click', mapCentreMe);
 $('fAll').addEventListener('click', () => setStripFilter('all'));
 $('overviewBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else if (getCfg().url) openOverview(); else toast('Connect in Settings first.', true); });
 $('ovRefresh').addEventListener('click', ovRefresh);
+$('ovBack').addEventListener('click', closeOverview);
 $('ovSearch').addEventListener('input', ovShowResults);
 $('ovSearch').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
