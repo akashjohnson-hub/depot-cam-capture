@@ -68,6 +68,9 @@
   .thumb { width: 100%; max-height: 260px; object-fit: contain; background: #DDE3EA; border-radius: 10px; margin-top: 10px; }
   .cam { border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-bottom: 8px; background: #FFFFFF; }
   .cam .row input { font-size: 16px; padding: 9px 10px; }
+  .banner .link { display: block; text-align: left; margin-top: 4px; }
+  .cam.matched { border: 2px solid var(--accent); background: #FFF6EE; }
+  .cam .tag { font-size: 13px; font-weight: 700; color: #8A4A0E; margin: 0 0 6px 2px; }
   .cam .x { flex: 0 0 44px; border: 0; border-radius: 10px; background: #F1E3DF; color: var(--poor); font-size: 20px; }
   .cam .row + .row { margin-top: 6px; }
   .submit-wrap { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%);
@@ -183,9 +186,9 @@
         </div>
       </div>
       <div id="poleCarousel" class="carousel" aria-label="Poles"></div>
-      <label for="poleInput">Or type a Pole ID or ITB No</label>
+      <label for="poleInput">Or type a Pole ID, ITB No or Camera ID</label>
       <div class="row">
-        <input id="poleInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ITB-11 or P3">
+        <input id="poleInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ITB-11, P3 or PF154">
         <button id="lookupBtn" class="btn shrink" type="button" style="width:auto;padding:0 18px">Look up</button>
       </div>
       <button id="newPoleBtn" class="link" type="button">Unnumbered pole? Get the next Pole ID</button>
@@ -437,10 +440,23 @@ function onLookup(r, typed) {
       $('locOnRecord').textContent = 'On record: ' + Number(p.latitude).toFixed(6) + ', ' + Number(p.longitude).toFixed(6) +
         (p.gpsAccuracy ? ' (±' + p.gpsAccuracy + ' m)' : ' (accuracy not recorded)') + '. Collecting again replaces it.';
     }
+    const matched = r.matchedCamera ? String(r.matchedCamera).toUpperCase() : '';
     state.cameras = (r.cameras || []).map((c) => ({
       cameraId: String(c.cameraId || ''), itbNo: String(c.itbNo || ''), poePort: String(c.poePort || ''),
-      status: String(c.status || 'Active'), note: '',
+      status: String(c.status || 'Active'), note: '', matched: String(c.cameraId || '').toUpperCase() === matched,
     }));
+    if (matched && !state.cameras.some((c) => c.matched)) {
+      state.cameras.unshift({ cameraId: String(r.matchedCamera), itbNo: String(p.itbNo || ''), poePort: '', status: 'Active', note: '', matched: true });
+    }
+    if (matched) {
+      const n = state.cameras.length;
+      banner.appendChild(el('div', { class: 'banner new' }, [
+        el('b', { text: 'Camera ' + r.matchedCamera + ' is on ' + state.pole.poleId + '.' }),
+        el('div', { text: n > 1
+          ? 'All ' + n + ' cameras on record for this pole are listed in step 5. Check which ones you can see on the pole, remove any that aren\'t there, and add any missing.'
+          : 'It is the only camera on record for this pole. Add any others you can see in step 5.' }),
+      ]));
+    }
   } else {
     const newId = String(r.suggestedPoleId);
     state.pole = { poleId: newId, found: false };
@@ -449,11 +465,12 @@ function onLookup(r, typed) {
     $('stickerPlaced').checked = true;
     $('stickerWrap').classList.remove('hidden');
     const kids = [];
-    if (typed) kids.push(el('div', { text: '"' + typed + '" isn\'t in the database.' }));
+    if (r.cameraUnlinked) kids.push(el('div', { text: 'Camera ' + r.matchedCamera + ' is in the database but isn\'t linked to any pole yet.' }));
+    else if (typed) kids.push(el('div', { text: '"' + typed + '" isn\'t in the database as a pole, ITB or camera.' }));
     kids.push(el('div', { text: 'New pole. Its ID will be:' }));
     kids.push(el('div', { class: 'big-id', text: newId }));
     kids.push(el('div', { text: 'Put the ' + newId + ' sticker on the pole now, before collecting the location and photo.' }));
-    if (typed) {
+    if (typed && !r.cameraUnlinked) {
       const useTyped = el('button', { class: 'link', type: 'button', text: 'Use "' + typed.toUpperCase() + '" as the Pole ID instead' });
       useTyped.addEventListener('click', () => {
         state.pole.poleId = typed.toUpperCase();
@@ -463,8 +480,21 @@ function onLookup(r, typed) {
       });
       kids.push(useTyped);
     }
+    if (typed && !r.cameraUnlinked) {
+      const asCam = el('button', { class: 'link', type: 'button', text: 'It\'s a camera ID: add "' + typed.toUpperCase() + '" as a camera on this pole' });
+      asCam.addEventListener('click', () => {
+        const empty = state.cameras.find((c) => !c.cameraId.trim());
+        if (empty) { empty.cameraId = typed.toUpperCase(); empty.matched = true; }
+        else state.cameras.unshift({ cameraId: typed.toUpperCase(), itbNo: '', poePort: '', status: 'Active', note: '', matched: true });
+        renderCameras();
+        asCam.remove();
+      });
+      kids.push(asCam);
+    }
     banner.appendChild(el('div', { class: 'banner new' }, kids));
-    state.cameras = [{ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' }];
+    state.cameras = r.cameraUnlinked
+      ? [{ cameraId: String(r.matchedCamera), itbNo: String(r.cameraItbNo || ''), poePort: '', status: 'Active', note: '', matched: true }]
+      : [{ cameraId: '', itbNo: '', poePort: '', status: 'Active', note: '' }];
   }
   renderCameras();
   $('captureArea').classList.remove('hidden');
@@ -1064,7 +1094,8 @@ function renderCameras() {
     noteIn.addEventListener('input', () => { cam.note = noteIn.value; });
     const x = el('button', { class: 'x', type: 'button', 'aria-label': 'Skip this camera', text: '×' });
     x.addEventListener('click', () => { state.cameras.splice(i, 1); renderCameras(); });
-    list.appendChild(el('div', { class: 'cam' }, [
+    list.appendChild(el('div', { class: 'cam' + (cam.matched ? ' matched' : '') }, [
+      cam.matched ? el('div', { class: 'tag', text: 'The camera you searched for' }) : el('span'),
       el('div', { class: 'row' }, [idIn, x]),
       el('div', { class: 'row' }, [portIn, statusIn]),
       el('div', { class: 'row' }, [noteIn]),
