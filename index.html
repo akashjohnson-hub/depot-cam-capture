@@ -943,8 +943,6 @@ async function openOverview() {
   ov.style.top = document.querySelector('header').offsetHeight + 'px';
   ov.classList.remove('hidden');
   $('overviewBtn').textContent = 'Capture';
-  const busyWith = state.pole ? String(state.pole.poleId) : '';
-  $('ovBack').textContent = busyWith ? '← Back to ' + busyWith + (state.collecting ? ' (still collecting location)' : '') : '← Back to Capture';
   if (!window.L) { $('ovSummary').textContent = 'Map could not load (no connection?).'; return; }
   if (!OV.map) {
     OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: true }).setView([1.3521, 103.8198], 12);
