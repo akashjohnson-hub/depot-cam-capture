@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Depot Camera Capture</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -79,6 +81,17 @@
     background: var(--ink); color: #F2F5F8; border-radius: 12px; padding: 12px 14px; font-size: 16px;
     box-shadow: 0 6px 24px rgba(0,0,0,.25); max-width: 616px; margin: 0 auto; }
   #toast.err { background: var(--poor); }
+  #map { height: 330px; border-radius: 12px; margin-top: 12px; background: #2A3442; border: 1px solid var(--line); }
+  .map-tools { display: flex; gap: 8px; margin-top: 8px; }
+  .map-tools button { flex: 1; min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: #FFFFFF;
+    color: var(--primary); font-size: 15px; font-weight: 600; }
+  .pin-ring { width: 34px; height: 34px; border-radius: 17px; border: 4px solid #F28A2E; background: rgba(242,138,46,.18);
+    box-shadow: 0 0 0 2px #FFFFFF; display: flex; align-items: center; justify-content: center; }
+  .pin-ring::after { content: ""; width: 6px; height: 6px; border-radius: 3px; background: #FFFFFF; box-shadow: 0 0 0 1px #14202E; }
+  .leaflet-tooltip.pole-label { background: rgba(20,32,46,.88); color: #F2F5F8; border: 0; border-radius: 6px;
+    font-size: 12px; font-weight: 700; padding: 1px 6px; box-shadow: none; }
+  .leaflet-tooltip.pole-label::before { display: none; }
+  .leaflet-tooltip.pole-label.record { background: rgba(178,58,27,.9); }
 </style>
 </head>
 <body>
@@ -129,6 +142,14 @@
           <div id="gpsMeta" class="meta"></div>
         </div>
         <div id="gpsResult"></div>
+        <div id="mapWrap" class="hidden">
+          <div id="map" role="application" aria-label="Satellite map of your position"></div>
+          <div class="map-tools">
+            <button id="mapMeBtn" type="button">Centre on me</button>
+            <button id="mapResetBtn" type="button" class="hidden">Undo pin move</button>
+          </div>
+          <p id="mapNote" class="meta" style="margin:8px 0 0">Blue dot = live GPS, circle = its accuracy. White labels = poles already mapped.</p>
+        </div>
         <label id="weakWrap" class="check hidden"><input id="weakOk" type="checkbox"><span>No better fix is possible here. Save this weak location anyway (its accuracy figure in the Sheet will flag it).</span></label>
       </section>
 
@@ -363,6 +384,9 @@ function onLookup(r, typed) {
   }
   renderCameras();
   $('captureArea').classList.remove('hidden');
+  const rec = r.found && r.pole.latitude && r.pole.longitude ? [Number(r.pole.latitude), Number(r.pole.longitude)] : [null, null];
+  mapFocusPole(rec[0], rec[1]);
+  if (!MAP.polesLoaded) loadPoles();
   updateSubmit();
 }
 
@@ -378,6 +402,8 @@ function resetCapture() {
   $('gpsResult').innerHTML = '';
   $('weakWrap').classList.add('hidden');
   $('weakOk').checked = false;
+  mapClearPin();
+  mapClearLive();
   $('photoThumb').classList.add('hidden');
   $('photoThumb').removeAttribute('src');
   $('photoInput').value = '';
@@ -432,6 +458,9 @@ async function startGps() {
   if (!('geolocation' in navigator)) { toast('This phone/browser has no location access.', true); return; }
   stopGps(false);
   state.loc = null;
+  mapClearPin();
+  mapClearLive();
+  ensureMap();
   $('gpsResult').innerHTML = '';
   $('weakWrap').classList.add('hidden');
   $('weakOk').checked = false;
@@ -455,6 +484,7 @@ async function startGps() {
     if (pos.timestamp && pos.timestamp < run.start - 1000) return; // ignore cached fixes
     const c = pos.coords;
     run.readings.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy });
+    mapLive(c.latitude, c.longitude, c.accuracy);
     const q = quality(c.accuracy);
     $('gpsAcc').textContent = '±' + (c.accuracy < 100 ? c.accuracy.toFixed(1) : Math.round(c.accuracy)) + ' m';
     $('gpsAcc').className = 'gps-acc q-' + q[0];
@@ -513,6 +543,10 @@ function finishGps() {
     box.appendChild(el('div', { class: 'result weak', text: 'No GPS reading at all. Move into the open and try again.' }));
     state.loc = null;
   } else {
+    res.gpsLat = res.lat;
+    res.gpsLng = res.lng;
+    res.adjusted = false;
+    res.adjustM = 0;
     state.loc = res;
     const where = res.lat.toFixed(6) + ', ' + res.lng.toFixed(6);
     if (!res.weak) {
@@ -523,12 +557,149 @@ function finishGps() {
     } else {
       box.appendChild(el('div', { class: 'result weak' }, [
         el('b', { text: 'Weak fix: ±' + res.acc + ' m (needs ±' + GPS_ACCEPT_M + ' m or better)' }), el('br'),
-        'Only ' + res.fixes + ' of ' + res.total + ' readings were ±' + GPS_KEEP_M + ' m or better. Step into the open, away from trains and walls, and tap "Collect again".',
+        'Only ' + res.fixes + ' of ' + res.total + ' readings were ±' + GPS_KEEP_M + ' m or better. Step into the open and tap "Collect again", or drag the orange pin onto the pole on the map.',
       ]));
       $('weakWrap').classList.remove('hidden');
     }
+    mapShowResult(res);
+    if (!res.weak) $('mapNote').textContent = 'Orange ring = the averaged point. If it isn\'t on the pole in the picture, drag it onto the pole.';
+    else $('mapNote').textContent = 'Drag the orange ring onto the pole you are standing at, if you can see it in the picture.';
   }
   updateSubmit();
+}
+
+// ---------- satellite map ----------
+const MAP = { map: null, tiles: null, others: null, live: null, liveCircle: null, pin: null, record: null,
+  poles: [], polesLoaded: false, lastFix: null, centred: false };
+
+function ensureMap() {
+  $('mapWrap').classList.remove('hidden');
+  if (!window.L) {
+    $('mapNote').textContent = 'Map could not load (no connection?). GPS collection still works without it.';
+    return null;
+  }
+  if (!MAP.map) {
+    MAP.map = L.map('map', { maxZoom: 21, zoomControl: true, attributionControl: true }).setView([1.3521, 103.8198], 12);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+    }).addTo(MAP.map);
+    MAP.others = L.layerGroup().addTo(MAP.map);
+    $('mapNote').textContent = 'Blue dot = live GPS, circle = its accuracy. White labels = poles already mapped.';
+  }
+  setTimeout(() => MAP.map && MAP.map.invalidateSize(), 60);
+  return MAP.map;
+}
+
+async function loadPoles() {
+  try {
+    const r = await api('poles');
+    MAP.poles = (r && r.poles) || [];
+    MAP.polesLoaded = true;
+    renderOthers();
+  } catch (e) { /* older backend or no signal: map still works without the other pins */ }
+}
+
+function renderOthers() {
+  if (!MAP.map) return;
+  MAP.others.clearLayers();
+  if (MAP.record) { MAP.record.remove(); MAP.record = null; }
+  const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
+  MAP.poles.forEach((p) => {
+    const isCurrent = String(p.poleId).toUpperCase() === current;
+    const m = L.circleMarker([p.lat, p.lng], {
+      radius: isCurrent ? 7 : 5, color: isCurrent ? '#B23A1B' : '#14202E', weight: 2,
+      fillColor: isCurrent ? '#F1B9A8' : '#FCFDFD', fillOpacity: 1,
+    }).bindTooltip(isCurrent ? p.poleId + ' (on record)' : String(p.poleId),
+      { permanent: true, direction: 'top', offset: [0, -6], className: 'pole-label' + (isCurrent ? ' record' : '') });
+    if (isCurrent) { m.addTo(MAP.map); MAP.record = m; } else { m.addTo(MAP.others); }
+  });
+}
+
+function mapFocusPole(lat, lng) {
+  if (!ensureMap()) return;
+  renderOthers();
+  if (lat && lng) MAP.map.setView([lat, lng], 19);
+  else if (MAP.poles.length) MAP.map.fitBounds(L.latLngBounds(MAP.poles.map((p) => [p.lat, p.lng])).pad(0.1), { maxZoom: 18 });
+}
+
+function mapLive(lat, lng, acc) {
+  MAP.lastFix = [lat, lng];
+  if (!ensureMap()) return;
+  if (!MAP.live) {
+    MAP.liveCircle = L.circle([lat, lng], { radius: acc, color: '#3B82F6', weight: 1, fillColor: '#3B82F6', fillOpacity: 0.15 }).addTo(MAP.map);
+    MAP.live = L.circleMarker([lat, lng], { radius: 7, color: '#FFFFFF', weight: 3, fillColor: '#2563EB', fillOpacity: 1 }).addTo(MAP.map);
+  } else {
+    MAP.live.setLatLng([lat, lng]);
+    MAP.liveCircle.setLatLng([lat, lng]).setRadius(acc);
+  }
+  if (!MAP.centred) { MAP.map.setView([lat, lng], 19); MAP.centred = true; }
+  else if (!MAP.map.getBounds().pad(-0.15).contains([lat, lng])) MAP.map.panTo([lat, lng]);
+}
+
+function mapClearLive() {
+  if (MAP.live) { MAP.live.remove(); MAP.live = null; }
+  if (MAP.liveCircle) { MAP.liveCircle.remove(); MAP.liveCircle = null; }
+  MAP.centred = false;
+}
+
+function mapClearPin() {
+  if (MAP.pin) { MAP.pin.remove(); MAP.pin = null; }
+  $('mapResetBtn').classList.add('hidden');
+  const n = $('adjustNote'); if (n) n.remove();
+}
+
+// Puts a draggable pin on the averaged result. Dragging it onto the pole seen in
+// the imagery moves the saved point and records the move.
+function mapShowResult(loc) {
+  mapClearPin();
+  if (!ensureMap()) return;
+  mapClearLive();
+  const origin = L.latLng(loc.gpsLat, loc.gpsLng);
+  const icon = L.divIcon({ className: '', html: '<div class="pin-ring"></div>', iconSize: [34, 34], iconAnchor: [17, 17] });
+  MAP.pin = L.marker(origin, { draggable: true, icon: icon, autoPan: true, title: 'Drag onto the pole' }).addTo(MAP.map);
+  MAP.map.setView(origin, Math.max(MAP.map.getZoom(), 19));
+  MAP.pin.on('dragend', () => {
+    const ll = MAP.pin.getLatLng();
+    const moved = MAP.map.distance(origin, ll);
+    state.loc.lat = ll.lat;
+    state.loc.lng = ll.lng;
+    state.loc.adjusted = moved >= 0.5;
+    state.loc.adjustM = Math.round(moved * 10) / 10;
+    showAdjustNote();
+    updateSubmit();
+  });
+}
+
+function showAdjustNote() {
+  let n = $('adjustNote');
+  if (!state.loc || !state.loc.adjusted) {
+    if (n) n.remove();
+    $('mapResetBtn').classList.add('hidden');
+    return;
+  }
+  if (!n) { n = el('div', { id: 'adjustNote', class: 'result ok' }); $('gpsResult').appendChild(n); }
+  n.textContent = 'Pin moved ' + state.loc.adjustM + ' m on the map. It will be saved as "Map-adjusted", with the GPS accuracy kept for reference.';
+  $('mapResetBtn').classList.remove('hidden');
+}
+
+function mapResetPin() {
+  if (!state.loc || !MAP.pin) return;
+  state.loc.lat = state.loc.gpsLat;
+  state.loc.lng = state.loc.gpsLng;
+  state.loc.adjusted = false;
+  state.loc.adjustM = 0;
+  MAP.pin.setLatLng([state.loc.gpsLat, state.loc.gpsLng]);
+  showAdjustNote();
+  updateSubmit();
+}
+
+function mapCentreMe() {
+  if (!ensureMap()) return;
+  const target = MAP.pin ? MAP.pin.getLatLng() : (MAP.lastFix ? L.latLng(MAP.lastFix) : null);
+  if (target) { MAP.map.setView(target, Math.max(MAP.map.getZoom(), 19)); return; }
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
+    (p) => MAP.map.setView([p.coords.latitude, p.coords.longitude], 19),
+    () => toast('Can\'t get your position yet.', true), { enableHighAccuracy: true, timeout: 10000 });
 }
 
 // ---------- step 3: photo ----------
@@ -589,14 +760,14 @@ function renderCameras() {
 
 // ---------- submit ----------
 function locationOk() {
-  return !!state.loc && (!state.loc.weak || $('weakOk').checked);
+  return !!state.loc && (!state.loc.weak || state.loc.adjusted || $('weakOk').checked);
 }
 function updateSubmit() {
   let why = '';
   if (!state.pole) why = 'Look up a pole first.';
   else if (state.collecting) why = 'Collecting location…';
   else if (!state.loc) why = 'Collect the location first.';
-  else if (!locationOk()) why = 'Location is ±' + state.loc.acc + ' m. Needs ±' + GPS_ACCEPT_M + ' m or better.';
+  else if (!locationOk()) why = 'Location is ±' + state.loc.acc + ' m. Needs ±' + GPS_ACCEPT_M + ' m or better, or drag the pin onto the pole.';
   $('submitBtn').disabled = !!why;
   $('submitBtn').textContent = state.pole ? 'Submit ' + state.pole.poleId : 'Submit';
   $('why').textContent = why;
@@ -614,6 +785,7 @@ function buildPayload() {
     lng: Number(state.loc.lng.toFixed(7)),
     gpsAccuracy: state.loc.acc,
     gpsFixes: state.loc.fixes,
+    positionSource: state.loc.adjusted ? 'Map-adjusted (' + state.loc.adjustM + ' m)' : 'GPS',
     stickerPlaced: state.pole.found ? '' : ($('stickerPlaced').checked ? 'Yes' : 'No'),
     notes: $('notes').value.trim(),
     photoDataUrl: state.photo || '',
@@ -632,6 +804,7 @@ async function submit() {
     const r = await api('submit', { payload: payload });
     toast(r.message || ('Saved ' + payload.poleId + '.'));
     resetAll();
+    loadPoles();
     flushQueue();
   } catch (e) {
     if (e instanceof NetworkError) {
@@ -698,6 +871,8 @@ $('addCamBtn').addEventListener('click', () => {
   renderCameras();
 });
 $('submitBtn').addEventListener('click', submit);
+$('mapMeBtn').addEventListener('click', mapCentreMe);
+$('mapResetBtn').addEventListener('click', mapResetPin);
 $('flushBtn').addEventListener('click', flushQueue);
 window.addEventListener('online', flushQueue);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQueue(); });
