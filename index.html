@@ -88,6 +88,9 @@
   .submit-wrap { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%);
     padding: 14px 0 calc(env(safe-area-inset-bottom) + 4px); }
   .why { text-align: center; font-size: 15px; color: var(--muted); margin-top: 6px; min-height: 20px; }
+  #updateBar { background: #E1F1E7; border-bottom: 1px solid #A9D4B8; padding: 10px 16px; font-size: 15px; display: flex; gap: 10px; align-items: center; }
+  #updateBar span { flex: 1; }
+  #updateBar button { border: 0; background: var(--good); color: #FFFFFF; border-radius: 9px; padding: 7px 12px; font-size: 15px; font-weight: 650; }
   #pending { background: #FBEBDC; border-bottom: 1px solid #EBC49E; padding: 10px 16px; font-size: 15px;
     display: flex; gap: 10px; align-items: center; }
   #pending span { flex: 1; }
@@ -197,6 +200,7 @@
   <button id="overviewBtn" type="button">Overview</button>
   <button id="settingsBtn" type="button">Settings</button>
 </header>
+<div id="updateBar" class="hidden"><span>A new version of Cam Capture is ready.</span><button id="updateBtn" type="button">Update now</button></div>
 <div id="pending" class="hidden"><span id="pendingText"></span><button id="flushBtn" type="button">Upload now</button></div>
 
 <main>
@@ -337,6 +341,9 @@
 
 <script>
 'use strict';
+
+// Bump this on every release; running copies compare it with the live page.
+const APP_VERSION = '2026-10-19.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1689,6 +1696,37 @@ async function shareSetupLink() {
   catch (e) { prompt('Copy this setup link:', link); }
 }
 $('shareSetupBtn').addEventListener('click', shareSetupLink);
+
+// ---------- self-update ----------
+// Home-screen apps keep an old copy of the page for a while. Fetch the live page
+// past the cache, compare versions, and offer a reload that loads the new copy.
+let updateTo = '';
+async function checkForUpdate() {
+  try {
+    const res = await fetch('./index.html?check=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const m = /const APP_VERSION = '([^']+)'/.exec(await res.text());
+    if (m && m[1] !== APP_VERSION) {
+      updateTo = m[1];
+      $('updateBar').classList.remove('hidden');
+    }
+  } catch (e) { /* offline: try again later */ }
+}
+let updateArmed = false;
+function applyUpdate() {
+  if (state.collecting) { toast('Finish collecting the location first, then update.', true); return; }
+  if (state.pole && !updateArmed) {
+    updateArmed = true;
+    $('updateBtn').textContent = 'Tap again: unsaved ' + state.pole.poleId + ' will be lost';
+    setTimeout(() => { updateArmed = false; $('updateBtn').textContent = 'Update now'; }, 5000);
+    return;
+  }
+  location.replace(location.pathname.replace(/[^/]*$/, '') + 'index.html?v=' + encodeURIComponent(updateTo || Date.now()));
+}
+$('updateBtn').addEventListener('click', applyUpdate);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+setInterval(() => { if (!document.hidden) checkForUpdate(); }, 10 * 60 * 1000);
+checkForUpdate();
 
 const linkedUrl = readSetupLink();
 if (linkedUrl && !(getCfg().url && getCfg().passcode)) {
