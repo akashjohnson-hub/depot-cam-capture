@@ -202,7 +202,8 @@
 <main>
   <!-- One-time setup -->
   <section id="setup" class="card hidden">
-    <h2>Connect to the database</h2>
+    <button id="cfgCancel" class="ov-back hidden" type="button">← Back to Capture</button>
+    <h2>Settings</h2>
     <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter the team passcode. This is saved on this phone only.</p>
     <label for="cfgUrl">Web app link</label>
     <input id="cfgUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
@@ -212,7 +213,6 @@
     <input id="cfgPass" type="password" autocomplete="off">
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
-    <button id="cfgCancel" class="link hidden" type="button">Cancel</button>
     <div id="shareWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
       <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their name and the passcode. The passcode is not in the link, so give it to them separately.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
