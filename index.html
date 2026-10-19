@@ -307,6 +307,38 @@
 
   #toast { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 92px); border-radius: 12px; font-weight: 500; }
   body:not(.has-tabs) #toast { bottom: calc(env(safe-area-inset-bottom) + 24px); }
+  /* map tab: map first, controls float over it */
+  #overview { display: block; }
+  #ovMap { position: absolute; inset: 0; }
+  .ov-top { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1001; padding: 0; background: none; border: 0; pointer-events: none; }
+  .ov-top > * { pointer-events: auto; }
+  .ov-search { position: relative; align-items: center; background: #FFFFFF; border-radius: 26px; box-shadow: 0 3px 14px rgba(27,38,49,.22);
+    padding: 4px 4px 4px 44px; gap: 6px; }
+  .ov-search input { border: 0; min-height: 44px; padding: 8px 4px; background: none; font-size: 17px; }
+  .ov-search input:focus { outline: none; }
+  .ov-s-icon { position: absolute; left: 14px; top: 50%; width: 22px; height: 22px; margin-top: -11px; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; }
+  .ov-search button.go { min-height: 44px; border-radius: 22px; padding: 0 18px; font-size: 16px; }
+  .ov-summary { display: inline-block; margin-top: 8px; background: rgba(251,251,250,.94); border-radius: 14px; padding: 4px 10px; font-size: 13px;
+    color: var(--slate); box-shadow: 0 1px 6px rgba(27,38,49,.15); }
+  .ov-results { top: 56px; left: 0; right: 0; }
+  .ov-area-edit { box-shadow: 0 3px 14px rgba(27,38,49,.22); }
+  .ov-fabs { position: absolute; right: 10px; top: 104px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+  .fab { width: 46px; height: 46px; border-radius: 23px; border: 0; background: #FFFFFF; color: var(--slate); box-shadow: 0 2px 10px rgba(27,38,49,.25);
+    display: flex; align-items: center; justify-content: center; }
+  .fab svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .fab.on { background: var(--slate); color: var(--signal); }
+  .ov-legend { left: 10px; bottom: 26px; }
+  .ov-panel.open ~ .ov-legend, #overview.has-panel .ov-legend { display: none; }
+  /* compact pole card; full data on request */
+  .ov-panel { max-height: 62%; padding: 12px 14px 14px; border-radius: 18px 18px 0 0; }
+  .ov-panel .ph .big-id { font-size: 26px; margin: 0; }
+  .ov-panel .near { margin: 10px 0; padding: 8px 10px; }
+  .ov-panel .near .arrow { flex-basis: 38px; height: 38px; font-size: 21px; }
+  .ov-panel .near .dist { font-size: 22px; }
+  .ov-panel .peek-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ov-panel .peek-btns .btn { min-height: 48px; font-size: 17px; }
+  .ov-data { margin-top: 12px; border-top: 1px solid var(--rule); padding-top: 12px; }
+  .ov-data .row { margin-top: 4px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -456,15 +488,11 @@
   <div class="ov-top">
     <button id="ovBack" class="ov-back" type="button">← Back to Capture</button>
     <div class="ov-search">
-      <input id="ovSearch" type="search" placeholder="Search camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false">
-      <button id="ovGo" type="button" class="go" aria-label="Search">Search</button>
-      <button id="ovRefresh" type="button" aria-label="Refresh">↻</button>
+      <svg class="ov-s-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+      <input id="ovSearch" type="search" placeholder="Search camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Search camera, ITB or pole" enterkeyhint="search">
+      <button id="ovGo" type="button" class="go">Go</button>
     </div>
     <div id="ovSummary" class="ov-summary">Loading…</div>
-    <div class="ov-tools">
-      <button id="ovHome" type="button">⌂ Depot</button>
-      <button id="ovArea" type="button" class="viewer-hide">Lock to this area</button>
-    </div>
     <div id="ovAreaEdit" class="ov-area-edit hidden">
       <div>Move and zoom so the whole depot fills the map, then tap <b>Save area</b>. Everyone's app will open on this area and stay inside it.</div>
       <div class="row"><button id="ovAreaCancel" type="button">Cancel</button><button id="ovAreaRemove" type="button">Remove lock</button><button id="ovAreaSave" type="button" class="primary">Save area</button></div>
@@ -472,6 +500,14 @@
     <div id="ovResults" class="ov-results hidden"></div>
   </div>
   <div id="ovMap"></div>
+  <div class="ov-fabs">
+    <button id="ovHome" type="button" class="fab" aria-label="Show the whole depot" title="Whole depot">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="ovRefresh" type="button" class="fab" aria-label="Refresh data" title="Refresh">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5"/><path d="M19.4 10A8 8 0 1 0 20 14"/></svg></button>
+    <button id="ovArea" type="button" class="fab viewer-hide" aria-label="Lock the map to this area" title="Lock area">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+  </div>
   <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
 </section>
@@ -495,7 +531,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.4';
+const APP_VERSION = '2026-10-19.5';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1377,7 +1413,7 @@ async function openOverview() {
   $('mapBtn').textContent = 'List';
   if (!window.L) { $('ovSummary').textContent = 'Map could not load (no connection?).'; return; }
   if (!OV.map) {
-    OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: true }).setView([1.3521, 103.8198], 12);
+    OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: false }).setView([1.3521, 103.8198], 12);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
     }).addTo(OV.map);
@@ -1414,7 +1450,12 @@ function ovFitHome() {
   if (AREA) OV.map.fitBounds(areaBounds());
   else if (MAP.poles.some(hasCoords)) OV.map.fitBounds(L.latLngBounds(MAP.poles.filter(hasCoords).map((p) => [p.lat, p.lng])).pad(0.15), { maxZoom: 18 });
 }
-function ovAreaLabel() { $('ovArea').textContent = AREA ? 'Change area' : 'Lock to this area'; }
+function ovAreaLabel() {
+  const b = $('ovArea');
+  b.classList.toggle('on', !!AREA);
+  b.setAttribute('aria-label', AREA ? 'Map is locked to the depot. Change the area' : 'Lock the map to this area');
+  b.title = AREA ? 'Change locked area' : 'Lock area';
+}
 function ovAreaStart() {
   if (!OV.map) return;
   OV.editing = true;
@@ -1554,73 +1595,92 @@ function ovShowResults() {
 function ovSelect(poleId, hit, quiet) {
   const p = MAP.poles.find((x) => String(x.poleId).toUpperCase() === String(poleId).toUpperCase());
   if (!p) return;
+  const samePole = OV.selected && String(OV.selected.poleId).toUpperCase() === String(p.poleId).toUpperCase();
+  if (!samePole) OV.showData = !hasCoords(p);   // unmapped poles have nothing to show on the map
   OV.selected = { poleId: p.poleId, hit: hit || '' };
   const st = poleStatus(p);
   const panel = $('ovPanel');
   panel.innerHTML = '';
+
+  // --- peek: plate, how far, the two main actions ---
   const close = el('button', { class: 'close', type: 'button', 'aria-label': 'Close', text: '×' });
   close.addEventListener('click', ovClosePanel);
   panel.appendChild(el('div', { class: 'ph' }, [el('div', { class: 'big-id', text: String(p.poleId) }), close]));
   if (hasCoords(p)) panel.appendChild(el('div', { id: 'ovNear', class: 'near' }));
-  const facts = [];
-  facts.push(el('div', null, [el('b', { text: st[1] }), p.itbNo && String(p.itbNo).toUpperCase() !== String(p.poleId).toUpperCase() ? ' · ITB ' + p.itbNo : '']));
-  if (p.locationDescription) facts.push(el('div', { text: p.locationDescription }));
-  if (p.positionSource && hasCoords(p)) facts.push(el('div', { text: 'Position: ' + p.positionSource + (p.gpsAccuracy ? ' · GPS ±' + p.gpsAccuracy + ' m' : '') }));
-  const who = [p.lastSubmittedBy && p.lastSubmittedBy !== '(not set)' ? 'by ' + p.lastSubmittedBy : '', p.lastSubmittedAt || p.lastVerified].filter(Boolean).join(', ');
-  if (who) facts.push(el('div', { text: 'Last updated ' + who }));
-  panel.appendChild(el('div', { class: 'facts' }, facts));
-  const chips = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || p.cameras || []).map((c) => {
-    const bad = c.status && !/^active$/i.test(c.status);
-    return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')), text: c.cameraId + (bad ? ' · ' + c.status : '') });
-  });
-  panel.appendChild(el('div', { class: 'cam-chips' }, chips.length ? chips : [el('span', { text: 'No cameras recorded' })]));
-  const btns = [];
+  const peek = [];
   if (hasCoords(p)) {
-    const dir = el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking', target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' });
-    btns.push(dir);
+    peek.push(el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
+      target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' }));
   }
-  let clearBlock = null;
-  if (hasCoords(p) && !isViewer()) {
-    const weak = st[0] === 'weak';
-    clearBlock = el('div', { style: 'margin-top:12px' });
-    if (weak) clearBlock.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
-    const clr = el('button', { class: 'btn danger', type: 'button', text: 'Clear location' });
-    let armed = null;
-    clr.addEventListener('click', async () => {
-      if (!armed) {
-        clr.classList.add('armed'); clr.textContent = 'Tap again to clear ' + p.poleId;
-        armed = setTimeout(() => { armed = null; clr.classList.remove('armed'); clr.textContent = 'Clear location'; }, 4000);
-        return;
-      }
-      clearTimeout(armed); armed = null;
-      busy(clr, true, 'Clearing…');
-      try {
-        const r = await api('clearLocation', { poleId: p.poleId, submittedBy: getCfg().name });
-        toast(r.message);
-        await loadPoles();
-      } catch (e) { toast(e.message, true); busy(clr, false); }
+  const toggle = el('button', { class: 'btn secondary', type: 'button', 'aria-expanded': String(!!OV.showData), text: OV.showData ? 'Hide data' : 'Show data' });
+  toggle.addEventListener('click', () => {
+    OV.showData = !OV.showData;
+    ovSelect(p.poleId, OV.selected ? OV.selected.hit : '', true);
+    ovFrameSelected(p);
+  });
+  peek.push(toggle);
+  panel.appendChild(el('div', { class: 'peek-btns', style: peek.length === 1 ? 'grid-template-columns:1fr' : '' }, peek));
+
+  // --- full data, only when asked for ---
+  if (OV.showData) {
+    const data = el('div', { class: 'ov-data' });
+    const facts = [];
+    facts.push(el('div', null, [el('b', { text: st[1] }), p.itbNo && String(p.itbNo).toUpperCase() !== String(p.poleId).toUpperCase() ? ' · ITB ' + p.itbNo : '']));
+    if (p.locationDescription) facts.push(el('div', { text: p.locationDescription }));
+    if (p.positionSource && hasCoords(p)) facts.push(el('div', { text: 'Position: ' + p.positionSource + (p.gpsAccuracy ? ' · GPS ±' + p.gpsAccuracy + ' m' : '') }));
+    const who = [p.lastSubmittedBy && p.lastSubmittedBy !== '(not set)' ? 'by ' + p.lastSubmittedBy : '', p.lastSubmittedAt || p.lastVerified].filter(Boolean).join(', ');
+    if (who) facts.push(el('div', { text: 'Last updated ' + who }));
+    data.appendChild(el('div', { class: 'facts' }, facts));
+    const chips = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || p.cameras || []).map((c) => {
+      const bad = c.status && !/^active$/i.test(c.status);
+      return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')), text: c.cameraId + (bad ? ' · ' + c.status : '') });
     });
-    clearBlock.appendChild(clr);
+    data.appendChild(el('div', { class: 'cam-chips' }, chips.length ? chips : [el('span', { text: 'No cameras recorded' })]));
+    if (!isViewer()) {
+      const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
+      cap.addEventListener('click', () => { goTab('capture'); $('poleInput').value = String(p.poleId); lookup(false); });
+      data.appendChild(el('div', { class: 'row' }, [cap]));
+    }
+    if (hasCoords(p) && !isViewer()) {
+      const clearBlock = el('div', { style: 'margin-top:12px' });
+      if (st[0] === 'weak') clearBlock.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
+      const clr = el('button', { class: 'btn danger', type: 'button', text: 'Clear location' });
+      let armed = null;
+      clr.addEventListener('click', async () => {
+        if (!armed) {
+          clr.classList.add('armed'); clr.textContent = 'Tap again to clear ' + p.poleId;
+          armed = setTimeout(() => { armed = null; clr.classList.remove('armed'); clr.textContent = 'Clear location'; }, 4000);
+          return;
+        }
+        clearTimeout(armed); armed = null;
+        busy(clr, true, 'Clearing…');
+        try {
+          const r = await api('clearLocation', { poleId: p.poleId, submittedBy: getCfg().name });
+          toast(r.message);
+          await loadPoles();
+        } catch (e) { toast(e.message, true); busy(clr, false); }
+      });
+      clearBlock.appendChild(clr);
+      data.appendChild(clearBlock);
+    }
+    panel.appendChild(data);
   }
-  if (!isViewer()) {
-    const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
-    cap.addEventListener('click', () => { goTab('capture'); $('poleInput').value = String(p.poleId); lookup(false); });
-    btns.push(cap);
-  }
-  panel.appendChild(el('div', { class: 'row' }, btns));
-  if (clearBlock) panel.appendChild(clearBlock);
+
   panel.classList.remove('hidden');
+  $('overview').classList.add('has-panel');
   if (!quiet) { OV.nearFor = null; OV.lastTrend = ''; OV.lastCls = ''; }
   ovUpdateNear();
-  if (hasCoords(p) && !quiet) {
-    // frame both you and the pole when you're nearby, else just the pole
-    // keep both you and the pole visible above the panel
-    const t = distTo(p);
-    const pts = t && t.d < 600 ? [[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]] : [[p.lat, p.lng]];
-    const ph = $('ovPanel').offsetHeight || 0;
-    OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 40], paddingBottomRight: [40, ph + 40], maxZoom: 19 });
-  }
+  if (!quiet) ovFrameSelected(p);
   if (!hasCoords(p) && !quiet) toast(p.poleId + ' isn\'t mapped yet, so it has no pin.');
+}
+
+// Keep you and the pole in view, above the card and below the search bar.
+function ovFrameSelected(p) {
+  if (!OV.map || !p || !hasCoords(p)) return;
+  const t = distTo(p);
+  const pts = t && t.d < 600 ? [[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]] : [[p.lat, p.lng]];
+  const ph = $('ovPanel').offsetHeight || 0;
+  OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 140], paddingBottomRight: [70, ph + 30], maxZoom: 19 });
 }
 
 // ---------- how close am I? ----------
@@ -1677,7 +1737,7 @@ function ovUpdateNear() {
 }
 function ovClearLine() { if (OV.line) { OV.line.remove(); OV.line = null; } }
 
-function ovClosePanel() { OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); }
+function ovClosePanel() { OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); $('overview').classList.remove('has-panel'); }
 
 function ovStartMe() {
   if (OV.watch !== null || !navigator.geolocation) return;
