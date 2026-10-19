@@ -396,7 +396,7 @@
 
   <section id="teamCard" class="card hidden" aria-label="Team">
     <h2>Team</h2>
-    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Admins can capture and edit; viewers can only look up poles and use the map.</p>
+    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers can only look up poles and use the map.</p>
     <div id="teamList" class="team-list"><div class="meta">Loading…</div></div>
     <div id="pinReveal" class="pin-reveal hidden" role="status"></div>
     <h3 class="team-h3">Add a person</h3>
@@ -563,7 +563,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.6';
+const APP_VERSION = '2026-10-19.7';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -591,22 +591,24 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e
 function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
-  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin' };
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
 
 function isViewer() { return getCfg().role === 'Viewer'; }
+function canManageTeam() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
+function roleLabel(c) { return (c.role === 'Viewer' ? 'Viewer' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
 function setCfg(patch) {
   const c = Object.assign({}, getCfg(), patch);
-  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role }));
+  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster }));
 }
 function applyRole() {
   const viewer = isViewer();
   document.body.classList.toggle('role-viewer', viewer);
   const c = getCfg();
   const chip = $('whoChip');
-  if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + (viewer ? 'Viewer' : 'Admin'); chip.classList.remove('hidden'); }
+  if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + roleLabel(c); chip.classList.remove('hidden'); }
   else chip.classList.add('hidden');
 }
 
@@ -681,7 +683,7 @@ function fillSetup() {
   $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   const who = $('cfgWho');
   if (cfg.url && cfg.passcode) {
-    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' ? 'Viewer (read-only)' : 'Admin');
+    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' ? 'Viewer (read-only)' : roleLabel(cfg));
     who.classList.remove('hidden');
   } else who.classList.add('hidden');
 }
@@ -708,27 +710,40 @@ async function loadTeam() {
 function renderTeam(users) {
   const box = $('teamList');
   box.innerHTML = '';
+  const hasOwner = users.some((u) => u.role === 'Owner' && u.active);
+  const sel = $('newRole');
+  let ownerOpt = sel.querySelector('option[value="Owner"]');
+  if (!hasOwner && !ownerOpt) {
+    ownerOpt = el('option', { value: 'Owner', text: 'Owner: you, the only one who manages the team' });
+    sel.insertBefore(ownerOpt, sel.firstChild);
+    sel.value = 'Owner';
+  } else if (hasOwner && ownerOpt) { ownerOpt.remove(); sel.value = 'Viewer'; }
   if (!users.length) {
-    box.appendChild(el('div', { class: 'meta', text: 'No accounts yet. Add yourself first as an Admin, then sign in with the PIN you get.' }));
+    box.appendChild(el('div', { class: 'meta', text: 'No accounts yet. Add yourself first as the Owner, then use the PIN you get on this phone.' }));
     return;
   }
   const me = String(getCfg().name || '').toUpperCase();
   users.forEach((u) => {
-    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Admin' ? 'admin' : 'viewer'), text: u.role })];
+    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : 'admin'), text: u.role })];
     if (!u.active) badges.push(el('span', { class: 'badge off', text: 'Switched off' }));
     if (u.name.toUpperCase() === me) badges.push(el('span', { class: 'badge you', text: 'You' }));
     const acts = [];
-    const roleBtn = el('button', { type: 'button', text: u.role === 'Admin' ? 'Make viewer' : 'Make admin' });
-    roleBtn.addEventListener('click', () => changeUser(u, { role: u.role === 'Admin' ? 'Viewer' : 'Admin' }, roleBtn));
-    acts.push(roleBtn);
+    const isOwner = u.role === 'Owner';
+    if (!isOwner) {
+      const roleBtn = el('button', { type: 'button', text: u.role === 'Admin' ? 'Make viewer' : 'Make admin' });
+      roleBtn.addEventListener('click', () => changeUser(u, { role: u.role === 'Admin' ? 'Viewer' : 'Admin' }, roleBtn));
+      acts.push(roleBtn);
+    }
     const pinBtn = el('button', { type: 'button', text: 'Reset PIN' });
     pinBtn.addEventListener('click', () => twoTap(pinBtn, 'Tap again: old PIN stops working', () => changeUser(u, { resetPin: true }, pinBtn)));
     acts.push(pinBtn);
-    const onBtn = el('button', { type: 'button', class: u.active ? 'warn' : '', text: u.active ? 'Switch off' : 'Switch on' });
-    onBtn.addEventListener('click', () => u.active
-      ? twoTap(onBtn, 'Tap again to switch off', () => changeUser(u, { active: false }, onBtn))
-      : changeUser(u, { active: true }, onBtn));
-    acts.push(onBtn);
+    if (!isOwner) {
+      const onBtn = el('button', { type: 'button', class: u.active ? 'warn' : '', text: u.active ? 'Switch off' : 'Switch on' });
+      onBtn.addEventListener('click', () => u.active
+        ? twoTap(onBtn, 'Tap again to switch off', () => changeUser(u, { active: false }, onBtn))
+        : changeUser(u, { active: true }, onBtn));
+      acts.push(onBtn);
+    }
     box.appendChild(el('div', { class: 'member' + (u.active ? '' : ' off') }, [
       el('div', { class: 'top' }, badges),
       el('div', { class: 'seen', text: u.lastSeen ? 'Last signed in ' + u.lastSeen : 'Not signed in yet' }),
@@ -758,6 +773,8 @@ async function addPerson() {
   try {
     const r = await api('addUser', { user: { name: name, role: $('newRole').value } });
     $('newName').value = '';
+    const ownerOpt = $('newRole').querySelector('option[value="Owner"]');
+    if (ownerOpt && r.user.role === 'Owner') ownerOpt.remove();
     $('newRole').value = 'Viewer';   // never carry Admin over to the next person by accident
     showPin(r.user.name, r.pin, false);
     toast(r.user.name + ' added as ' + r.user.role + '.');
@@ -780,7 +797,7 @@ function showPin(name, pin, isReset) {
     use.addEventListener('click', async () => {
       const prev = getCfg();
       setCfg({ passcode: pin });
-      try { const r = await api('ping'); setCfg({ name: r.name, role: r.role }); applyRole(); fillSetup(); toast('Signed in with your own PIN.'); box.classList.add('hidden'); }
+      try { const r = await api('ping'); setCfg({ name: r.name, role: r.role, viaMaster: !!r.viaMaster }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
       catch (e) { setCfg({ passcode: prev.passcode }); toast(e.message, true); }
     });
     btns.push(use);
@@ -797,7 +814,7 @@ function showPin(name, pin, isReset) {
   box.scrollIntoView({ block: 'center' });
 }
 function showTeamCard(show) {
-  const on = show && !isViewer() && !!(getCfg().url && getCfg().passcode);
+  const on = show && canManageTeam() && !!(getCfg().url && getCfg().passcode);
   $('teamCard').classList.toggle('hidden', !on);
   if (on) loadTeam();
 }
@@ -891,8 +908,8 @@ async function saveSetup() {
       toast('That is the shared master passcode: enter your name too, so the log shows who made changes.', true);
       return;
     }
-    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? name : (r.name || name) });
-    toast('Signed in as ' + getCfg().name + ' (' + (getCfg().role === 'Viewer' ? 'view only' : 'admin') + ').');
+    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster });
+    toast('Signed in as ' + getCfg().name + ' (' + roleLabel(getCfg()).toLowerCase() + ').');
     showApp();
     flushQueue();
   } catch (e) {
@@ -2334,9 +2351,9 @@ async function refreshRole() {
   try {
     const r = await api('ping', { submittedBy: getCfg().name });
     const before = getCfg().role;
-    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name) });
+    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster });
     if (r.viaMaster && !getCfg().name) { showSetup(true); toast('Add your name, so your changes show who made them.'); return; }
-    if (before !== getCfg().role) { showApp(); toast('Your access is now ' + (isViewer() ? 'view only' : 'admin') + '.'); }
+    if (before !== getCfg().role) { showApp(); toast('Your access is now ' + roleLabel(getCfg()).toLowerCase() + '.'); }
   } catch (e) {
     if (!(e instanceof NetworkError) && /Wrong PIN|switched off/i.test(e.message)) {
       showSetup(false);
