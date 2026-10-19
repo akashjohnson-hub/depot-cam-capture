@@ -111,7 +111,7 @@
   .strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .strip-head .meta { font-size: 14px; }
   .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-  .seg button { border: 0; background: #FFFFFF; color: var(--primary); font-size: 14px; font-weight: 600; padding: 6px 10px; }
+  .seg button { white-space: nowrap; border: 0; background: #FFFFFF; color: var(--primary); font-size: 14px; font-weight: 600; padding: 6px 10px; }
   .seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
   .carousel { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: 14px; padding: 2px 2px 8px;
     margin: 0 -14px; padding-left: 14px; padding-right: 14px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -162,6 +162,33 @@
   .cam-chips span.hit { background: var(--accent); color: #FFFFFF; }
   .cam-chips span.bad { background: #FBE6E0; color: var(--poor); }
   .ov-labels-off .leaflet-tooltip.pole-label { display: none; }
+  .ov-tools { display: flex; gap: 8px; margin-top: 8px; }
+  .ov-tools button { flex: 1; min-height: 38px; border: 1px solid var(--line); border-radius: 10px; background: #FFFFFF;
+    color: var(--primary); font-size: 15px; font-weight: 650; }
+  .ov-area-edit { margin-top: 8px; background: #FBEBDC; border: 1px solid #EBC49E; border-radius: 10px; padding: 10px; font-size: 15px; }
+  .ov-area-edit .row { margin-top: 8px; }
+  .ov-area-edit button { min-height: 40px; border-radius: 9px; border: 1px solid var(--line); background: #FFFFFF; color: var(--ink); font-size: 15px; font-weight: 650; }
+  .ov-area-edit button.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
+  .ov-editing #ovMap { outline: 4px dashed var(--accent); outline-offset: -4px; }
+  .btn.danger { background: #FFFFFF; color: var(--poor); border: 2px solid var(--poor); }
+  .btn.danger.armed { background: var(--poor); color: #FFFFFF; }
+  .clear-note { font-size: 14px; color: var(--poor); margin: 0 0 8px; }
+  /* carousel: one card per pole with its cameras */
+  .carousel { align-items: flex-start; }
+  .pcard { flex: 0 0 auto; width: 214px; scroll-snap-align: start; border: 1px solid var(--line); border-left-width: 5px;
+    border-radius: 12px; background: #FFFFFF; padding: 0; overflow: hidden; }
+  .pcard.s-good { border-left-color: var(--good); } .pcard.s-weak { border-left-color: var(--fair); } .pcard.s-todo { border-left-color: var(--disabled); }
+  .pcard.s-none { border-left-color: var(--accent); border-style: dashed; border-left-style: solid; }
+  .pcard.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary) inset; }
+  .pcard .phead { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 11px 4px; color: var(--ink); }
+  .pcard .phead .cid { display: block; font-size: 18px; font-weight: 800; letter-spacing: .3px; }
+  .pcard .phead .cst { display: block; font-size: 13px; font-weight: 600; margin-top: 1px; }
+  .pcard.s-good .cst { color: var(--good); } .pcard.s-weak .cst { color: var(--fair); } .pcard.s-todo .cst { color: var(--muted); } .pcard.s-none .cst { color: #8A4A0E; }
+  .pcams { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 11px 10px; }
+  .pcams button { border: 0; border-radius: 7px; background: #E3E9F1; color: var(--ink); font-size: 13px; font-weight: 650; padding: 4px 6px; }
+  .pcams button.bad { background: #FBE6E0; color: var(--poor); }
+  .pcams button.more { background: none; color: var(--primary); text-decoration: underline; }
+  .pcams .empty { font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -292,6 +319,14 @@
       <button id="ovRefresh" type="button" aria-label="Refresh">↻</button>
     </div>
     <div id="ovSummary" class="ov-summary">Loading…</div>
+    <div class="ov-tools">
+      <button id="ovHome" type="button">⌂ Depot</button>
+      <button id="ovArea" type="button">Lock to this area</button>
+    </div>
+    <div id="ovAreaEdit" class="ov-area-edit hidden">
+      <div>Move and zoom so the whole depot fills the map, then tap <b>Save area</b>. Everyone's app will open on this area and stay inside it.</div>
+      <div class="row"><button id="ovAreaCancel" type="button">Cancel</button><button id="ovAreaRemove" type="button">Remove lock</button><button id="ovAreaSave" type="button" class="primary">Save area</button></div>
+    </div>
     <div id="ovResults" class="ov-results hidden"></div>
   </div>
   <div id="ovMap"></div>
@@ -753,10 +788,25 @@ function ensureMap() {
       maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
     }).addTo(MAP.map);
     MAP.others = L.layerGroup().addTo(MAP.map);
+    MAP.areaApplied = false;
     $('mapNote').textContent = 'Blue dot = live GPS, circle = its accuracy. White labels = poles already mapped.';
   }
-  setTimeout(() => MAP.map && MAP.map.invalidateSize(), 60);
+  setTimeout(() => { if (MAP.map) { MAP.map.invalidateSize(); applyArea(MAP.map); } }, 60);
   return MAP.map;
+}
+
+// ---------- depot area lock ----------
+let AREA = null;   // { south, west, north, east } shared via the backend
+function areaBounds() { return AREA ? L.latLngBounds([AREA.south, AREA.west], [AREA.north, AREA.east]) : null; }
+function applyArea(map) {
+  if (!map || !window.L) return;
+  const b = areaBounds();
+  if (!b) { map.setMaxBounds(null); map.setMinZoom(0); return; }
+  const outer = b.pad(0.25);
+  map.setMaxBounds(outer);
+  map.options.maxBoundsViscosity = 1.0;
+  const z = map.getBoundsZoom(outer, false);
+  if (isFinite(z)) map.setMinZoom(Math.max(0, z));
 }
 
 function hasCoords(p) { return p.lat !== null && p.lat !== '' && p.lng !== null && p.lng !== '' && isFinite(p.lat) && isFinite(p.lng); }
@@ -764,6 +814,11 @@ function hasCoords(p) { return p.lat !== null && p.lat !== '' && p.lng !== null 
 async function loadPoles() {
   try {
     const r = await api('poles');
+    MAP.loadedAt = Date.now();
+    const newArea = (r && r.area) || null;
+    const areaChanged = JSON.stringify(newArea) !== JSON.stringify(AREA);
+    AREA = newArea;
+    if (areaChanged) { applyArea(MAP.map); if (!OV.editing) applyArea(OV.map); }
     MAP.poles = ((r && r.poles) || []).map((p) => Object.assign({}, p, {
       lat: p.lat === null || p.lat === '' ? null : Number(p.lat),
       lng: p.lng === null || p.lng === '' ? null : Number(p.lng),
@@ -796,35 +851,106 @@ function poleSortKey(id) {
   const prefix = m[1].toUpperCase();
   return [prefix === 'ITB' ? 0 : (prefix === 'P' ? 1 : 2), parseInt(m[2], 10), prefix];
 }
-function renderCarousel() {
-  const box = $('poleCarousel');
-  box.innerHTML = '';
-  const all = MAP.poles.slice().sort((a, b) => {
+const CARD_CAM_MAX = 9;   // camera buttons shown per card before "+N more"
+function sortedPoles() {
+  return MAP.poles.slice().sort((a, b) => {
     const ka = poleSortKey(a.poleId), kb = poleSortKey(b.poleId);
     return ka[0] - kb[0] || ka[1] - kb[1] || String(ka[2]).localeCompare(String(kb[2]));
   });
+}
+// Every camera in the Cameras tab, grouped by the Pole ID it is recorded on.
+function camerasByPole() {
+  const byPole = {};
+  const poleIds = new Set(MAP.poles.map((p) => String(p.poleId).toUpperCase()));
+  const unassigned = [];
+  const source = CAMS.length ? CAMS
+    : [].concat.apply([], MAP.poles.map((p) => (p.cameras || []).map((c) => Object.assign({ poleId: p.poleId }, c))));
+  source.forEach((c) => {
+    const pid = String(c.poleId || '').toUpperCase();
+    if (pid && poleIds.has(pid)) (byPole[pid] = byPole[pid] || []).push(c);
+    else unassigned.push(c);
+  });
+  const byId = (a, b) => String(a.cameraId).localeCompare(String(b.cameraId), undefined, { numeric: true });
+  Object.keys(byPole).forEach((k) => byPole[k].sort(byId));
+  unassigned.sort(byId);
+  return { byPole: byPole, unassigned: unassigned };
+}
+
+async function openPoleFromCarousel(poleId, cameraId) {
+  $('poleInput').value = String(poleId);
+  await lookup(false);
+  if (!cameraId || !state.pole || String(state.pole.poleId).toUpperCase() !== String(poleId).toUpperCase()) return;
+  let hit = false;
+  state.cameras.forEach((c) => { c.matched = compactId(c.cameraId) === compactId(cameraId); hit = hit || c.matched; });
+  if (hit) {
+    renderCameras();
+    const m = document.querySelector('#camList .cam.matched');
+    if (m) m.scrollIntoView({ block: 'center' });
+  }
+}
+
+let showAllUnassigned = false;
+function camButtons(list, onPick, onMore, max) {
+  max = max || CARD_CAM_MAX;
+  const kids = list.slice(0, max).map((c) => {
+    const bad = c.status && !/^active$/i.test(c.status);
+    const b = el('button', { type: 'button', class: bad ? 'bad' : '', text: String(c.cameraId), title: bad ? c.status : '' });
+    b.addEventListener('click', (e) => { e.stopPropagation(); onPick(c); });
+    return b;
+  });
+  if (list.length > max) {
+    const more = el('button', { type: 'button', class: 'more', text: '+' + (list.length - max) + ' more' });
+    more.addEventListener('click', (e) => { e.stopPropagation(); onMore(); });
+    kids.push(more);
+  }
+  if (!list.length) kids.push(el('span', { class: 'empty', text: 'No cameras recorded' }));
+  return el('div', { class: 'pcams' }, kids);
+}
+
+function renderCarousel() {
+  const box = $('poleCarousel');
+  box.innerHTML = '';
+  const all = sortedPoles();
+  const groups = camerasByPole();
   const done = all.filter((p) => poleStatus(p)[0] === 'good').length;
-  $('stripCount').textContent = done + ' of ' + all.length + ' poles mapped';
+  const camTotal = CAMS.length || all.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
+  $('stripCount').textContent = done + ' of ' + all.length + ' poles mapped · ' + camTotal + ' cameras' +
+    (groups.unassigned.length ? ' (' + groups.unassigned.length + ' without a pole)' : '');
   const shown = stripFilter === 'todo' ? all.filter((p) => poleStatus(p)[0] !== 'good') : all;
-  if (!shown.length) {
+  const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
+
+  shown.forEach((p) => {
+    const st = poleStatus(p);
+    const key = String(p.poleId).toUpperCase();
+    const cams = groups.byPole[key] || [];
+    const head = el('button', { type: 'button', class: 'phead', 'aria-label': p.poleId + ', ' + st[1] + ', ' + cams.length + ' cameras' }, [
+      el('span', { class: 'cid', text: String(p.poleId) }),
+      el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') }),
+    ]);
+    head.addEventListener('click', () => openPoleFromCarousel(p.poleId));
+    box.appendChild(el('div', { class: 'pcard s-' + st[0] + (key === current ? ' selected' : '') }, [
+      head,
+      camButtons(cams, (c) => openPoleFromCarousel(p.poleId, c.cameraId), () => openPoleFromCarousel(p.poleId)),
+    ]));
+  });
+
+  if (groups.unassigned.length) {
+    const un = groups.unassigned;
+    const head = el('div', { class: 'phead' }, [
+      el('span', { class: 'cid', text: 'No pole yet' }),
+      el('span', { class: 'cst', text: un.length + ' camera' + (un.length === 1 ? '' : 's') + ' · tap one to place it' }),
+    ]);
+    const pick = (c) => { $('poleInput').value = String(c.cameraId); lookup(false); };
+    const card = el('div', { class: 'pcard s-none', style: showAllUnassigned ? 'width:300px' : '' },
+      [head, camButtons(un, pick, () => { showAllUnassigned = true; renderCarousel(); }, showAllUnassigned ? un.length : CARD_CAM_MAX)]);
+    box.appendChild(card);
+  }
+
+  if (!box.children.length) {
     box.appendChild(el('div', { class: 'strip-empty', text: stripFilter === 'todo' ? 'Nothing left to map.' : 'No poles in the Sheet yet.' }));
     return;
   }
-  const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
-  shown.forEach((p) => {
-    const st = poleStatus(p);
-    const cams = Number(p.cameraCount);
-    const kids = [el('span', { class: 'cid', text: String(p.poleId) }), el('span', { class: 'cst', text: st[1] })];
-    if (isFinite(cams) && p.cameraCount !== undefined) kids.push(el('span', { class: 'ccam', text: cams + ' camera' + (cams === 1 ? '' : 's') }));
-    const chip = el('button', { type: 'button', class: 'chip s-' + st[0] + (String(p.poleId).toUpperCase() === current ? ' selected' : '') }, kids);
-    chip.setAttribute('aria-label', p.poleId + ', ' + st[1]);
-    chip.addEventListener('click', () => {
-      $('poleInput').value = String(p.poleId);
-      lookup(false);
-    });
-    box.appendChild(chip);
-  });
-  const sel = box.querySelector('.chip.selected');
+  const sel = box.querySelector('.pcard.selected');
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 function setStripFilter(f) {
@@ -854,6 +980,7 @@ function mapFocusPole(lat, lng) {
   if (!ensureMap()) return;
   renderOthers();
   if (lat && lng) MAP.map.setView([lat, lng], 19);
+  else if (AREA) MAP.map.fitBounds(areaBounds());
   else if (MAP.poles.some(hasCoords)) MAP.map.fitBounds(L.latLngBounds(MAP.poles.filter(hasCoords).map((p) => [p.lat, p.lng])).pad(0.1), { maxZoom: 18 });
 }
 
@@ -959,13 +1086,72 @@ async function openOverview() {
     OV.map.on('click', () => { ovClosePanel(); $('ovResults').classList.add('hidden'); });
     OV.fitted = false;
   }
-  setTimeout(() => OV.map.invalidateSize(), 60);
+  setTimeout(() => { OV.map.invalidateSize(); if (!OV.editing) applyArea(OV.map); }, 60);
   ovStartMe();
+  clearInterval(OV.timer);
+  OV.timer = setInterval(() => {
+    if (OV.open && !document.hidden && !OV.editing && !OV.loading) ovAutoRefresh();
+    ovAgeLabel();
+  }, 5000);
   await ovRefresh();
+}
+
+const OV_REFRESH_MS = 30000;
+async function ovAutoRefresh() {
+  if (Date.now() - (MAP.loadedAt || 0) < OV_REFRESH_MS) return;
+  OV.loading = true;
+  try { await loadPoles(); } finally { OV.loading = false; }
+}
+function ovAgeLabel() {
+  const a = $('ovAge');
+  if (!a || !MAP.loadedAt) return;
+  const s = Math.round((Date.now() - MAP.loadedAt) / 1000);
+  a.textContent = s < 5 ? ' · updated just now' : ' · updated ' + (s < 60 ? s + ' s' : Math.round(s / 60) + ' min') + ' ago';
+}
+
+function ovFitHome() {
+  if (!OV.map) return;
+  if (AREA) OV.map.fitBounds(areaBounds());
+  else if (MAP.poles.some(hasCoords)) OV.map.fitBounds(L.latLngBounds(MAP.poles.filter(hasCoords).map((p) => [p.lat, p.lng])).pad(0.15), { maxZoom: 18 });
+}
+function ovAreaLabel() { $('ovArea').textContent = AREA ? 'Change area' : 'Lock to this area'; }
+function ovAreaStart() {
+  if (!OV.map) return;
+  OV.editing = true;
+  OV.map.setMaxBounds(null);
+  OV.map.setMinZoom(0);
+  $('overview').classList.add('ov-editing');
+  $('ovAreaEdit').classList.remove('hidden');
+  $('ovAreaRemove').classList.toggle('hidden', !AREA);
+  ovClosePanel();
+}
+function ovAreaEnd() {
+  OV.editing = false;
+  $('overview').classList.remove('ov-editing');
+  $('ovAreaEdit').classList.add('hidden');
+  applyArea(OV.map);
+  ovAreaLabel();
+}
+async function ovAreaSave(remove) {
+  const btn = remove ? $('ovAreaRemove') : $('ovAreaSave');
+  const b = OV.map.getBounds();
+  const area = remove ? null : { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() };
+  busy(btn, true, 'Saving…');
+  try {
+    const r = await api('setArea', { area: area, submittedBy: getCfg().name });
+    AREA = r.area || null;
+    ovAreaEnd();
+    applyArea(MAP.map);
+    if (AREA) OV.map.fitBounds(areaBounds());
+    toast(AREA ? 'Depot area locked for everyone.' : 'Area lock removed.');
+  } catch (e) { toast(e.message, true); }
+  finally { busy(btn, false); }
 }
 
 function closeOverview() {
   OV.open = false;
+  clearInterval(OV.timer);
+  if (OV.editing) ovAreaEnd();
   $('overview').classList.add('hidden');
   $('overviewBtn').textContent = 'Overview';
   ovStopMe();
@@ -982,10 +1168,10 @@ function ovRender() {
   if (!OV.map) return;
   OV.layer.clearLayers();
   OV.markers = {};
-  let camTotal = 0, camMapped = 0, poleMapped = 0;
+  let camTotal = CAMS.length || 0, camMapped = 0, poleMapped = 0;
   MAP.poles.forEach((p) => {
     const n = Number(p.cameraCount) || 0;
-    camTotal += n;
+    if (!CAMS.length) camTotal += n;
     if (!hasCoords(p)) return;
     poleMapped++;
     camMapped += n;
@@ -999,13 +1185,15 @@ function ovRender() {
   const sum = $('ovSummary');
   sum.innerHTML = '';
   sum.appendChild(el('span', null, [el('b', { text: camMapped + ' of ' + camTotal }), ' cameras mapped · ',
-    el('b', { text: poleMapped + ' of ' + MAP.poles.length }), ' poles']));
-  if (!OV.fitted && poleMapped) {
-    OV.map.fitBounds(L.latLngBounds(MAP.poles.filter(hasCoords).map((p) => [p.lat, p.lng])).pad(0.15), { maxZoom: 18 });
+    el('b', { text: poleMapped + ' of ' + MAP.poles.length }), ' poles', el('span', { id: 'ovAge' })]));
+  ovAgeLabel();
+  ovAreaLabel();
+  if (!OV.fitted && (poleMapped || AREA)) {
+    ovFitHome();
     OV.fitted = true;
   }
   ovLabels();
-  if (OV.selected) ovSelect(OV.selected.poleId, OV.selected.hit, true);
+  if (OV.selected && !$('ovPanel').classList.contains('hidden')) ovSelect(OV.selected.poleId, OV.selected.hit, true);
 }
 
 function ovLabels() {
@@ -1019,16 +1207,31 @@ function ovSearch(q) {
   if (!q) return [];
   const norm = (v) => String(v || '').toUpperCase().replace(/\s+/g, '');
   const out = [];
+  const groups = camerasByPole();
   MAP.poles.forEach((p) => {
     const pid = norm(p.poleId), itb = norm(p.itbNo);
-    if (pid.indexOf(q) >= 0 || (itb && itb.indexOf(q) >= 0)) out.push({ pole: p, hit: '', label: String(p.poleId), sub: (p.itbNo && norm(p.itbNo) !== pid ? 'ITB ' + p.itbNo + ' · ' : '') + (p.cameraCount || 0) + ' cameras', exact: pid === q || itb === q });
-    (p.cameras || []).forEach((c) => {
+    const camsHere = groups.byPole[String(p.poleId).toUpperCase()] || p.cameras || [];
+    if (pid.indexOf(q) >= 0 || (itb && itb.indexOf(q) >= 0)) out.push({ pole: p, hit: '', label: String(p.poleId), sub: (p.itbNo && norm(p.itbNo) !== pid ? 'ITB ' + p.itbNo + ' · ' : '') + camsHere.length + ' cameras', exact: pid === q || itb === q });
+    camsHere.forEach((c) => {
       const cid = norm(c.cameraId);
       if (cid.indexOf(q) >= 0) out.push({ pole: p, hit: c.cameraId, label: String(c.cameraId), sub: 'on ' + p.poleId, exact: cid === q });
     });
   });
+  groups.unassigned.forEach((c) => {
+    const cid = norm(c.cameraId);
+    if (cid.indexOf(q) >= 0) out.push({ pole: null, cam: c, hit: c.cameraId, label: String(c.cameraId), sub: 'no pole yet' + (c.itbNo ? ' · listed under ' + c.itbNo : ''), exact: cid === q });
+  });
   out.sort((a, b) => (b.exact - a.exact) || a.label.localeCompare(b.label, undefined, { numeric: true }));
   return out.slice(0, 8);
+}
+
+// A camera with no pole has no pin: take it to Capture so it can be placed.
+function ovPick(r) {
+  if (r.pole) { ovSelect(r.pole.poleId, r.hit); return; }
+  toast(r.cam.cameraId + ' has no pole yet. Opening it in Capture.');
+  closeOverview();
+  $('poleInput').value = String(r.cam.cameraId);
+  lookup(false);
 }
 
 function ovShowResults() {
@@ -1038,8 +1241,8 @@ function ovShowResults() {
   if (!$('ovSearch').value.trim()) { box.classList.add('hidden'); return; }
   if (!res.length) box.appendChild(el('div', { class: 'none', text: 'No camera, ITB or pole matches.' }));
   res.forEach((r) => {
-    const b = el('button', { type: 'button' }, [r.label, el('small', { text: r.sub + (hasCoords(r.pole) ? '' : ' · not mapped yet') })]);
-    b.addEventListener('click', () => { box.classList.add('hidden'); $('ovSearch').blur(); ovSelect(r.pole.poleId, r.hit); });
+    const b = el('button', { type: 'button' }, [r.label, el('small', { text: r.sub + (!r.pole || hasCoords(r.pole) ? '' : ' · not mapped yet') })]);
+    b.addEventListener('click', () => { box.classList.add('hidden'); $('ovSearch').blur(); ovPick(r); });
     box.appendChild(b);
   });
   box.classList.remove('hidden');
@@ -1062,7 +1265,7 @@ function ovSelect(poleId, hit, quiet) {
   const who = [p.lastSubmittedBy && p.lastSubmittedBy !== '(not set)' ? 'by ' + p.lastSubmittedBy : '', p.lastSubmittedAt || p.lastVerified].filter(Boolean).join(', ');
   if (who) facts.push(el('div', { text: 'Last updated ' + who }));
   panel.appendChild(el('div', { class: 'facts' }, facts));
-  const chips = (p.cameras || []).map((c) => {
+  const chips = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || p.cameras || []).map((c) => {
     const bad = c.status && !/^active$/i.test(c.status);
     return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')), text: c.cameraId + (bad ? ' · ' + c.status : '') });
   });
@@ -1071,6 +1274,27 @@ function ovSelect(poleId, hit, quiet) {
   if (hasCoords(p)) {
     const dir = el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking', target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' });
     btns.push(dir);
+  }
+  if (hasCoords(p)) {
+    const weak = st[0] === 'weak';
+    if (weak) panel.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
+    const clr = el('button', { class: 'btn danger', type: 'button', text: 'Clear location' });
+    let armed = null;
+    clr.addEventListener('click', async () => {
+      if (!armed) {
+        clr.classList.add('armed'); clr.textContent = 'Tap again to clear ' + p.poleId;
+        armed = setTimeout(() => { armed = null; clr.classList.remove('armed'); clr.textContent = 'Clear location'; }, 4000);
+        return;
+      }
+      clearTimeout(armed); armed = null;
+      busy(clr, true, 'Clearing…');
+      try {
+        const r = await api('clearLocation', { poleId: p.poleId, submittedBy: getCfg().name });
+        toast(r.message);
+        await loadPoles();
+      } catch (e) { toast(e.message, true); busy(clr, false); }
+    });
+    panel.appendChild(el('div', { style: 'margin-bottom:8px' }, [clr]));
   }
   const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
   cap.addEventListener('click', () => { closeOverview(); $('poleInput').value = String(p.poleId); lookup(false); });
@@ -1426,11 +1650,16 @@ $('fAll').addEventListener('click', () => setStripFilter('all'));
 $('overviewBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else if (getCfg().url) openOverview(); else toast('Connect in Settings first.', true); });
 $('ovRefresh').addEventListener('click', ovRefresh);
 $('ovBack').addEventListener('click', closeOverview);
+$('ovHome').addEventListener('click', ovFitHome);
+$('ovArea').addEventListener('click', ovAreaStart);
+$('ovAreaCancel').addEventListener('click', () => { ovAreaEnd(); ovFitHome(); });
+$('ovAreaSave').addEventListener('click', () => ovAreaSave(false));
+$('ovAreaRemove').addEventListener('click', () => ovAreaSave(true));
 $('ovSearch').addEventListener('input', ovShowResults);
 $('ovSearch').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   const r = ovSearch($('ovSearch').value);
-  if (r.length) { $('ovResults').classList.add('hidden'); $('ovSearch').blur(); ovSelect(r[0].pole.poleId, r[0].hit); }
+  if (r.length) { $('ovResults').classList.add('hidden'); $('ovSearch').blur(); ovPick(r[0]); }
 });
 $('fTodo').addEventListener('click', () => setStripFilter('todo'));
 $('mapResetBtn').addEventListener('click', mapResetPin);
