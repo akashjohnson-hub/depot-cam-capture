@@ -202,12 +202,18 @@
   .pcams button.bad { background: #FBE6E0; color: var(--poor); }
   .pcams button.more { background: none; color: var(--primary); text-decoration: underline; }
   .pcams .empty { font-size: 13px; color: var(--muted); }
+  .vw-list { display: flex; flex-direction: column; gap: 10px; }
+  .vw-list .pcard { width: auto; }
+  .vw-list .pcard .dist { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .role-viewer #overviewBtn, .role-viewer .viewer-hide { display: none !important; }
+  body:not(.role-viewer) .viewer-only { display: none !important; }
 </style>
 </head>
 <body>
 <header>
   <h1>Cam Capture</h1>
   <button id="overviewBtn" type="button">Overview</button>
+  <button id="mapBtn" type="button" class="viewer-only">Map</button>
   <button id="settingsBtn" type="button">Settings</button>
 </header>
 <div id="updateBar" class="hidden"><span>A new version of Cam Capture is ready.</span><button id="updateBtn" type="button">Update now</button></div>
@@ -221,16 +227,26 @@
     <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter the team passcode. This is saved on this phone only.</p>
     <label for="cfgUrl">Web app link</label>
     <input id="cfgUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
-    <label for="cfgName">Your name (shown in the Submission Log)</label>
+    <label for="cfgName">Your name (only needed with the shared master passcode)</label>
     <input id="cfgName" autocomplete="name" placeholder="e.g. Akash">
-    <label for="cfgPass">Passcode</label>
+    <div id="cfgWho" class="meta hidden" style="margin-top:8px"></div>
+    <label for="cfgPass">Your PIN</label>
     <input id="cfgPass" type="password" autocomplete="off">
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
-    <div id="shareWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-      <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their name and the passcode. The passcode is not in the link, so give it to them separately.</p>
+    <div id="shareWrap" class="hidden viewer-hide" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them to the Users tab first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
     </div>
+  </section>
+
+  <section id="viewer" class="hidden" aria-label="Poles and cameras">
+    <div class="card">
+      <h2>Poles &amp; cameras</h2>
+      <div id="vwCount" class="meta">Loading…</div>
+      <input id="vwSearch" type="search" placeholder="Filter by camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:10px">
+    </div>
+    <div id="vwList" class="vw-list"></div>
   </section>
 
   <div id="app" class="hidden">
@@ -336,7 +352,7 @@
     <div id="ovSummary" class="ov-summary">Loading…</div>
     <div class="ov-tools">
       <button id="ovHome" type="button">⌂ Depot</button>
-      <button id="ovArea" type="button">Lock to this area</button>
+      <button id="ovArea" type="button" class="viewer-hide">Lock to this area</button>
     </div>
     <div id="ovAreaEdit" class="ov-area-edit hidden">
       <div>Move and zoom so the whole depot fills the map, then tap <b>Save area</b>. Everyone's app will open on this area and stay inside it.</div>
@@ -354,7 +370,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.2';
+const APP_VERSION = '2026-10-19.3';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -382,10 +398,22 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e
 function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
-  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '' };
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin' };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
+
+function isViewer() { return getCfg().role === 'Viewer'; }
+function setCfg(patch) {
+  const c = Object.assign({}, getCfg(), patch);
+  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role }));
+}
+function applyRole() {
+  const viewer = isViewer();
+  document.body.classList.toggle('role-viewer', viewer);
+  $('ovBack').textContent = viewer ? '← Back to list' : '← Back to Capture';
+  $('cfgCancel').textContent = viewer ? '← Back to list' : '← Back to Capture';
+}
 
 // ---------- UI helpers ----------
 let toastTimer = null;
@@ -443,12 +471,20 @@ function showSetup(canCancel) {
   $('cfgName').value = cfg.name;
   $('cfgCancel').classList.toggle('hidden', !canCancel);
   $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
+  const who = $('cfgWho');
+  if (cfg.url && cfg.passcode) {
+    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' ? 'Viewer (read-only)' : 'Admin');
+    who.classList.remove('hidden');
+  } else who.classList.add('hidden');
   $('setup').classList.remove('hidden');
   $('app').classList.add('hidden');
+  $('viewer').classList.add('hidden');
 }
 function showApp() {
+  applyRole();
   $('setup').classList.add('hidden');
-  $('app').classList.remove('hidden');
+  $('app').classList.toggle('hidden', isViewer());
+  $('viewer').classList.toggle('hidden', !isViewer());
   loadPoles();
 }
 async function saveSetup() {
@@ -459,15 +495,20 @@ async function saveSetup() {
     toast('That doesn\'t look like an Apps Script web app link (it should end in /exec).', true);
     return;
   }
-  if (!name) { toast('Enter your name, so your submissions can be identified in the log.', true); return; }
-  if (!passcode) { toast('Enter the passcode.', true); return; }
+  if (!passcode) { toast('Enter your PIN.', true); return; }
   const prev = lsGet(LS_CFG);
-  lsSet(LS_CFG, JSON.stringify({ url: url, passcode: passcode, name: name }));
+  lsSet(LS_CFG, JSON.stringify({ url: url, passcode: passcode, name: name, role: 'Admin' }));
   const btn = $('cfgSave');
   busy(btn, true, 'Testing…');
   try {
-    const r = await api('ping');
-    toast('Connected to "' + r.sheetName + '".');
+    const r = await api('ping', { submittedBy: name });
+    if (r.viaMaster && !name) {
+      if (prev) lsSet(LS_CFG, prev);
+      toast('That is the shared master passcode: enter your name too, so the log shows who made changes.', true);
+      return;
+    }
+    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? name : (r.name || name) });
+    toast('Signed in as ' + getCfg().name + ' (' + (getCfg().role === 'Viewer' ? 'view only' : 'admin') + ').');
     showApp();
     flushQueue();
   } catch (e) {
@@ -846,6 +887,7 @@ async function loadPoles() {
       : [].concat.apply([], MAP.poles.map((p) => (p.cameras || []).map((c) => Object.assign({ poleId: p.poleId, itbNo: p.itbNo }, c))));
     renderOthers();
     renderCarousel();
+    renderViewerList();
     if (OV.open) ovRender();
   } catch (e) {
     if (!MAP.polesLoaded) $('stripCount').textContent = 'Pole list unavailable (' + (e instanceof NetworkError ? 'no signal' : 'update Code.gs') + ').';
@@ -971,6 +1013,45 @@ function renderCarousel() {
   const sel = box.querySelector('.pcard.selected');
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
+// ---------- viewer: read-only list ----------
+function renderViewerList() {
+  if (!isViewer()) return;
+  const box = $('vwList');
+  box.innerHTML = '';
+  const q = compactId($('vwSearch').value);
+  const groups = camerasByPole();
+  const all = sortedPoles();
+  const mapped = all.filter(hasCoords).length;
+  const camTotal = CAMS.length || all.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
+  $('vwCount').textContent = all.length + ' poles (' + mapped + ' on the map) · ' + camTotal + ' cameras';
+  const matches = (p, cams) => !q || compactId(p.poleId).indexOf(q) >= 0 || compactId(p.itbNo).indexOf(q) >= 0 ||
+    cams.some((c) => compactId(c.cameraId).indexOf(q) >= 0);
+  const openOn = (poleId, cam) => { openOverview().then(() => ovSelect(poleId, cam || '')); };
+  all.forEach((p) => {
+    const cams = groups.byPole[String(p.poleId).toUpperCase()] || [];
+    if (!matches(p, cams)) return;
+    const st = poleStatus(p);
+    const t = typeof distTo === 'function' ? distTo(p) : null;
+    const head = el('button', { type: 'button', class: 'phead' }, [
+      el('span', { class: 'cid', text: String(p.poleId) }),
+      el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') + (p.locationDescription ? ' · ' + p.locationDescription : '') }),
+      t ? el('span', { class: 'dist', text: fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
+    ]);
+    head.addEventListener('click', () => openOn(p.poleId));
+    const shown = q ? cams.slice().sort((a, b) => (compactId(b.cameraId).indexOf(q) >= 0) - (compactId(a.cameraId).indexOf(q) >= 0)) : cams;
+    box.appendChild(el('div', { class: 'pcard s-' + st[0] }, [head,
+      camButtons(shown, (c) => openOn(p.poleId, c.cameraId), () => openOn(p.poleId), 30)]));
+  });
+  const un = groups.unassigned.filter((c) => !q || compactId(c.cameraId).indexOf(q) >= 0);
+  if (un.length) {
+    box.appendChild(el('div', { class: 'pcard s-none' }, [
+      el('div', { class: 'phead' }, [el('span', { class: 'cid', text: 'No pole yet' }), el('span', { class: 'cst', text: un.length + ' camera' + (un.length === 1 ? '' : 's') + ' not placed on a pole yet' })]),
+      camButtons(un, (c) => toast(c.cameraId + ' has not been placed on a pole yet' + (c.itbNo ? ' (listed under ' + c.itbNo + ').' : '.')), () => {}, 200),
+    ]));
+  }
+  if (!box.children.length) box.appendChild(el('div', { class: 'card meta', text: q ? 'Nothing matches "' + $('vwSearch').value + '".' : 'No poles in the database yet.' }));
+}
+
 function setStripFilter(f) {
   stripFilter = f;
   $('fAll').setAttribute('aria-pressed', String(f === 'all'));
@@ -1093,6 +1174,7 @@ async function openOverview() {
   ov.style.top = document.querySelector('header').offsetHeight + 'px';
   ov.classList.remove('hidden');
   $('overviewBtn').textContent = 'Capture';
+  $('mapBtn').textContent = 'List';
   if (!window.L) { $('ovSummary').textContent = 'Map could not load (no connection?).'; return; }
   if (!OV.map) {
     OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: true }).setView([1.3521, 103.8198], 12);
@@ -1172,6 +1254,7 @@ function closeOverview() {
   if (OV.editing) ovAreaEnd();
   $('overview').classList.add('hidden');
   $('overviewBtn').textContent = 'Overview';
+  $('mapBtn').textContent = 'Map';
   ovStopMe();
 }
 
@@ -1246,6 +1329,7 @@ function ovSearch(q) {
 // A camera with no pole has no pin: take it to Capture so it can be placed.
 function ovPick(r) {
   if (r.pole) { ovSelect(r.pole.poleId, r.hit); return; }
+  if (isViewer()) { toast(r.cam.cameraId + ' has not been placed on a pole yet.'); return; }
   toast(r.cam.cameraId + ' has no pole yet. Opening it in Capture.');
   closeOverview();
   $('poleInput').value = String(r.cam.cameraId);
@@ -1295,7 +1379,7 @@ function ovSelect(poleId, hit, quiet) {
     const dir = el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking', target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' });
     btns.push(dir);
   }
-  if (hasCoords(p)) {
+  if (hasCoords(p) && !isViewer()) {
     const weak = st[0] === 'weak';
     if (weak) panel.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
     const clr = el('button', { class: 'btn danger', type: 'button', text: 'Clear location' });
@@ -1316,9 +1400,11 @@ function ovSelect(poleId, hit, quiet) {
     });
     panel.appendChild(el('div', { style: 'margin-bottom:8px' }, [clr]));
   }
-  const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
-  cap.addEventListener('click', () => { closeOverview(); $('poleInput').value = String(p.poleId); lookup(false); });
-  btns.push(cap);
+  if (!isViewer()) {
+    const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
+    cap.addEventListener('click', () => { closeOverview(); $('poleInput').value = String(p.poleId); lookup(false); });
+    btns.push(cap);
+  }
   panel.appendChild(el('div', { class: 'row' }, btns));
   panel.classList.remove('hidden');
   if (!quiet) { OV.nearFor = null; OV.lastTrend = ''; OV.lastCls = ''; }
@@ -1737,6 +1823,8 @@ $('fAll').addEventListener('click', () => setStripFilter('all'));
 $('overviewBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else if (getCfg().url) openOverview(); else toast('Connect in Settings first.', true); });
 $('ovRefresh').addEventListener('click', ovRefresh);
 $('ovBack').addEventListener('click', closeOverview);
+$('mapBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else openOverview(); });
+$('vwSearch').addEventListener('input', renderViewerList);
 $('ovHome').addEventListener('click', ovFitHome);
 $('ovArea').addEventListener('click', ovAreaStart);
 $('ovAreaCancel').addEventListener('click', () => { ovAreaEnd(); ovFitHome(); });
@@ -1774,7 +1862,7 @@ function setupLinkFor(url) {
 }
 async function shareSetupLink() {
   const link = setupLinkFor(getCfg().url);
-  const text = 'Cam Capture setup: open this link in Safari, tap Share → Add to Home Screen, then open the app and enter your name and the passcode (I\'ll send that separately).';
+  const text = 'Cam Capture setup: open this link in Safari, tap Share → Add to Home Screen, then open the app and enter your PIN (I\'ll send that separately).';
   try {
     if (navigator.share) { await navigator.share({ title: 'Cam Capture setup', text: text, url: link }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
@@ -1818,12 +1906,28 @@ const linkedUrl = readSetupLink();
 if (linkedUrl && !(getCfg().url && getCfg().passcode)) {
   showSetup(false);
   $('cfgUrl').value = linkedUrl;
-  toast('Setup link added. Enter your name and the passcode.');
+  toast('Setup link added. Enter the PIN your admin gave you.');
 } else if (getCfg().url && getCfg().passcode) {
-  if (!getCfg().name) { showSetup(true); toast('New: add your name, so submissions show who made them.'); }
-  else { showApp(); }
+  showApp();
   flushQueue();
+  refreshRole();
 } else { showSetup(false); }
+
+// The role can change in the Users tab at any time: check it on start.
+async function refreshRole() {
+  try {
+    const r = await api('ping', { submittedBy: getCfg().name });
+    const before = getCfg().role;
+    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name) });
+    if (r.viaMaster && !getCfg().name) { showSetup(true); toast('Add your name, so your changes show who made them.'); return; }
+    if (before !== getCfg().role) { showApp(); toast('Your access is now ' + (isViewer() ? 'view only' : 'admin') + '.'); }
+  } catch (e) {
+    if (!(e instanceof NetworkError) && /Wrong PIN|switched off/i.test(e.message)) {
+      showSetup(false);
+      toast('Your PIN was not accepted. It may have changed, or your account was switched off. Ask an admin.', true);
+    }
+  }
+}
 renderPending();
 updateSubmit();
 </script>
