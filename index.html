@@ -186,6 +186,10 @@
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
     <button id="cfgCancel" class="link hidden" type="button">Cancel</button>
+    <div id="shareWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their name and the passcode. The passcode is not in the link, so give it to them separately.</p>
+      <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
+    </div>
   </section>
 
   <div id="app" class="hidden">
@@ -385,6 +389,7 @@ function showSetup(canCancel) {
   $('cfgPass').value = cfg.passcode;
   $('cfgName').value = cfg.name;
   $('cfgCancel').classList.toggle('hidden', !canCancel);
+  $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   $('setup').classList.remove('hidden');
   $('app').classList.add('hidden');
 }
@@ -1433,7 +1438,35 @@ $('flushBtn').addEventListener('click', flushQueue);
 window.addEventListener('online', flushQueue);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQueue(); });
 
-if (getCfg().url && getCfg().passcode) {
+// Setup link from a teammate: index.html#setup=<web app link>
+function readSetupLink() {
+  const m = /[#&]setup=([^&]+)/.exec(location.hash || '');
+  if (!m) return '';
+  let url = '';
+  try { url = decodeURIComponent(m[1]); } catch (e) { url = ''; }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+  return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(url) ? url : '';
+}
+function setupLinkFor(url) {
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + '#setup=' + encodeURIComponent(url);
+}
+async function shareSetupLink() {
+  const link = setupLinkFor(getCfg().url);
+  const text = 'Cam Capture setup: open this link in Safari, tap Share → Add to Home Screen, then open the app and enter your name and the passcode (I\'ll send that separately).';
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Cam Capture setup', text: text, url: link }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(link); toast('Setup link copied. Paste it into a message to your teammate.'); }
+  catch (e) { prompt('Copy this setup link:', link); }
+}
+$('shareSetupBtn').addEventListener('click', shareSetupLink);
+
+const linkedUrl = readSetupLink();
+if (linkedUrl && !(getCfg().url && getCfg().passcode)) {
+  showSetup(false);
+  $('cfgUrl').value = linkedUrl;
+  toast('Setup link added. Enter your name and the passcode.');
+} else if (getCfg().url && getCfg().passcode) {
   if (!getCfg().name) { showSetup(true); toast('New: add your name, so submissions show who made them.'); }
   else { showApp(); }
   flushQueue();
