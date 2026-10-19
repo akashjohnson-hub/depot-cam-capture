@@ -340,6 +340,25 @@
   .ov-data { margin-top: 12px; border-top: 1px solid var(--rule); padding-top: 12px; }
   .ov-data .row { margin-top: 4px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .team-list { display: flex; flex-direction: column; gap: 8px; }
+  .member { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; background: #FFFFFF; }
+  .member.off { background: #F1F3F5; }
+  .member .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .member .nm { font-size: 18px; font-weight: 700; color: var(--slate); }
+  .badge { font-size: 13px; font-weight: 700; border-radius: 7px; padding: 2px 8px; }
+  .badge.admin { background: var(--slate); color: #FFFFFF; }
+  .badge.viewer { background: #DDE4EC; color: var(--line-blue); }
+  .badge.off { background: #FBE6E0; color: var(--poor); }
+  .badge.you { background: #FFF1C2; color: #6B4E00; }
+  .member .seen { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .member .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .member .acts button { border: 1px solid var(--rule); background: #FFFFFF; color: var(--line-blue); border-radius: 9px; padding: 7px 10px; font-size: 14px; font-weight: 650; }
+  .member .acts button.warn { color: var(--poor); }
+  .member .acts button.armed { background: var(--poor); color: #FFFFFF; border-color: var(--poor); }
+  .team-h3 { font-size: 18px; margin: 18px 0 2px; color: var(--slate); }
+  .pin-reveal { margin-top: 12px; border: 2px solid var(--slate); background: #FFF8DB; border-radius: 12px; padding: 12px; }
+  .pin-reveal .pin { font-family: var(--font-id); font-size: 40px; font-weight: 700; letter-spacing: 6px; color: var(--slate); margin: 4px 0; }
+  .pin-reveal .row { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -370,11 +389,24 @@
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
     <div id="shareWrap" class="hidden viewer-hide" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-      <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them to the Users tab first, and give them their PIN separately: it is never in the link.</p>
+      <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them under Team below first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
     </div>
   </section>
 
+  <section id="teamCard" class="card hidden" aria-label="Team">
+    <h2>Team</h2>
+    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Admins can capture and edit; viewers can only look up poles and use the map.</p>
+    <div id="teamList" class="team-list"><div class="meta">Loading…</div></div>
+    <div id="pinReveal" class="pin-reveal hidden" role="status"></div>
+    <h3 class="team-h3">Add a person</h3>
+    <label for="newName">Name</label>
+    <input id="newName" autocomplete="off" placeholder="e.g. Ravi">
+    <label for="newRole">Access</label>
+    <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option></select>
+    <div style="height:12px"></div>
+    <button id="addPersonBtn" class="btn" type="button">Add person</button>
+  </section>
   <section id="viewer" class="hidden" aria-label="Poles and cameras">
     <div class="card">
       <h2>Poles and cameras</h2>
@@ -531,7 +563,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.5';
+const APP_VERSION = '2026-10-19.6';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -636,6 +668,7 @@ function showSetup() {
   $('setup').classList.remove('hidden');
   $('app').classList.add('hidden');
   $('viewer').classList.add('hidden');
+  showTeamCard(true);
   setActiveTab('settings');
   window.scrollTo(0, 0);
 }
@@ -660,6 +693,115 @@ function showApp() {
   loadPoles();
 }
 
+// ---------- team (admins) ----------
+async function loadTeam() {
+  const box = $('teamList');
+  try {
+    const r = await api('listUsers');
+    renderTeam(r.users || []);
+  } catch (e) {
+    box.innerHTML = '';
+    box.appendChild(el('div', { class: 'meta', text: /Unknown action/.test(e.message)
+      ? 'Update Code.gs to manage the team from here.' : e.message }));
+  }
+}
+function renderTeam(users) {
+  const box = $('teamList');
+  box.innerHTML = '';
+  if (!users.length) {
+    box.appendChild(el('div', { class: 'meta', text: 'No accounts yet. Add yourself first as an Admin, then sign in with the PIN you get.' }));
+    return;
+  }
+  const me = String(getCfg().name || '').toUpperCase();
+  users.forEach((u) => {
+    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Admin' ? 'admin' : 'viewer'), text: u.role })];
+    if (!u.active) badges.push(el('span', { class: 'badge off', text: 'Switched off' }));
+    if (u.name.toUpperCase() === me) badges.push(el('span', { class: 'badge you', text: 'You' }));
+    const acts = [];
+    const roleBtn = el('button', { type: 'button', text: u.role === 'Admin' ? 'Make viewer' : 'Make admin' });
+    roleBtn.addEventListener('click', () => changeUser(u, { role: u.role === 'Admin' ? 'Viewer' : 'Admin' }, roleBtn));
+    acts.push(roleBtn);
+    const pinBtn = el('button', { type: 'button', text: 'Reset PIN' });
+    pinBtn.addEventListener('click', () => twoTap(pinBtn, 'Tap again: old PIN stops working', () => changeUser(u, { resetPin: true }, pinBtn)));
+    acts.push(pinBtn);
+    const onBtn = el('button', { type: 'button', class: u.active ? 'warn' : '', text: u.active ? 'Switch off' : 'Switch on' });
+    onBtn.addEventListener('click', () => u.active
+      ? twoTap(onBtn, 'Tap again to switch off', () => changeUser(u, { active: false }, onBtn))
+      : changeUser(u, { active: true }, onBtn));
+    acts.push(onBtn);
+    box.appendChild(el('div', { class: 'member' + (u.active ? '' : ' off') }, [
+      el('div', { class: 'top' }, badges),
+      el('div', { class: 'seen', text: u.lastSeen ? 'Last signed in ' + u.lastSeen : 'Not signed in yet' }),
+      el('div', { class: 'acts' }, acts),
+    ]));
+  });
+}
+function twoTap(btn, armedText, action) {
+  if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove('armed'); action(); return; }
+  btn.dataset.armed = '1'; btn.dataset.orig = btn.textContent; btn.textContent = armedText; btn.classList.add('armed');
+  setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove('armed'); btn.textContent = btn.dataset.orig; } }, 4000);
+}
+async function changeUser(u, patch, btn) {
+  busy(btn, true, '…');
+  try {
+    const r = await api('updateUser', { user: Object.assign({ name: u.name }, patch) });
+    if (r.pin) showPin(u.name, r.pin, true);
+    else toast(u.name + ': ' + (r.changed && r.changed.length ? r.changed.join(', ') : 'no change') + '.');
+    loadTeam();
+  } catch (e) { toast(e.message, true); busy(btn, false); }
+}
+async function addPerson() {
+  const name = $('newName').value.trim();
+  if (!name) { toast('Enter the person\'s name.', true); return; }
+  const btn = $('addPersonBtn');
+  busy(btn, true, 'Adding…');
+  try {
+    const r = await api('addUser', { user: { name: name, role: $('newRole').value } });
+    $('newName').value = '';
+    $('newRole').value = 'Viewer';   // never carry Admin over to the next person by accident
+    showPin(r.user.name, r.pin, false);
+    toast(r.user.name + ' added as ' + r.user.role + '.');
+    loadTeam();
+  } catch (e) { toast(e.message, true); }
+  finally { busy(btn, false); }
+}
+function showPin(name, pin, isReset) {
+  const box = $('pinReveal');
+  box.innerHTML = '';
+  const isMe = name.toUpperCase() === String(getCfg().name || '').toUpperCase();
+  box.appendChild(el('div', { text: (isReset ? 'New PIN for ' : 'PIN for ') + name + ':' }));
+  box.appendChild(el('div', { class: 'pin', text: pin.slice(0, 3) + ' ' + pin.slice(3) }));
+  box.appendChild(el('div', { class: 'meta', text: isMe
+    ? 'This is your own PIN. Tap "Use this PIN on this phone" so you stop using the master passcode.'
+    : 'Give it to ' + name + ' yourself (in person or by phone). It is not shown again; use Reset PIN if it is lost.' }));
+  const btns = [];
+  if (isMe) {
+    const use = el('button', { class: 'btn', type: 'button', text: 'Use this PIN on this phone' });
+    use.addEventListener('click', async () => {
+      const prev = getCfg();
+      setCfg({ passcode: pin });
+      try { const r = await api('ping'); setCfg({ name: r.name, role: r.role }); applyRole(); fillSetup(); toast('Signed in with your own PIN.'); box.classList.add('hidden'); }
+      catch (e) { setCfg({ passcode: prev.passcode }); toast(e.message, true); }
+    });
+    btns.push(use);
+  } else {
+    const share = el('button', { class: 'btn secondary', type: 'button', text: 'Send setup link' });
+    share.addEventListener('click', shareSetupLink);
+    btns.push(share);
+  }
+  const done = el('button', { class: 'btn secondary', type: 'button', text: 'Done' });
+  done.addEventListener('click', () => box.classList.add('hidden'));
+  btns.push(done);
+  box.appendChild(el('div', { class: 'row' }, btns));
+  box.classList.remove('hidden');
+  box.scrollIntoView({ block: 'center' });
+}
+function showTeamCard(show) {
+  const on = show && !isViewer() && !!(getCfg().url && getCfg().passcode);
+  $('teamCard').classList.toggle('hidden', !on);
+  if (on) loadTeam();
+}
+
 // ---------- tabs ----------
 let currentTab = '';
 function setActiveTab(t) {
@@ -678,6 +820,7 @@ function goTab(t) {
   $('viewer').classList.toggle('hidden', t !== 'poles');
   setActiveTab(t);
   if (t === 'settings') fillSetup();
+  showTeamCard(t === 'settings');
   if (t === 'poles') renderViewerList();
   if (t === 'capture') setStep(state.step || 1, true);
   if (t !== 'map') window.scrollTo(0, 0);
@@ -2076,6 +2219,8 @@ document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('cli
   if (b.dataset.tab === currentTab && b.dataset.tab === 'capture' && state.step > 1) { setStep(state.step); return; }
   goTab(b.dataset.tab);
 }));
+$('addPersonBtn').addEventListener('click', addPerson);
+$('newName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addPerson(); });
 $('wizBack').addEventListener('click', () => setStep((state.step || 1) - 1));
 $('wizNext').addEventListener('click', () => { if (!$('wizNext').disabled) setStep((state.step || 1) + 1); });
 $('lookupBtn').addEventListener('click', () => lookup(false));
