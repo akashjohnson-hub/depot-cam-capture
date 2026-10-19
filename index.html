@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Depot Camera Capture</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -207,14 +210,114 @@
   .vw-list .pcard .dist { font-size: 13px; color: var(--muted); font-weight: 600; }
   .role-viewer #overviewBtn, .role-viewer .viewer-hide { display: none !important; }
   body:not(.role-viewer) .viewer-only { display: none !important; }
+
+  /* ================= visual refresh: rail-yard field tool ================= */
+  :root {
+    --slate: #1B2631; --ballast: #E8EBEC; --surface: #FBFBFA; --rule: #CDD3D8;
+    --line-blue: #1D4F91; --signal: #F4B400; --muted: #56626D;
+    --bg: var(--ballast); --card: var(--surface); --ink: var(--slate); --line: var(--rule);
+    --primary: var(--line-blue); --tabs-h: 64px;
+    --font: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    --font-id: 'Barlow Condensed', 'Barlow', 'Arial Narrow', Arial, sans-serif;
+  }
+  html, body { font-family: var(--font); font-size: 17px; }
+  input, select, textarea, button { font-family: var(--font); }
+  .legacy, .ov-back, #cfgCancel { display: none !important; }
+
+  header { background: var(--slate); padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; gap: 12px; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0; }
+  header h1::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: var(--signal);
+    margin-right: 9px; vertical-align: 1px; box-shadow: 0 0 0 2px rgba(244,180,0,.25); }
+  .who { font-size: 14px; font-weight: 600; color: #C9D2DA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52%; }
+
+  main { padding: 12px 12px 24px; }
+  body.has-tabs main { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 24px); }
+  .card { border-radius: 14px; border: 1px solid var(--rule); background: var(--surface); padding: 16px; }
+  .card h2 { font-size: 21px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--slate); margin: 0 0 12px; }
+  label { font-size: 15px; font-weight: 600; color: var(--muted); }
+  input, select, textarea { border: 1.5px solid #B9C2CA; border-radius: 10px; font-size: 17px; min-height: 48px; }
+  input:focus, select:focus, textarea:focus { outline: 3px solid rgba(29,79,145,.35); outline-offset: 1px; border-color: var(--line-blue); }
+  .meta { color: var(--muted); }
+
+  .btn { border-radius: 12px; min-height: 52px; font-size: 18px; font-weight: 700; letter-spacing: .1px; }
+  .btn.secondary { background: #DDE4EC; color: var(--line-blue); }
+  .btn.accent { background: var(--slate); color: #FFFFFF; }
+  .btn.go { background: #1C7442; color: #FFFFFF; }
+  .btn:disabled { background: #C3CAD1; color: #EEF1F3; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+
+  /* the one bold thing: pole IDs as yellow asset-tag plates */
+  .plate, .big-id, .pcard .cid, .ov-panel .big-id {
+    display: inline-block; font-family: var(--font-id); font-weight: 700; letter-spacing: .5px; color: var(--slate);
+    background: var(--signal); border: 2px solid var(--slate); border-radius: 6px; padding: 1px 10px 0; line-height: 1.15;
+  }
+  .big-id { font-size: 34px; margin: 2px 0 6px; }
+  .plate.small { font-size: 20px; padding: 0 8px; }
+  .pcard .phead .cid { display: inline-block; font-size: 21px; padding: 0 8px; margin-bottom: 4px; }
+  .strip-head { flex-wrap: wrap; } .strip-head .seg { flex: 0 0 auto; }
+  button.btn.accent { background: var(--slate); color: #FFFFFF; }
+  .cfg-who { background: #EEF1F4; border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-weight: 600; color: var(--slate); }
+  .ov-panel .ph .big-id { flex: 0 1 auto; font-size: 32px; }
+  .ov-panel .ph { align-items: center; justify-content: space-between; }
+
+  .banner { border-radius: 12px; }
+  .banner.info { background: #EEF1F4; border: 1px solid var(--rule); }
+
+  /* wizard */
+  .wiz-head { background: var(--ballast); margin: -12px -12px 12px; padding: 10px 14px 10px; border-bottom: 1px solid var(--rule); }
+  .wiz-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .wiz-bar i { height: 6px; border-radius: 3px; background: #C9D0D6; }
+  .wiz-bar i.done { background: var(--line-blue); }
+  .wiz-bar i.now { background: var(--signal); }
+  .wiz-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 16px; font-weight: 700; color: var(--slate); }
+  .submit-wrap { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(rgba(232,235,236,0), var(--ballast) 22%);
+    padding: 16px 0 6px; z-index: 3; }
+  body:not(.has-tabs) .submit-wrap { bottom: 0; }
+  .wiz-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+  .wiz-btns .invisible { visibility: hidden; }
+  .why { min-height: 22px; font-size: 15px; }
+
+  /* GPS readout */
+  .gps-acc { font-family: var(--font-id); font-size: 54px; }
+
+  /* tab bar */
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; background: var(--surface);
+    border-top: 1px solid var(--rule); padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 10px rgba(27,38,49,.06); }
+  .tabs button { flex: 1; height: var(--tabs-h); border: 0; background: none; color: var(--muted); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 600; position: relative; }
+  .tabs svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .tabs button.active { color: var(--slate); }
+  .tabs button.active::before { content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--signal); }
+  .tabs button.active svg { stroke-width: 2.4; }
+  .role-viewer .admin-only { display: none !important; }
+
+  /* overview sits between header and tab bar */
+  #overview { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); }
+  .ov-top { padding-top: 12px; }
+  .ov-legend { bottom: 30px; }
+  .ov-panel { padding-bottom: 16px; }
+
+  /* lists */
+  .pcard { border-radius: 12px; border-left-width: 6px; }
+  .vw-list .pcard .phead { padding: 12px 14px 4px; }
+  .vw-list .pcams { padding: 4px 14px 12px; }
+  .pcams button { font-size: 14px; padding: 5px 8px; border-radius: 7px; }
+  .seg { border-radius: 10px; }
+  .seg button { padding: 7px 12px; font-size: 15px; }
+
+  #toast { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 92px); border-radius: 12px; font-weight: 500; }
+  body:not(.has-tabs) #toast { bottom: calc(env(safe-area-inset-bottom) + 24px); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <header>
   <h1>Cam Capture</h1>
-  <button id="overviewBtn" type="button">Overview</button>
-  <button id="mapBtn" type="button" class="viewer-only">Map</button>
-  <button id="settingsBtn" type="button">Settings</button>
+  <span id="whoChip" class="who hidden"></span>
+  <!-- legacy controls kept for script hooks; navigation is the tab bar -->
+  <button id="overviewBtn" type="button" class="legacy">Overview</button>
+  <button id="mapBtn" type="button" class="legacy">Map</button>
+  <button id="settingsBtn" type="button" class="legacy">Settings</button>
 </header>
 <div id="updateBar" class="hidden"><span>A new version of Cam Capture is ready.</span><button id="updateBtn" type="button">Update now</button></div>
 <div id="pending" class="hidden"><span id="pendingText"></span><button id="flushBtn" type="button">Upload now</button></div>
@@ -223,15 +326,15 @@
   <!-- One-time setup -->
   <section id="setup" class="card hidden">
     <button id="cfgCancel" class="ov-back hidden" type="button">← Back to Capture</button>
-    <h2>Settings</h2>
-    <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter the team passcode. This is saved on this phone only.</p>
+    <h2 id="cfgTitle">Settings</h2>
+    <div id="cfgWho" class="cfg-who hidden"></div>
+    <p class="meta">Paste the web app link from Apps Script (Deploy → Manage deployments) and enter your PIN. This is saved on this phone only.</p>
     <label for="cfgUrl">Web app link</label>
     <input id="cfgUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
-    <label for="cfgName">Your name (only needed with the shared master passcode)</label>
-    <input id="cfgName" autocomplete="name" placeholder="e.g. Akash">
-    <div id="cfgWho" class="meta hidden" style="margin-top:8px"></div>
     <label for="cfgPass">Your PIN</label>
-    <input id="cfgPass" type="password" autocomplete="off">
+    <input id="cfgPass" type="password" inputmode="numeric" autocomplete="off">
+    <label for="cfgName">Your name (only if you sign in with the master passcode)</label>
+    <input id="cfgName" autocomplete="name" placeholder="e.g. Akash">
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
     <div id="shareWrap" class="hidden viewer-hide" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
@@ -242,7 +345,7 @@
 
   <section id="viewer" class="hidden" aria-label="Poles and cameras">
     <div class="card">
-      <h2>Poles &amp; cameras</h2>
+      <h2>Poles and cameras</h2>
       <div id="vwCount" class="meta">Loading…</div>
       <input id="vwSearch" type="search" placeholder="Filter by camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:10px">
     </div>
@@ -250,9 +353,13 @@
   </section>
 
   <div id="app" class="hidden">
+    <div id="wizHead" class="wiz-head">
+      <div class="wiz-bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="wiz-line"><span id="wizTitle">Step 1 of 5: Choose the pole</span><span id="wizPlate" class="plate small hidden"></span></div>
+    </div>
     <!-- 1. Pole -->
-    <section class="card">
-      <h2><span class="n">1</span>Pole</h2>
+    <section class="card step" data-step="1">
+      <h2>Which pole are you at?</h2>
       <div class="strip-head">
         <span id="stripCount" class="meta">Loading poles…</span>
         <div class="seg" role="group" aria-label="Filter poles">
@@ -272,8 +379,8 @@
 
     <div id="captureArea" class="hidden">
       <!-- 2. Location -->
-      <section class="card">
-        <h2><span class="n">2</span>Location</h2>
+      <section class="card step" data-step="2">
+        <h2>Collect the location</h2>
         <p class="meta" style="margin:0">Stand right at the base of the pole, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.</p>
         <div id="locOnRecord" class="meta" style="margin-top:8px"></div>
         <div style="height:10px"></div>
@@ -296,18 +403,18 @@
       </section>
 
       <!-- 3. Photo -->
-      <section class="card">
-        <h2><span class="n">3</span>Photo</h2>
+      <section class="card step" data-step="3">
+        <h2>Take a photo</h2>
         <p class="meta" style="margin:0">Get the sticker or ITB label and the cameras in the same shot.</p>
         <div style="height:10px"></div>
-        <label for="photoInput" class="btn secondary" style="display:flex;align-items:center;justify-content:center;margin:0;color:var(--primary);font-size:17px;font-weight:650">Take photo</label>
+        <label for="photoInput" class="btn" style="display:flex;align-items:center;justify-content:center;margin:0">Take photo</label>
         <input id="photoInput" type="file" accept="image/*" capture="environment" class="hidden">
         <img id="photoThumb" class="thumb hidden" alt="Pole photo preview">
       </section>
 
       <!-- 4. Details -->
-      <section class="card">
-        <h2><span class="n">4</span>Pole details</h2>
+      <section class="card step" data-step="4">
+        <h2>Check the pole details</h2>
         <label id="stickerWrap" class="check hidden"><input id="stickerPlaced" type="checkbox" checked><span>Sticker <b id="stickerId"></b> is on the pole</span></label>
         <div class="row">
           <div><label for="hasItb">Has ITB</label><select id="hasItb"><option value="">–</option><option>Yes</option><option>No</option></select></div>
@@ -324,8 +431,8 @@
       </section>
 
       <!-- 5. Cameras -->
-      <section class="card">
-        <h2><span class="n">5</span>Cameras on this pole</h2>
+      <section class="card step" data-step="5">
+        <h2>Cameras on this pole</h2>
         <div id="camList"></div>
         <div id="camSuggest"></div>
         <button id="addCamBtn" class="btn secondary" type="button">+ Add camera</button>
@@ -333,11 +440,15 @@
         <datalist id="statusList"><option value="Active"><option value="Faulty"><option value="Missing"></datalist>
       </section>
 
-      <div class="submit-wrap">
-        <div id="warnBox" class="warnbox hidden" role="alert"></div>
-        <button id="submitBtn" class="btn" type="button" disabled>Submit</button>
-        <div id="why" class="why"></div>
+    </div>
+    <div id="wizNav" class="submit-wrap hidden">
+      <div id="warnBox" class="warnbox hidden" role="alert"></div>
+      <div class="wiz-btns">
+        <button id="wizBack" class="btn secondary" type="button">Back</button>
+        <button id="wizNext" class="btn" type="button">Next</button>
+        <button id="submitBtn" class="btn go hidden" type="button" disabled>Submit</button>
       </div>
+      <div id="why" class="why"></div>
     </div>
   </div>
 </main>
@@ -364,13 +475,27 @@
   <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
 </section>
+<nav id="tabs" class="tabs hidden" aria-label="Sections">
+  <button type="button" data-tab="capture" class="admin-only">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg>
+    <span>Capture</span></button>
+  <button type="button" data-tab="map">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
+    <span>Map</span></button>
+  <button type="button" data-tab="poles">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg>
+    <span>Poles</span></button>
+  <button type="button" data-tab="settings">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>
+    <span>Settings</span></button>
+</nav>
 <div id="toast" class="hidden"></div>
 
 <script>
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.3';
+const APP_VERSION = '2026-10-19.4';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -411,8 +536,10 @@ function setCfg(patch) {
 function applyRole() {
   const viewer = isViewer();
   document.body.classList.toggle('role-viewer', viewer);
-  $('ovBack').textContent = viewer ? '← Back to list' : '← Back to Capture';
-  $('cfgCancel').textContent = viewer ? '← Back to list' : '← Back to Capture';
+  const c = getCfg();
+  const chip = $('whoChip');
+  if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + (viewer ? 'Viewer' : 'Admin'); chip.classList.remove('hidden'); }
+  else chip.classList.add('hidden');
 }
 
 // ---------- UI helpers ----------
@@ -464,28 +591,106 @@ async function api(action, body) {
 }
 
 // ---------- setup ----------
-function showSetup(canCancel) {
+function showSetup() {
+  fillSetup();
+  const configured = !!(getCfg().url && getCfg().passcode);
+  $('tabs').classList.toggle('hidden', !configured);
+  document.body.classList.toggle('has-tabs', configured);
+  if (OV.open) closeOverview();
+  $('setup').classList.remove('hidden');
+  $('app').classList.add('hidden');
+  $('viewer').classList.add('hidden');
+  setActiveTab('settings');
+  window.scrollTo(0, 0);
+}
+function fillSetup() {
   const cfg = getCfg();
+  $('cfgTitle').textContent = cfg.url && cfg.passcode ? 'Settings' : 'Sign in to Cam Capture';
   $('cfgUrl').value = cfg.url;
   $('cfgPass').value = cfg.passcode;
   $('cfgName').value = cfg.name;
-  $('cfgCancel').classList.toggle('hidden', !canCancel);
   $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   const who = $('cfgWho');
   if (cfg.url && cfg.passcode) {
     who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' ? 'Viewer (read-only)' : 'Admin');
     who.classList.remove('hidden');
   } else who.classList.add('hidden');
-  $('setup').classList.remove('hidden');
-  $('app').classList.add('hidden');
-  $('viewer').classList.add('hidden');
 }
 function showApp() {
   applyRole();
-  $('setup').classList.add('hidden');
-  $('app').classList.toggle('hidden', isViewer());
-  $('viewer').classList.toggle('hidden', !isViewer());
+  $('tabs').classList.remove('hidden');
+  document.body.classList.add('has-tabs');
+  goTab(isViewer() ? 'poles' : 'capture');
   loadPoles();
+}
+
+// ---------- tabs ----------
+let currentTab = '';
+function setActiveTab(t) {
+  currentTab = t;
+  document.querySelectorAll('#tabs button').forEach((b) => {
+    const on = b.dataset.tab === t;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+}
+function goTab(t) {
+  if (t === 'capture' && isViewer()) t = 'poles';
+  if (t !== 'map' && OV.open) closeOverview();
+  $('setup').classList.toggle('hidden', t !== 'settings');
+  $('app').classList.toggle('hidden', t !== 'capture');
+  $('viewer').classList.toggle('hidden', t !== 'poles');
+  setActiveTab(t);
+  if (t === 'settings') fillSetup();
+  if (t === 'poles') renderViewerList();
+  if (t === 'capture') setStep(state.step || 1, true);
+  if (t !== 'map') window.scrollTo(0, 0);
+  return t === 'map' ? openOverview() : Promise.resolve();
+}
+
+// ---------- capture wizard ----------
+const STEP_TITLES = ['Choose the pole', 'Collect the location', 'Take a photo', 'Check the pole details', 'Cameras on this pole'];
+function setStep(n, quiet) {
+  if (!state.pole) n = 1;
+  n = Math.max(1, Math.min(5, n));
+  state.step = n;
+  document.querySelectorAll('#app .step').forEach((sec) => sec.classList.toggle('hidden', Number(sec.dataset.step) !== n));
+  $('captureArea').classList.toggle('hidden', !state.pole || n === 1);
+  $('wizNav').classList.toggle('hidden', !state.pole);
+  document.querySelectorAll('#wizHead .wiz-bar i').forEach((seg, i) => {
+    seg.className = i + 1 < n ? 'done' : (i + 1 === n ? 'now' : '');
+  });
+  $('wizTitle').textContent = 'Step ' + n + ' of 5: ' + STEP_TITLES[n - 1];
+  const plate = $('wizPlate');
+  if (state.pole) { plate.textContent = state.pole.poleId; plate.classList.remove('hidden'); }
+  else plate.classList.add('hidden');
+  if (n === 2 && window.L) { ensureMap(); setTimeout(() => { if (MAP.map) MAP.map.invalidateSize(); }, 80); }
+  updateSubmit();
+  if (!quiet) window.scrollTo(0, 0);
+}
+function nextBlocker() {
+  if (state.step === 1) return state.pole ? '' : 'Pick or look up a pole first.';
+  if (state.step === 2) {
+    if (state.collecting) return 'Collecting location…';
+    if (!state.loc) return 'Collect the location to continue.';
+    if (!locationOk()) return 'Location is ±' + state.loc.acc + ' m. Needs ±' + GPS_ACCEPT_M + ' m or better, or drag the pin onto the pole.';
+  }
+  return '';
+}
+function updateWizard() {
+  const step = state.step || 1;
+  const last = step === 5;
+  $('wizBack').classList.toggle('invisible', step === 1);
+  $('wizNext').classList.toggle('hidden', last);
+  $('submitBtn').classList.toggle('hidden', !last);
+  if (!last) {
+    const b = nextBlocker();
+    $('wizNext').disabled = !!b;
+    const skip = step === 3 && !state.photo;
+    $('wizNext').textContent = skip ? 'Skip photo' : 'Next';
+    $('wizNext').classList.toggle('secondary', skip);
+    $('why').textContent = b;
+  }
 }
 async function saveSetup() {
   const url = $('cfgUrl').value.trim();
@@ -537,8 +742,7 @@ async function lookup(blank) {
 function askCameraPole(r, typed) {
   resetCapture();
   state.pole = null;
-  $('captureArea').classList.add('hidden');
-  updateSubmit();
+  setStep(1);
   const banner = $('poleBanner');
   banner.innerHTML = '';
   const pid = String(r.pole.poleId);
@@ -650,7 +854,7 @@ function onLookup(r, typed, opts) {
   const rec = r.found && r.pole.latitude && r.pole.longitude ? [Number(r.pole.latitude), Number(r.pole.longitude)] : [null, null];
   mapFocusPole(rec[0], rec[1]);
   if (!MAP.polesLoaded) loadPoles(); else renderCarousel();
-  updateSubmit();
+  setStep(2);
 }
 
 function resetCapture() {
@@ -678,9 +882,7 @@ function resetAll() {
   state.pole = null;
   $('poleInput').value = '';
   $('poleBanner').innerHTML = '';
-  $('captureArea').classList.add('hidden');
-  updateSubmit();
-  window.scrollTo(0, 0);
+  setStep(1);
 }
 
 // ---------- step 2: GPS collection ----------
@@ -911,7 +1113,7 @@ function poleSortKey(id) {
   const prefix = m[1].toUpperCase();
   return [prefix === 'ITB' ? 0 : (prefix === 'P' ? 1 : 2), parseInt(m[2], 10), prefix];
 }
-const CARD_CAM_MAX = 9;   // camera buttons shown per card before "+N more"
+const CARD_CAM_MAX = 6;   // camera buttons shown per card before "+N more"
 function sortedPoles() {
   return MAP.poles.slice().sort((a, b) => {
     const ka = poleSortKey(a.poleId), kb = poleSortKey(b.poleId);
@@ -942,11 +1144,7 @@ async function openPoleFromCarousel(poleId, cameraId) {
   if (!cameraId || !state.pole || String(state.pole.poleId).toUpperCase() !== String(poleId).toUpperCase()) return;
   let hit = false;
   state.cameras.forEach((c) => { c.matched = compactId(c.cameraId) === compactId(cameraId); hit = hit || c.matched; });
-  if (hit) {
-    renderCameras();
-    const m = document.querySelector('#camList .cam.matched');
-    if (m) m.scrollIntoView({ block: 'center' });
-  }
+  if (hit) renderCameras();
 }
 
 let showAllUnassigned = false;
@@ -1015,7 +1213,6 @@ function renderCarousel() {
 }
 // ---------- viewer: read-only list ----------
 function renderViewerList() {
-  if (!isViewer()) return;
   const box = $('vwList');
   box.innerHTML = '';
   const q = compactId($('vwSearch').value);
@@ -1026,7 +1223,7 @@ function renderViewerList() {
   $('vwCount').textContent = all.length + ' poles (' + mapped + ' on the map) · ' + camTotal + ' cameras';
   const matches = (p, cams) => !q || compactId(p.poleId).indexOf(q) >= 0 || compactId(p.itbNo).indexOf(q) >= 0 ||
     cams.some((c) => compactId(c.cameraId).indexOf(q) >= 0);
-  const openOn = (poleId, cam) => { openOverview().then(() => ovSelect(poleId, cam || '')); };
+  const openOn = (poleId, cam) => { goTab('map').then(() => ovSelect(poleId, cam || '')); };
   all.forEach((p) => {
     const cams = groups.byPole[String(p.poleId).toUpperCase()] || [];
     if (!matches(p, cams)) return;
@@ -1035,7 +1232,7 @@ function renderViewerList() {
     const head = el('button', { type: 'button', class: 'phead' }, [
       el('span', { class: 'cid', text: String(p.poleId) }),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') + (p.locationDescription ? ' · ' + p.locationDescription : '') }),
-      t ? el('span', { class: 'dist', text: fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
+      t ? el('span', { class: 'dist', text: t.d < 8 ? 'You are at this pole' : fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
     ]);
     head.addEventListener('click', () => openOn(p.poleId));
     const shown = q ? cams.slice().sort((a, b) => (compactId(b.cameraId).indexOf(q) >= 0) - (compactId(a.cameraId).indexOf(q) >= 0)) : cams;
@@ -1172,6 +1369,9 @@ async function openOverview() {
   OV.open = true;
   const ov = $('overview');
   ov.style.top = document.querySelector('header').offsetHeight + 'px';
+  ov.style.bottom = ($('tabs').offsetHeight || 0) + 'px';
+  setActiveTab('map');
+  $('setup').classList.add('hidden');
   ov.classList.remove('hidden');
   $('overviewBtn').textContent = 'Capture';
   $('mapBtn').textContent = 'List';
@@ -1331,7 +1531,7 @@ function ovPick(r) {
   if (r.pole) { ovSelect(r.pole.poleId, r.hit); return; }
   if (isViewer()) { toast(r.cam.cameraId + ' has not been placed on a pole yet.'); return; }
   toast(r.cam.cameraId + ' has no pole yet. Opening it in Capture.');
-  closeOverview();
+  goTab('capture');
   $('poleInput').value = String(r.cam.cameraId);
   lookup(false);
 }
@@ -1379,9 +1579,11 @@ function ovSelect(poleId, hit, quiet) {
     const dir = el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking', target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' });
     btns.push(dir);
   }
+  let clearBlock = null;
   if (hasCoords(p) && !isViewer()) {
     const weak = st[0] === 'weak';
-    if (weak) panel.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
+    clearBlock = el('div', { style: 'margin-top:12px' });
+    if (weak) clearBlock.appendChild(el('p', { class: 'clear-note', text: 'This point is ' + (p.gpsAccuracy ? 'weak (±' + p.gpsAccuracy + ' m)' : 'from the old one-shot GPS') + '. Clear it so the pole shows as Not mapped until it is re-collected.' }));
     const clr = el('button', { class: 'btn danger', type: 'button', text: 'Clear location' });
     let armed = null;
     clr.addEventListener('click', async () => {
@@ -1398,14 +1600,15 @@ function ovSelect(poleId, hit, quiet) {
         await loadPoles();
       } catch (e) { toast(e.message, true); busy(clr, false); }
     });
-    panel.appendChild(el('div', { style: 'margin-bottom:8px' }, [clr]));
+    clearBlock.appendChild(clr);
   }
   if (!isViewer()) {
     const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
-    cap.addEventListener('click', () => { closeOverview(); $('poleInput').value = String(p.poleId); lookup(false); });
+    cap.addEventListener('click', () => { goTab('capture'); $('poleInput').value = String(p.poleId); lookup(false); });
     btns.push(cap);
   }
   panel.appendChild(el('div', { class: 'row' }, btns));
+  if (clearBlock) panel.appendChild(clearBlock);
   panel.classList.remove('hidden');
   if (!quiet) { OV.nearFor = null; OV.lastTrend = ''; OV.lastCls = ''; }
   ovUpdateNear();
@@ -1507,6 +1710,7 @@ async function onPhoto(file) {
     state.photo = await compressImage(file, 1600, 0.8);
     $('photoThumb').src = state.photo;
     $('photoThumb').classList.remove('hidden');
+    updateWizard();
   } catch (e) {
     toast('Could not read that photo. Try again.', true);
   }
@@ -1659,6 +1863,7 @@ function updateSubmit() {
   $('submitBtn').disabled = !!why;
   $('submitBtn').textContent = state.pole ? 'Submit ' + state.pole.poleId : 'Submit';
   $('why').textContent = why;
+  updateWizard();
 }
 
 // ---------- wrong-pole checks ----------
@@ -1805,8 +2010,14 @@ async function flushQueue() {
 
 // ---------- wiring ----------
 $('cfgSave').addEventListener('click', saveSetup);
-$('cfgCancel').addEventListener('click', showApp);
-$('settingsBtn').addEventListener('click', () => { if (OV.open) closeOverview(); showSetup(!!getCfg().url); });
+$('cfgCancel').addEventListener('click', () => goTab(isViewer() ? 'poles' : 'capture'));
+$('settingsBtn').addEventListener('click', () => goTab('settings'));
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.tab === currentTab && b.dataset.tab === 'capture' && state.step > 1) { setStep(state.step); return; }
+  goTab(b.dataset.tab);
+}));
+$('wizBack').addEventListener('click', () => setStep((state.step || 1) - 1));
+$('wizNext').addEventListener('click', () => { if (!$('wizNext').disabled) setStep((state.step || 1) + 1); });
 $('lookupBtn').addEventListener('click', () => lookup(false));
 $('poleInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(false); });
 $('newPoleBtn').addEventListener('click', () => lookup(true));
