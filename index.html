@@ -311,6 +311,7 @@
   /* the map runs under the floating tab bar; things pinned to the map's bottom sit above it */
   #overview { bottom: 0; }
   #overview .leaflet-bottom { bottom: var(--dock); }
+  #overview.has-panel .leaflet-bottom { bottom: var(--panel-top, var(--dock)); }
   .ov-top { padding-top: 12px; }
   .ov-legend { bottom: calc(var(--dock) + 26px); }
   .ov-panel { padding-bottom: calc(var(--dock) + 12px); }
@@ -345,6 +346,29 @@
     display: flex; align-items: center; justify-content: center; }
   .fab svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .fab.on { background: var(--slate); color: var(--signal); }
+  .fab.compass { position: relative; }
+  .fab.compass .needle { transform-origin: 12px 12px; transition: transform .12s linear; }
+  .fab.compass .n { position: absolute; top: 1px; left: 0; right: 0; text-align: center; font-size: 9px; font-weight: 800; color: #D0352B; pointer-events: none; }
+  .fab.compass.on { background: #FFFFFF; color: var(--slate); box-shadow: 0 0 0 3px #2563EB, 0 2px 10px rgba(27,38,49,.25); }
+  .fab.compass.ask { animation: fab-nudge 1.6s ease-in-out 2; }
+  @keyframes fab-nudge { 50% { box-shadow: 0 0 0 6px rgba(37,99,235,.35), 0 2px 10px rgba(27,38,49,.25); } }
+  /* blue dot with heading beam (like Apple Maps) */
+  .me-icon { position: relative; width: 160px; height: 160px; pointer-events: none; }
+  .me-icon .beam { position: absolute; inset: 0; opacity: 0; transition: opacity .3s; transform-origin: 80px 80px; }
+  .me-icon.has-heading .beam { opacity: 1; }
+  .me-icon .dot { position: absolute; left: 70px; top: 70px; width: 20px; height: 20px; border-radius: 50%; background: #2563EB; border: 3px solid #FFFFFF;
+    box-shadow: 0 1px 5px rgba(0,0,0,.4); box-sizing: border-box; }
+  /* frosted, floating pole card */
+  #overview .ov-panel { left: 8px; right: 8px; bottom: calc(var(--dock) + 8px); border-radius: 22px; padding: 12px 14px 14px; max-height: calc(70% - var(--dock));
+    background: rgba(246, 247, 248, .78); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, .6); box-shadow: 0 12px 32px rgba(27, 38, 49, .28), inset 0 1px 0 rgba(255, 255, 255, .7); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { #overview .ov-panel { background: rgba(246, 247, 248, .97); } }
+  #overview .ov-panel .near { background: rgba(255, 255, 255, .6); border-color: rgba(201, 214, 234, .8); }
+  #overview .ov-panel .close { background: rgba(255, 255, 255, .7); }
+  #overview .ov-panel .peek-btns .btn.secondary, #overview .ov-panel .btn.secondary { background: rgba(255, 255, 255, .7); }
+  #overview .ov-panel .ov-data { border-top-color: rgba(27, 38, 49, .12); }
+  .near .arrow { transition: transform .15s linear; }
+  .near .how .rel { color: var(--ink); font-weight: 700; }
   .ov-legend { left: 10px; bottom: calc(var(--dock) + 26px); }
   .ov-panel.open ~ .ov-legend, #overview.has-panel .ov-legend { display: none; }
   /* compact pole card; full data on request */
@@ -596,6 +620,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button id="ovRefresh" type="button" class="fab" aria-label="Refresh data" title="Refresh">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5"/><path d="M19.4 10A8 8 0 1 0 20 14"/></svg></button>
+    <button id="ovCompass" type="button" class="fab compass" aria-label="Show the direction you are facing" aria-pressed="false" title="Compass">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><g class="needle"><path d="M12 3.2 15 12h-6z" fill="#D0352B" stroke="none"/><path d="M12 20.8 9 12h6z" fill="currentColor" stroke="none" opacity=".55"/></g><circle cx="12" cy="12" r="1.3" fill="#fff" stroke="none"/></svg>
+      <span class="n" aria-hidden="true">N</span></button>
     <button id="ovArea" type="button" class="fab viewer-hide" aria-label="Lock the map to this area" title="Lock area">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
   </div>
@@ -623,7 +650,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-21.4';
+const APP_VERSION = '2026-10-21.5';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1822,6 +1849,7 @@ async function openOverview() {
   }
   setTimeout(() => { OV.map.invalidateSize(); if (!OV.editing) applyArea(OV.map); }, 60);
   ovStartMe();
+  autoCompass();
   clearInterval(OV.timer);
   OV.timer = setInterval(() => {
     if (OV.open && !document.hidden && !OV.editing && !OV.loading) ovAutoRefresh();
@@ -2077,7 +2105,9 @@ function ovFrameSelected(p) {
   if (!OV.map || !p || !hasCoords(p)) return;
   const t = distTo(p);
   const pts = t && t.d < 600 ? [[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]] : [[p.lat, p.lng]];
-  const ph = $('ovPanel').offsetHeight || 0;
+  const pn = $('ovPanel'), ovr = $('overview');
+  // space covered at the bottom: the floating card plus the tab bar under it
+  const ph = pn && !pn.classList.contains('hidden') ? Math.max(0, ovr.getBoundingClientRect().bottom - pn.getBoundingClientRect().top) : ($('tabs').offsetHeight || 0) + 10;
   OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 140], paddingBottomRight: [70, ph + 30], maxZoom: 19 });
 }
 
@@ -2121,14 +2151,16 @@ function ovUpdateNear() {
   OV.lastTrend = trend; OV.lastCls = cls;
   box.className = 'near' + (here ? ' here' : '');
   const arrow = el('div', { class: 'arrow', text: here ? '✓' : '↑', 'aria-hidden': 'true' });
-  if (!here) arrow.style.transform = 'rotate(' + Math.round(t.b) + 'deg)';
+  arrow.dataset.bearing = String(t.b); arrow.dataset.dir = t.dir; arrow.dataset.here = here ? '1' : '0';
+  if (!here) arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
   box.appendChild(arrow);
   box.appendChild(el('div', null, [
     el('div', { class: 'dist', text: here ? 'You\'re at ' + p.poleId : fmtDist(t.d) }),
-    el('div', { class: 'how', text: here ? 'Within ' + Math.round(Math.max(8, acc)) + ' m' : t.dir + ' of you (map north is up)' + (acc > 20 ? ' · your GPS ±' + Math.round(acc) + ' m' : '') }),
+    el('div', { class: 'how', text: here ? 'Within ' + Math.round(Math.max(8, acc)) + ' m' : t.dir + ' of you' }),
     trend ? el('div', { class: 'trend ' + cls, text: trend }) : el('span'),
   ]));
   // dashed line from you to the pole
+  ovNearHeading();
   const pts = [[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]];
   if (!OV.line) OV.line = L.polyline(pts, { color: '#F28A2E', weight: 3, dashArray: '6 8', interactive: false }).addTo(OV.map);
   else OV.line.setLatLngs(pts);
@@ -2143,9 +2175,12 @@ function ovStartMe() {
     if (!OV.map) return;
     const ll = [pos.coords.latitude, pos.coords.longitude];
     OV.myPos = { lat: ll[0], lng: ll[1], acc: pos.coords.accuracy };
+    // Walking direction from GPS: only used when the compass isn't available and you're moving.
+    if (!HEAD.compass && pos.coords.heading !== null && !isNaN(pos.coords.heading) && (pos.coords.speed || 0) > 0.7) setHeading(pos.coords.heading, 'gps');
     if (!OV.me) {
       OV.meCircle = L.circle(ll, { radius: pos.coords.accuracy, color: '#3B82F6', weight: 1, fillColor: '#3B82F6', fillOpacity: 0.12 }).addTo(OV.map);
-      OV.me = L.circleMarker(ll, { radius: 7, color: '#FFFFFF', weight: 3, fillColor: '#2563EB', fillOpacity: 1 }).addTo(OV.map);
+      OV.me = L.marker(ll, { icon: meIcon(), interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(OV.map);
+      applyHeading();
     } else {
       OV.me.setLatLng(ll);
       OV.meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
@@ -2159,6 +2194,119 @@ function ovStopMe() {
   OV.watch = null;
   if (OV.me) { OV.me.remove(); OV.meCircle.remove(); OV.me = null; OV.meCircle = null; }
   ovClearLine();
+  stopCompass();
+}
+
+// ---------- which way am I facing? (compass) ----------
+// Android Chrome: 'deviceorientationabsolute' (alpha, counter-clockwise from north).
+// iPhone: 'deviceorientation' with webkitCompassHeading; needs a tap to allow.
+const HEAD = { deg: null, shown: null, src: '', compass: false, listening: false, raf: 0, lastAt: 0, needle: 0, arrow: 0, beam: 0 };
+function meIcon() {
+  // a 70° fan pointing up (north) from the dot; rotated to the heading
+  const beam = '<svg class="beam" viewBox="0 0 160 160" width="160" height="160" aria-hidden="true"><defs>' +
+    '<radialGradient id="meBeamG" cx="80" cy="80" r="76" gradientUnits="userSpaceOnUse">' +
+    '<stop offset="0" stop-color="#2563EB" stop-opacity=".85"/><stop offset=".45" stop-color="#2F6FF0" stop-opacity=".5"/><stop offset="1" stop-color="#3B82F6" stop-opacity="0"/></radialGradient></defs>' +
+    '<path d="M80 80 L36.4 17.7 A76 76 0 0 1 123.6 17.7 Z" fill="url(#meBeamG)"/></svg>';
+  return L.divIcon({ className: '', html: '<div class="me-icon">' + beam + '<div class="dot"></div></div>', iconSize: [160, 160], iconAnchor: [80, 80] });
+}
+function screenAngle() {
+  const a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (typeof window.orientation === 'number' ? window.orientation : 0);
+  return a || 0;
+}
+function onOrient(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) h = e.webkitCompassHeading + screenAngle();
+  else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha + screenAngle();
+  if (h === null) return;
+  HEAD.compass = true;
+  setHeading(h, 'compass');
+}
+function setHeading(h, src) {
+  h = ((h % 360) + 360) % 360;
+  if (src === 'gps' && HEAD.compass) return;
+  HEAD.deg = h; HEAD.src = src; HEAD.lastAt = Date.now();
+  if (!HEAD.raf) HEAD.raf = requestAnimationFrame(() => { HEAD.raf = 0; applyHeading(); });
+}
+// Turn by the shortest way, so 359° -> 1° doesn't spin all the way round.
+function towards(prev, target) { if (prev === null || prev === undefined) return target; const d = ((target - prev) % 360 + 540) % 360 - 180; return prev + d; }
+function smooth(prev, target) { if (prev === null) return target; const d = ((target - prev) % 360 + 540) % 360 - 180; return prev + d * 0.35; }
+function applyHeading() {
+  const has = HEAD.deg !== null && Date.now() - HEAD.lastAt < 15000;
+  HEAD.shown = has ? smooth(HEAD.shown, HEAD.deg) : null;
+  const icon = OV.me && OV.me.getElement ? OV.me.getElement() : null;
+  const box = icon ? icon.querySelector('.me-icon') : null;
+  if (box) {
+    box.classList.toggle('has-heading', has);
+    if (has) { HEAD.beam = towards(HEAD.beam, HEAD.shown); box.querySelector('.beam').style.transform = 'rotate(' + HEAD.beam.toFixed(1) + 'deg)'; }
+  }
+  const nd = document.querySelector('#ovCompass .needle');
+  if (nd) { HEAD.needle = towards(HEAD.needle, has ? -HEAD.shown : 0); nd.style.transform = 'rotate(' + HEAD.needle.toFixed(1) + 'deg)'; }
+  ovNearHeading();
+  if (has && HEAD.raf === 0 && HEAD.shown !== null && Math.abs((((HEAD.deg - HEAD.shown) % 360) + 540) % 360 - 180) > 0.5) {
+    HEAD.raf = requestAnimationFrame(() => { HEAD.raf = 0; applyHeading(); });   // keep easing toward the target
+  }
+}
+function relativeWords(rel) {
+  const a = Math.abs(rel), side = rel > 0 ? 'right' : 'left';
+  if (a <= 22.5) return 'Straight ahead';
+  if (a <= 67.5) return 'Ahead, to your ' + side;
+  if (a <= 112.5) return 'To your ' + side;
+  if (a <= 157.5) return 'Behind you, to the ' + side;
+  return 'Behind you';
+}
+// Turns the card's arrow to point where to walk, relative to the way the phone faces.
+function ovNearHeading() {
+  const arrow = document.querySelector('#ovNear .arrow'), how = document.querySelector('#ovNear .how');
+  if (!arrow || !how || arrow.dataset.here === '1') return;
+  const b = Number(arrow.dataset.bearing), dir = arrow.dataset.dir || '';
+  if (isNaN(b)) return;
+  const acc = OV.myPos && OV.myPos.acc > 20 ? ' · your GPS ±' + Math.round(OV.myPos.acc) + ' m' : '';
+  if (HEAD.shown !== null && HEAD.deg !== null) {
+    const rel = ((b - HEAD.shown) % 360 + 540) % 360 - 180;
+    HEAD.arrow = towards(HEAD.arrow, rel);
+    arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
+    how.innerHTML = '';
+    how.appendChild(el('span', { class: 'rel', text: relativeWords(rel) }));
+    how.appendChild(document.createTextNode(' · ' + dir + acc));
+  } else {
+    HEAD.arrow = towards(HEAD.arrow, b);
+    arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
+    how.textContent = dir + ' of you (map north is up)' + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
+  }
+}
+function startCompassListeners() {
+  if (HEAD.listening) return;
+  HEAD.listening = true;
+  if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrient);
+  else window.addEventListener('deviceorientation', onOrient);
+  $('ovCompass').classList.add('on'); $('ovCompass').classList.remove('ask'); $('ovCompass').setAttribute('aria-pressed', 'true');
+  setTimeout(() => { if (HEAD.listening && !HEAD.compass) toast('No compass reading yet. Wave the phone in a figure-8 to calibrate, or start walking to use GPS direction.'); }, 4000);
+  ovNearHeading();
+}
+function stopCompass() {
+  window.removeEventListener('deviceorientationabsolute', onOrient);
+  window.removeEventListener('deviceorientation', onOrient);
+  HEAD.listening = false; HEAD.compass = false; HEAD.deg = null; HEAD.shown = null;
+  const b = $('ovCompass'); if (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }
+  applyHeading();
+}
+function compassNeedsTap() { return typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'; }
+async function compassTap() {
+  if (HEAD.listening) { stopCompass(); lsSet('dcc.compass', 'off'); toast('Compass off. The map arrow now shows direction with north up.'); return; }
+  if (compassNeedsTap()) {
+    try {
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') { toast('Compass not allowed. To allow it, close the app fully and open it again, then tap the compass.', true); return; }
+    } catch (e) { toast('Could not turn on the compass: ' + e.message, true); return; }
+  }
+  lsSet('dcc.compass', 'on');
+  startCompassListeners();
+}
+// On opening the map: Android starts the compass straight away; iPhone needs one tap per launch.
+function autoCompass() {
+  if (lsGet('dcc.compass') === 'off' || HEAD.listening) return;
+  if (!compassNeedsTap()) { if ('DeviceOrientationEvent' in window) startCompassListeners(); }
+  else $('ovCompass').classList.add('ask');
 }
 
 // ---------- step 3: photo ----------
@@ -2549,6 +2697,13 @@ $('submitBtn').addEventListener('click', submit);
 $('mapMeBtn').addEventListener('click', mapCentreMe);
 $('fAll').addEventListener('click', () => setStripFilter('all'));
 $('overviewBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else if (getCfg().url) openOverview(); else toast('Connect in Settings first.', true); });
+$('ovCompass').addEventListener('click', compassTap);
+// Map credit line sits just above the floating pole card, whatever its height.
+if (window.ResizeObserver) new ResizeObserver(() => {
+  const pn = $('ovPanel'), ovr = $('overview');
+  if (!pn || pn.classList.contains('hidden')) return;
+  ovr.style.setProperty('--panel-top', Math.max(0, ovr.getBoundingClientRect().bottom - pn.getBoundingClientRect().top + 4) + 'px');
+}).observe($('ovPanel'));
 $('ovRefresh').addEventListener('click', ovRefresh);
 $('ovBack').addEventListener('click', closeOverview);
 $('mapBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else openOverview(); });
