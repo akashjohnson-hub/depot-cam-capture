@@ -82,6 +82,14 @@
   .cam-info { font-size: 13px; color: var(--muted); margin: 4px 2px 0; min-height: 0; }
   .cam-info:empty { display: none; }
   .cam-info.dup { color: var(--poor); font-weight: 650; }
+  .cam-info.held { color: #8A4A0E; font-weight: 650; }
+  .claim-note { margin: 0 16px 10px; padding: 10px 12px; border-radius: 10px; background: #FFF4D1; border: 1px solid #E8C25A; color: #5C4300; font-size: 14px; line-height: 1.35; }
+  .claim-note b { color: #1B2631; }
+  .pcard .cwip { display: block; font-size: 12px; font-weight: 700; color: #8A4A0E; margin-top: 2px; }
+  .pcard.wip { box-shadow: inset 0 0 0 2px #F4B400; }
+  .pcard.s-ghost { border-left-color: #F4B400; border-style: dashed; border-left-style: solid; opacity: .95; }
+  .pcams .chip-held { display: inline-block; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 14px; background: #FFF4D1; color: #8A4A0E; box-shadow: inset 0 0 0 1px #E8C25A; }
+  .pcams button.held { background: #FFF4D1; color: #8A4A0E; box-shadow: inset 0 0 0 1px #E8C25A; }
   .sug-group { margin: 2px 0 10px; }
   .sug-head { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
   .sug-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -442,6 +450,7 @@
       <div class="wiz-bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="wiz-line"><span id="wizTitle">Step 1 of 5: Choose the pole</span><span id="wizPlate" class="plate small hidden"></span></div>
     </div>
+    <div id="claimNote" class="claim-note hidden" role="status"></div>
     <!-- 1. Pole -->
     <section class="card step" data-step="1">
       <h2>Which pole are you at?</h2>
@@ -585,7 +594,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-21.1';
+const APP_VERSION = '2026-10-21.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -604,6 +613,61 @@ const LS_QUEUE = 'dcc.queue.v1';
 
 const $ = (id) => document.getElementById(id);
 const state = { pole: null, loc: null, collecting: false, photo: '', cameras: [] };
+// Work in progress on other admins' phones: [{ by, poleId, cameras, isNew, ageSec }]
+let CLAIMS = [];
+let claimTimer = null, claimSentKey = '';
+function agoText(sec) { sec = Math.max(0, Number(sec) || 0); return sec < 90 ? 'just now' : (sec < 3600 ? Math.round(sec / 60) + ' min ago' : Math.round(sec / 3600) + ' h ago'); }
+function claimOnPole(poleId) { const k = String(poleId || '').toUpperCase(); return CLAIMS.find((c) => String(c.poleId).toUpperCase() === k) || null; }
+function claimOnCamera(cameraId, exceptPole) {
+  const k = compactId(cameraId), ex = String(exceptPole || '').toUpperCase();
+  if (!k) return null;
+  return CLAIMS.find((c) => (c.cameras || []).some((x) => compactId(x) === k)) || null;
+}
+function myClaim() {
+  if (!state.pole) return { poleId: '' };
+  return { poleId: state.pole.poleId, isNew: !state.pole.found,
+    cameras: state.cameras.map((c) => String(c.cameraId || '').trim()).filter(Boolean) };
+}
+// Tell the server what this phone is working on (also fetches everyone else's).
+async function sendClaim() {
+  clearTimeout(claimTimer); claimTimer = null;
+  const c = getCfg();
+  if (isViewer() || !c.url || !c.passcode) return;
+  const claim = myClaim();
+  claimSentKey = claim.poleId + '|' + (claim.cameras || []).join(',');
+  try {
+    const r = await api('claim', { claim: claim });
+    setClaims(r.claims);
+  } catch (e) { /* offline or old Code.gs: work without it */ }
+}
+function scheduleClaim() {
+  if (isViewer()) return;
+  const claim = myClaim();
+  const key = claim.poleId + '|' + (claim.cameras || []).join(',');
+  if (key === claimSentKey) return;
+  const poleChanged = claim.poleId !== claimSentKey.split('|')[0];
+  clearTimeout(claimTimer);
+  claimTimer = setTimeout(sendClaim, poleChanged ? 0 : 1500);
+}
+function setClaims(list) {
+  const next = (list || []).filter((c) => !c.mine);
+  if (JSON.stringify(next) === JSON.stringify(CLAIMS)) return;
+  CLAIMS = next;
+  renderClaimNote();
+  if (typeof renderCarousel === 'function' && MAP.polesLoaded) renderCarousel();
+  camInfoFns.forEach((fn) => fn());
+}
+let camInfoFns = [];
+function renderClaimNote() {
+  const box = $('claimNote');
+  const cl = state.pole ? claimOnPole(state.pole.poleId) : null;
+  if (!cl) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  box.appendChild(el('b', { text: cl.by + ' is also working on ' + cl.poleId + ' right now' }));
+  box.appendChild(el('div', { text: (cl.cameras.length ? 'Their cameras: ' + cl.cameras.join(', ') + '. ' : '') +
+    'Started ' + agoText(cl.ageSec) + '. Agree who submits: the later save replaces the earlier one.' }));
+  box.classList.remove('hidden');
+}
 let queue = loadQueue();
 let gps = null;
 
@@ -915,6 +979,8 @@ function setStep(n, quiet) {
     seg.className = i + 1 < n ? 'done' : (i + 1 === n ? 'now' : '');
   });
   $('wizTitle').textContent = 'Step ' + n + ' of 5: ' + STEP_TITLES[n - 1];
+  renderClaimNote();
+  scheduleClaim();
   const plate = $('wizPlate');
   if (state.pole) { plate.textContent = state.pole.poleId; plate.classList.remove('hidden'); }
   else plate.classList.add('hidden');
@@ -1137,6 +1203,7 @@ function resetAll() {
   $('poleInput').value = '';
   $('poleBanner').innerHTML = '';
   setStep(1);
+  scheduleClaim();
 }
 
 // ---------- step 2: GPS collection ----------
@@ -1341,7 +1408,9 @@ async function loadPoles() {
     MAP.polesLoaded = true;
     CAMS = (r && r.cameras) ? r.cameras
       : [].concat.apply([], MAP.poles.map((p) => (p.cameras || []).map((c) => Object.assign({ poleId: p.poleId, itbNo: p.itbNo }, c))));
+    if (r && r.claims) CLAIMS = r.claims.filter((c) => !c.mine);
     renderOthers();
+    renderClaimNote();
     renderCarousel();
     renderViewerList();
     if (OV.open) ovRender();
@@ -1406,7 +1475,9 @@ function camButtons(list, onPick, onMore, max) {
   max = max || CARD_CAM_MAX;
   const kids = list.slice(0, max).map((c) => {
     const bad = c.status && !/^active$/i.test(c.status);
-    const b = el('button', { type: 'button', class: bad ? 'bad' : '', text: String(c.cameraId), title: bad ? c.status : '' });
+    const held = claimOnCamera(c.cameraId);
+    const b = el('button', { type: 'button', class: held ? 'held' : (bad ? 'bad' : ''), text: String(c.cameraId),
+      title: held ? held.by + ' is putting this on ' + held.poleId + ' right now' : (bad ? c.status : '') });
     b.addEventListener('click', (e) => { e.stopPropagation(); onPick(c); });
     return b;
   });
@@ -1430,17 +1501,28 @@ function renderCarousel() {
     (groups.unassigned.length ? ' (' + groups.unassigned.length + ' without a pole)' : '');
   const shown = stripFilter === 'todo' ? all.filter((p) => poleStatus(p)[0] !== 'good') : all;
   const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
+  const known = new Set(all.map((p) => String(p.poleId).toUpperCase()));
+  CLAIMS.filter((c) => !known.has(String(c.poleId).toUpperCase())).forEach((c) => {
+    const head = el('div', { class: 'phead' }, [
+      el('span', { class: 'cid', text: String(c.poleId) }),
+      el('span', { class: 'cst', text: 'New pole · not saved yet' }),
+      el('span', { class: 'cwip', text: 'Being mapped by ' + c.by + ' · ' + agoText(c.ageSec) }),
+    ]);
+    const camEls = c.cameras.length ? c.cameras.map((id) => el('span', { class: 'chip-held', text: id })) : [el('span', { class: 'empty', text: 'No cameras added yet' })];
+    box.appendChild(el('div', { class: 'pcard s-ghost wip' }, [head, el('div', { class: 'pcams ghost' }, camEls)]));
+  });
 
   shown.forEach((p) => {
     const st = poleStatus(p);
     const key = String(p.poleId).toUpperCase();
     const cams = groups.byPole[key] || [];
-    const head = el('button', { type: 'button', class: 'phead', 'aria-label': p.poleId + ', ' + st[1] + ', ' + cams.length + ' cameras' }, [
+    const wip = claimOnPole(p.poleId);
+    const head = el('button', { type: 'button', class: 'phead', 'aria-label': p.poleId + ', ' + st[1] + ', ' + cams.length + ' cameras' + (wip ? ', ' + wip.by + ' is working on it' : '') }, [
       el('span', { class: 'cid', text: String(p.poleId) }),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') }),
-    ]);
+    ].concat(wip ? [el('span', { class: 'cwip', text: 'In progress · ' + wip.by })] : []));
     head.addEventListener('click', () => openPoleFromCarousel(p.poleId));
-    box.appendChild(el('div', { class: 'pcard s-' + st[0] + (key === current ? ' selected' : '') }, [
+    box.appendChild(el('div', { class: 'pcard s-' + st[0] + (key === current ? ' selected' : '') + (wip ? ' wip' : '') }, [
       head,
       camButtons(cams, (c) => openPoleFromCarousel(p.poleId, c.cameraId), () => openPoleFromCarousel(p.poleId)),
     ]));
@@ -2076,6 +2158,8 @@ function renderCamSuggest() {
 function renderCameras() {
   const list = $('camList');
   list.innerHTML = '';
+  camInfoFns = [];
+  scheduleClaim();
   state.cameras.forEach((cam, i) => {
     const idIn = el('input', { placeholder: 'Camera ID (type to search)', autocapitalize: 'characters', autocomplete: 'off', 'aria-label': 'Camera ID' });
     idIn.value = cam.cameraId;
@@ -2084,9 +2168,12 @@ function renderCameras() {
     const showInfo = () => {
       const rec = cam.cameraId ? camRecord(cam.cameraId) : null;
       const dup = cam.cameraId && listedIds(cam).has(compactId(cam.cameraId));
-      info.textContent = dup ? 'Already listed above.' : (rec ? 'In database: ' + camWhere(rec) : (cam.cameraId.trim().length >= 3 && CAMS.length ? 'Not in the database: will be added as a new camera.' : ''));
-      info.className = 'cam-info' + (dup ? ' dup' : '');
+      const held = !dup && cam.cameraId.trim() ? claimOnCamera(cam.cameraId) : null;
+      info.textContent = dup ? 'Already listed above.' : (held ? held.by + ' is putting this camera on ' + held.poleId + ' right now (' + agoText(held.ageSec) + '). Check it is really on this pole.'
+        : (rec ? 'In database: ' + camWhere(rec) : (cam.cameraId.trim().length >= 3 && CAMS.length ? 'Not in the database: will be added as a new camera.' : '')));
+      info.className = 'cam-info' + (dup ? ' dup' : (held ? ' held' : ''));
     };
+    camInfoFns.push(showInfo);
     const showDrop = () => {
       drop.innerHTML = '';
       const res = camMatches(idIn.value, listedIds(cam));
@@ -2100,7 +2187,7 @@ function renderCameras() {
       });
       drop.classList.remove('hidden');
     };
-    idIn.addEventListener('input', () => { cam.cameraId = idIn.value; const rec = camRecord(idIn.value); if (rec) cam.itbNo = String(rec.itbNo || ''); showInfo(); showDrop(); });
+    idIn.addEventListener('input', () => { cam.cameraId = idIn.value; const rec = camRecord(idIn.value); if (rec) cam.itbNo = String(rec.itbNo || ''); showInfo(); showDrop(); scheduleClaim(); });
     idIn.addEventListener('focus', showDrop);
     idIn.addEventListener('blur', () => { setTimeout(() => drop.classList.add('hidden'), 150); renderCamSuggest(); });
     const portIn = el('input', { placeholder: 'PoE port', autocomplete: 'off', 'aria-label': 'PoE port' });
@@ -2160,6 +2247,12 @@ function metresBetween(lat1, lng1, lat2, lng2) {
 function wrongPoleWarnings() {
   const out = [];
   if (!state.pole || !state.loc) return out;
+  const other = claimOnPole(state.pole.poleId);
+  if (other) out.push(other.by + ' is also working on ' + state.pole.poleId + ' right now. If you both submit, the later save replaces the earlier one.');
+  state.cameras.forEach((c) => {
+    const h = c.cameraId && claimOnCamera(c.cameraId);
+    if (h && String(h.poleId).toUpperCase() !== String(state.pole.poleId).toUpperCase()) out.push(String(c.cameraId).trim() + ' is being put on ' + h.poleId + ' by ' + h.by + ' right now. Check it is really on this pole.');
+  });
   const me = String(state.pole.poleId).toUpperCase();
   let nearest = null;
   MAP.poles.filter(hasCoords).forEach((p) => {
@@ -2383,7 +2476,9 @@ $('fTodo').addEventListener('click', () => setStripFilter('todo'));
 $('mapResetBtn').addEventListener('click', mapResetPin);
 $('flushBtn').addEventListener('click', flushQueue);
 window.addEventListener('online', flushQueue);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQueue(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { flushQueue(); sendClaim(); } });
+// Keep this phone's work-in-progress fresh and pick up other admins' (every 20 s while open).
+setInterval(() => { if (!document.hidden && !isViewer() && getCfg().passcode) sendClaim(); }, 20000);
 
 // Setup link from a teammate: index.html#setup=<web app link>
 function readSetupLink() {
