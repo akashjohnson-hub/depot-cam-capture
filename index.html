@@ -351,6 +351,13 @@
   .badge.off { background: #FBE6E0; color: var(--poor); }
   .badge.you { background: #FFF1C2; color: #6B4E00; }
   .member .seen { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .switch-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; font-weight: 400; margin: 0; }
+  .switch-row input[type=checkbox] { appearance: none; -webkit-appearance: none; flex: none; width: 56px; height: 32px; border-radius: 16px; background: #C5CCD3; position: relative; cursor: pointer; transition: background .15s; margin: 0; padding: 0; border: 0; }
+  .switch-row input[type=checkbox]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s; }
+  .switch-row input[type=checkbox]:checked { background: var(--blue, #1D4F91); }
+  .switch-row input[type=checkbox]:checked::after { left: 27px; }
+  .preview-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 1200; display: flex; gap: 10px; align-items: center; background: #F4B400; color: #1B2631; border: 2px solid #1B2631; border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap; }
+  .preview-pill button { background: #1B2631; color: #fff; border: 0; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 14px; }
   .member .depot { font-size: 15px; font-weight: 600; margin-top: 4px; }
   .member .depot.none { color: var(--muted); font-weight: 400; font-style: italic; }
   .member .depot-edit { margin-top: 8px; }
@@ -398,6 +405,13 @@
     </div>
   </section>
 
+  <section id="devCard" class="card hidden" aria-label="Developer">
+    <h2>Developer</h2>
+    <label class="switch-row" for="viewAsToggle">
+      <span><b>View as viewer</b><br><span class="meta">See and use the app exactly as a viewer does. The server treats you as a viewer too, so edits are refused. Switch off to go back to your own account.</span></span>
+      <input id="viewAsToggle" type="checkbox" role="switch">
+    </label>
+  </section>
   <section id="teamCard" class="card hidden" aria-label="Team">
     <h2>Team</h2>
     <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers can only look up poles and use the map.</p>
@@ -564,13 +578,14 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>
     <span>Settings</span></button>
 </nav>
+  <div id="previewPill" class="preview-pill hidden" role="status"><span>Viewer preview</span><button id="previewExit" type="button">Back to my account</button></div>
 <div id="toast" class="hidden"></div>
 
 <script>
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-19.8';
+const APP_VERSION = '2026-10-21.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -598,23 +613,26 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e
 function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
-  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '' };
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs === 'Viewer' ? 'Viewer' : '' };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
 
-function isViewer() { return getCfg().role === 'Viewer'; }
-function canManageTeam() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
-function roleLabel(c) { return (c.role === 'Viewer' ? 'Viewer' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
+function isViewer() { const c = getCfg(); return c.role === 'Viewer' || c.viewAs === 'Viewer'; }
+// Owner / master passcode only: may preview the app as a viewer (developer switch).
+function canPreview() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
+function canManageTeam() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
+function roleLabel(c) { if (c.viewAs === 'Viewer') return 'Viewer preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
 function setCfg(patch) {
   const c = Object.assign({}, getCfg(), patch);
-  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '' }));
+  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '' }));
 }
 function applyRole() {
   const viewer = isViewer();
   document.body.classList.toggle('role-viewer', viewer);
   const c = getCfg();
   const chip = $('whoChip');
+  $('previewPill').classList.toggle('hidden', !(c.viewAs && c.url && c.passcode));
   if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + roleLabel(c) + (c.depot ? ' · ' + c.depot : ''); chip.title = chip.textContent; chip.classList.remove('hidden'); }
   else chip.classList.add('hidden');
 }
@@ -653,7 +671,7 @@ async function api(action, body) {
     res = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // keeps it a "simple" request (no CORS preflight)
-      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode }, body || {})),
+      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode }, cfg.viewAs ? { viewAs: cfg.viewAs } : {}, body || {})),
       redirect: 'follow',
     });
   } catch (e) {
@@ -688,9 +706,11 @@ function fillSetup() {
   $('cfgPass').value = cfg.passcode;
   $('cfgName').value = cfg.name;
   $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
+  $('devCard').classList.toggle('hidden', !(cfg.url && cfg.passcode && canPreview()));
+  $('viewAsToggle').checked = cfg.viewAs === 'Viewer';
   const who = $('cfgWho');
   if (cfg.url && cfg.passcode) {
-    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' ? 'Viewer (read-only)' : roleLabel(cfg)) + (cfg.depot ? ' · ' + cfg.depot : '');
+    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' && !cfg.viewAs ? 'Viewer (read-only)' : roleLabel(cfg)) + (cfg.depot ? ' · ' + cfg.depot : '');
     who.classList.remove('hidden');
   } else who.classList.add('hidden');
 }
@@ -834,7 +854,7 @@ function showPin(name, pin, isReset) {
     use.addEventListener('click', async () => {
       const prev = getCfg();
       setCfg({ passcode: pin });
-      try { const r = await api('ping'); setCfg({ name: r.name, role: r.role, viaMaster: !!r.viaMaster, depot: r.depot || '' }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
+      try { const r = await api('ping'); setCfg({ name: r.name, role: r.realRole || r.role, viaMaster: !!r.viaMaster, depot: r.depot || '' }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
       catch (e) { setCfg({ passcode: prev.passcode }); toast(e.message, true); }
     });
     btns.push(use);
@@ -875,6 +895,7 @@ function goTab(t) {
   setActiveTab(t);
   if (t === 'settings') fillSetup();
   showTeamCard(t === 'settings');
+  if (t !== 'settings') $('devCard').classList.add('hidden');
   if (t === 'poles') renderViewerList();
   if (t === 'capture') setStep(state.step || 1, true);
   if (t !== 'map') window.scrollTo(0, 0);
@@ -945,7 +966,7 @@ async function saveSetup() {
       toast('That is the shared master passcode: enter your name too, so the log shows who made changes.', true);
       return;
     }
-    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
+    setCfg({ role: r.realRole || r.role || 'Admin', viewAs: '', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
     toast('Signed in as ' + getCfg().name + ' (' + roleLabel(getCfg()).toLowerCase() + ').');
     showApp();
     flushQueue();
@@ -2187,6 +2208,7 @@ function buildPayload() {
     locationDescription: $('locDesc').value.trim(),
     lat: Number(state.loc.lat.toFixed(7)),
     lng: Number(state.loc.lng.toFixed(7)),
+    expectNew: !state.pole.found,
     gpsAccuracy: state.loc.acc,
     gpsFixes: state.loc.fixes,
     positionSource: state.loc.adjusted ? 'Map-adjusted (' + state.loc.adjustM + ' m)' : 'GPS',
@@ -2201,6 +2223,37 @@ function buildPayload() {
   };
 }
 
+let submitOverwrite = false;
+// Someone else saved this new pole's ID first (two phones were offered the same P#).
+function showConflict(r) {
+  const box = $('warnBox');
+  box.innerHTML = '';
+  box.appendChild(el('b', { text: r.poleId + ' was just saved by someone else' }));
+  const btns = [];
+  if (r.auto && r.suggestedPoleId) {
+    box.appendChild(el('div', { text: 'Another phone was given the same new Pole ID. Nothing has been overwritten. Use ' + r.suggestedPoleId + ' for this pole instead, and change the sticker to ' + r.suggestedPoleId + '.' }));
+    const use = el('button', { type: 'button', text: 'Use ' + r.suggestedPoleId + ' and submit', style: 'background:#1D4F91;color:#FFFFFF' });
+    use.addEventListener('click', () => {
+      state.pole.poleId = r.suggestedPoleId;
+      $('stickerId').textContent = r.suggestedPoleId;
+      document.querySelectorAll('#captureArea .big-id').forEach((b) => { b.textContent = r.suggestedPoleId; });
+      box.classList.add('hidden'); setStep(state.step, true); submit();
+    });
+    btns.push(use);
+  } else {
+    box.appendChild(el('div', { text: 'It was new when you opened it, but someone has saved ' + r.poleId + ' since. If it is the same pole, you can save over it (the earlier version stays in the Submission Log).' }));
+    const over = el('button', { type: 'button', text: 'Save over ' + r.poleId, style: 'background:#B23A1B;color:#FFFFFF' });
+    over.addEventListener('click', () => { submitOverwrite = true; box.classList.add('hidden'); submit(); });
+    btns.push(over);
+  }
+  const back = el('button', { type: 'button', text: 'Go back', style: 'background:#FFFFFF;color:#14202E;border:1px solid #D5DBE2' });
+  back.addEventListener('click', () => box.classList.add('hidden'));
+  btns.unshift(back);
+  box.appendChild(el('div', { class: 'row' }, btns));
+  box.classList.remove('hidden');
+  box.scrollIntoView({ block: 'center' });
+  loadPoles();
+}
 async function submit() {
   if ($('submitBtn').disabled) return;
   lastWarnings = wrongPoleWarnings();
@@ -2210,8 +2263,10 @@ async function submit() {
   const btn = $('submitBtn');
   busy(btn, true, 'Saving…');
   try {
-    const r = await api('submit', { payload: payload });
-    toast(r.message || ('Saved ' + payload.poleId + '.'));
+    const r = await api('submit', { payload: Object.assign({ onConflict: submitOverwrite ? 'overwrite' : 'ask' }, payload) });
+    submitOverwrite = false;
+    if (r.conflict) { showConflict(r); return; }
+    toast(r.message || ('Saved ' + payload.poleId + '.'), !!r.renamedFrom);
     resetAll();
     loadPoles();
     flushQueue();
@@ -2249,10 +2304,11 @@ async function flushQueue() {
     while (queue.length) {
       const item = queue[0];
       try {
-        await api('submit', { payload: item.payload });
+        const r = await api('submit', { payload: Object.assign({ onConflict: 'renumber' }, item.payload) });
+        if (r.conflict) { toast(item.payload.poleId + ' was saved by someone else while this phone was offline. Open it and check, then submit again.', true); queue.shift(); saveQueue(); continue; }
         queue.shift();
         saveQueue();
-        toast('Uploaded ' + item.payload.poleId + '.');
+        toast(r.renamedFrom ? r.message : 'Uploaded ' + item.payload.poleId + '.', !!r.renamedFrom);
       } catch (e) {
         if (!(e instanceof NetworkError)) toast(item.payload.poleId + ': ' + e.message, true);
         break;
@@ -2267,6 +2323,16 @@ async function flushQueue() {
 
 // ---------- wiring ----------
 $('cfgSave').addEventListener('click', saveSetup);
+function setViewAs(on) {
+  if (on && !canPreview()) return;
+  setCfg({ viewAs: on ? 'Viewer' : '' });
+  fillSetup();
+  showApp();
+  if (!on) goTab('settings');
+  toast(on ? 'Viewer preview on. The server treats you as a viewer until you switch back.' : 'Back to your own account (' + roleLabel(getCfg()) + ').');
+}
+$('viewAsToggle').addEventListener('change', (e) => setViewAs(e.target.checked));
+$('previewExit').addEventListener('click', () => setViewAs(false));
 $('cfgCancel').addEventListener('click', () => goTab(isViewer() ? 'poles' : 'capture'));
 $('settingsBtn').addEventListener('click', () => goTab('settings'));
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
@@ -2389,7 +2455,7 @@ async function refreshRole() {
   try {
     const r = await api('ping', { submittedBy: getCfg().name });
     const before = getCfg().role;
-    setCfg({ role: r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
+    setCfg({ role: r.realRole || r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
     applyRole();
     if (r.viaMaster && !getCfg().name) { showSetup(true); toast('Add your name, so your changes show who made them.'); return; }
     if (before !== getCfg().role) { showApp(); toast('Your access is now ' + roleLabel(getCfg()).toLowerCase() + '.'); }
