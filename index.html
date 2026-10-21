@@ -224,7 +224,9 @@
     --slate: #1B2631; --ballast: #E8EBEC; --surface: #FBFBFA; --rule: #CDD3D8;
     --line-blue: #1D4F91; --signal: #F4B400; --muted: #56626D;
     --bg: var(--ballast); --card: var(--surface); --ink: var(--slate); --line: var(--rule);
-    --primary: var(--line-blue); --tabs-h: 64px;
+    --primary: var(--line-blue); --tabs-h: 58px; --dock-gap: 10px;
+    /* space the floating tab bar takes at the bottom of the screen */
+    --dock: calc(var(--tabs-h) + var(--dock-gap) + env(safe-area-inset-bottom));
     --font: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
     --font-id: 'Barlow Condensed', 'Barlow', 'Arial Narrow', Arial, sans-serif;
   }
@@ -239,7 +241,7 @@
   .who { font-size: 14px; font-weight: 600; color: #C9D2DA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52%; }
 
   main { padding: 12px 12px 24px; }
-  body.has-tabs main { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 24px); }
+  body.has-tabs main { padding-bottom: calc(var(--dock) + 24px); }
   .card { border-radius: 14px; border: 1px solid var(--rule); background: var(--surface); padding: 16px; }
   .card h2 { font-size: 21px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--slate); margin: 0 0 12px; }
   label { font-size: 15px; font-weight: 600; color: var(--muted); }
@@ -278,7 +280,7 @@
   .wiz-bar i.done { background: var(--line-blue); }
   .wiz-bar i.now { background: var(--signal); }
   .wiz-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 16px; font-weight: 700; color: var(--slate); }
-  .submit-wrap { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(rgba(232,235,236,0), var(--ballast) 22%);
+  .submit-wrap { position: sticky; bottom: calc(var(--dock) + 4px); background: linear-gradient(rgba(232,235,236,0), var(--ballast) 22%);
     padding: 16px 0 6px; z-index: 3; }
   body:not(.has-tabs) .submit-wrap { bottom: 0; }
   .wiz-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
@@ -289,21 +291,29 @@
   .gps-acc { font-family: var(--font-id); font-size: 54px; }
 
   /* tab bar */
-  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; background: var(--surface);
-    border-top: 1px solid var(--rule); padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 10px rgba(27,38,49,.06); }
-  .tabs button { flex: 1; height: var(--tabs-h); border: 0; background: none; color: var(--muted); display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 600; position: relative; }
+  /* floating, frosted-grey tab bar (same for every role) */
+  .tabs { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + var(--dock-gap)); z-index: 1100;
+    display: flex; gap: 2px; padding: 4px; border-radius: 22px;
+    background: rgba(222, 227, 231, .70); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, .55); box-shadow: 0 10px 28px rgba(27, 38, 49, .22), inset 0 1px 0 rgba(255, 255, 255, .6); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .tabs { background: rgba(226, 230, 233, .97); } }
+  .tabs button { flex: 1; height: calc(var(--tabs-h) - 8px); border: 0; border-radius: 18px; background: none; color: #4E5A66; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px; padding: 0 0 5px; font-size: 12.5px; font-weight: 600; position: relative; transition: background .15s, color .15s; }
+  .tabs button:active { background: rgba(255, 255, 255, .45); }
   .tabs svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-  .tabs button.active { color: var(--slate); }
-  .tabs button.active::before { content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--signal); }
+  .tabs button.active { color: var(--slate); background: rgba(255, 255, 255, .82); box-shadow: 0 1px 4px rgba(27, 38, 49, .12); }
+  .tabs button.active::before { content: ""; position: absolute; bottom: 2px; left: 50%; width: 16px; margin-left: -8px; height: 3px; border-radius: 3px; background: var(--signal); }
+  .tabs svg { width: 23px; height: 23px; }
   .tabs button.active svg { stroke-width: 2.4; }
   .role-viewer .admin-only { display: none !important; }
 
   /* overview sits between header and tab bar */
-  #overview { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); }
+  /* the map runs under the floating tab bar; things pinned to the map's bottom sit above it */
+  #overview { bottom: 0; }
+  #overview .leaflet-bottom { bottom: var(--dock); }
   .ov-top { padding-top: 12px; }
-  .ov-legend { bottom: 30px; }
-  .ov-panel { padding-bottom: 16px; }
+  .ov-legend { bottom: calc(var(--dock) + 26px); }
+  .ov-panel { padding-bottom: calc(var(--dock) + 12px); }
 
   /* lists */
   .pcard { border-radius: 12px; border-left-width: 6px; }
@@ -313,7 +323,7 @@
   .seg { border-radius: 10px; }
   .seg button { padding: 7px 12px; font-size: 15px; }
 
-  #toast { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 92px); border-radius: 12px; font-weight: 500; }
+  #toast { bottom: calc(var(--dock) + 86px); border-radius: 12px; font-weight: 500; }
   body:not(.has-tabs) #toast { bottom: calc(env(safe-area-inset-bottom) + 24px); }
   /* map tab: map first, controls float over it */
   #overview { display: block; }
@@ -335,10 +345,10 @@
     display: flex; align-items: center; justify-content: center; }
   .fab svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .fab.on { background: var(--slate); color: var(--signal); }
-  .ov-legend { left: 10px; bottom: 26px; }
+  .ov-legend { left: 10px; bottom: calc(var(--dock) + 26px); }
   .ov-panel.open ~ .ov-legend, #overview.has-panel .ov-legend { display: none; }
   /* compact pole card; full data on request */
-  .ov-panel { max-height: 62%; padding: 12px 14px 14px; border-radius: 18px 18px 0 0; }
+  .ov-panel { max-height: 70%; padding: 12px 14px calc(var(--dock) + 12px); border-radius: 18px 18px 0 0; }
   .ov-panel .ph .big-id { font-size: 26px; margin: 0; }
   .ov-panel .near { margin: 10px 0; padding: 8px 10px; }
   .ov-panel .near .arrow { flex-basis: 38px; height: 38px; font-size: 21px; }
@@ -364,7 +374,7 @@
   .switch-row input[type=checkbox]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s; }
   .switch-row input[type=checkbox]:checked { background: var(--blue, #1D4F91); }
   .switch-row input[type=checkbox]:checked::after { left: 27px; }
-  .preview-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 1200; display: flex; gap: 10px; align-items: center; background: #F4B400; color: #1B2631; border: 2px solid #1B2631; border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap; }
+  .preview-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--dock) + 10px); z-index: 1200; display: flex; gap: 10px; align-items: center; background: #F4B400; color: #1B2631; border: 2px solid #1B2631; border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap; }
   .preview-pill button { background: #1B2631; color: #fff; border: 0; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 14px; }
   .member .depot { font-size: 15px; font-weight: 600; margin-top: 4px; }
   .member .depot.none { color: var(--muted); font-weight: 400; font-style: italic; }
@@ -613,7 +623,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-21.3';
+const APP_VERSION = '2026-10-21.4';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1793,7 +1803,7 @@ async function openOverview() {
   OV.open = true;
   const ov = $('overview');
   ov.style.top = document.querySelector('header').offsetHeight + 'px';
-  ov.style.bottom = ($('tabs').offsetHeight || 0) + 'px';
+  ov.style.bottom = '0px';   // map runs under the floating tab bar
   setActiveTab('map');
   $('setup').classList.add('hidden');
   ov.classList.remove('hidden');
