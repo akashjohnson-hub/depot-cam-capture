@@ -457,6 +457,27 @@
   .fab-group #ovArea.on .lbl { color: #7A5200; }
   .fab-group .fab.spinning svg { animation: spin .8s linear infinite; }
   @media (prefers-reduced-motion: reduce) { .fab-group .fab.spinning svg { animation: none; } }
+
+  /* walkways */
+  .wk-key { display: inline-block; width: 18px; height: 5px; border-radius: 3px; background: #FFFFFF; box-shadow: 0 0 0 1.5px rgba(27,38,49,.55); vertical-align: 2px; margin-right: 4px; }
+  .wk-gate { font: 700 10px/18px var(--font); text-align: center; color: #1B2631; background: #F4B400; border: 1.5px solid #1B2631; border-radius: 5px; }
+  .wk-panel { position: absolute; left: 8px; right: 8px; bottom: calc(var(--dock) + 8px); z-index: 1003; border-radius: 22px; padding: 14px;
+    background: rgba(246, 247, 248, .86); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, .6); box-shadow: 0 12px 32px rgba(27, 38, 49, .28); display: flex; flex-direction: column; gap: 10px; }
+  .wk-panel .meta { margin: 0; font-size: 14px; line-height: 1.4; }
+  .wk-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 18px; }
+  .wk-row { display: flex; gap: 10px; } .wk-row .btn { flex: 1; min-height: 48px; font-size: 16px; }
+  .wk-type { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #E3E9F1; color: var(--slate); }
+  .wk-type.t-crossing, .wk-type.t-gate { background: #FFF1C2; color: #6B4E00; }
+  .wk-rec::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: #D0352B; margin-right: 8px; animation: wk-blink 1s ease-in-out infinite; }
+  @keyframes wk-blink { 50% { opacity: .25; } }
+  .wk-seg { align-self: flex-start; }
+  #overview.wk-editing .ov-legend, #overview.wk-editing .ov-panel, #overview.wk-editing .fab-group + .fab-group { display: none; }
+  #overview.wk-editing #ovMap { cursor: crosshair; }
+  .route-sum { font-size: 14px; color: var(--slate); font-weight: 600; margin-top: 2px; }
+  .route-sum.warn { color: var(--poor); font-weight: 600; }
+  .gmaps-link { display: block; margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .wk-rec::before { animation: none; } }
 </style>
 </head>
 <body>
@@ -655,11 +676,14 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20H3z"/><path d="M8.5 20v-5.5h7V20"/></svg><span class="lbl">Depot</span></button>
       <button id="ovRefresh" type="button" class="fab" aria-label="Refresh data" title="Refresh">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5"/><path d="M19.4 10A8 8 0 1 0 20 14"/></svg><span class="lbl">Refresh</span></button>
+      <button id="ovWalk" type="button" class="fab viewer-hide" aria-label="Draw walkways" title="Walkways">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c2-5 5-3 7-8s5-5 7-8"/><circle cx="5" cy="20" r="1.6"/><circle cx="19" cy="4" r="1.6"/></svg><span class="lbl">Paths</span></button>
       <button id="ovArea" type="button" class="fab viewer-hide" aria-label="Lock the map to this area" title="Lock area">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="lbl">Lock</span></button>
     </div>
   </div>
-  <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span></div>
+  <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span><span id="ovLegendWalk" class="hidden"><i class="wk-key"></i>Walkway</span></div>
+  <div id="wkPanel" class="wk-panel hidden" role="region" aria-label="Walkways"></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
 </section>
 <nav id="tabs" class="tabs hidden" aria-label="Sections">
@@ -683,7 +707,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-22.1';
+const APP_VERSION = '2026-10-22.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1504,7 +1528,7 @@ function loadCachedPoles() {
   return true;
 }
 function savePolesCache(r) {
-  try { lsSet(LS_POLES, JSON.stringify({ url: getCfg().url, at: Date.now(), data: { poles: r.poles, cameras: r.cameras, area: r.area } })); } catch (e) { /* full: skip */ }
+  try { lsSet(LS_POLES, JSON.stringify({ url: getCfg().url, at: Date.now(), data: { poles: r.poles, cameras: r.cameras, area: r.area, walkways: r.walkways } })); } catch (e) { /* full: skip */ }
 }
 async function loadPoles() {
   if (!MAP.polesLoaded) loadCachedPoles();
@@ -1534,6 +1558,7 @@ function applyPoles(r, at) {
       lng: p.lng === null || p.lng === '' ? null : Number(p.lng),
     }));
     MAP.polesLoaded = true;
+    if (r && r.walkways) { WALKS = r.walkways; WK.graph = null; }
     CAMS = (r && r.cameras) ? r.cameras
       : [].concat.apply([], MAP.poles.map((p) => (p.cameras || []).map((c) => Object.assign({ poleId: p.poleId, itbNo: p.itbNo }, c))));
     if (r && r.claims) CLAIMS = r.claims.filter((c) => !c.mine);
@@ -1877,7 +1902,7 @@ async function openOverview() {
     }).addTo(OV.map);
     OV.layer = L.layerGroup().addTo(OV.map);
     OV.map.on('zoomend', ovLabels);
-    OV.map.on('click', () => { ovClosePanel(); $('ovResults').classList.add('hidden'); });
+    OV.map.on('click', (e) => { if (wkMapClick(e)) return; ovClosePanel(); $('ovResults').classList.add('hidden'); });
     OV.fitted = false;
   }
   setTimeout(() => { OV.map.invalidateSize(); if (!OV.editing) applyArea(OV.map); }, 60);
@@ -1996,6 +2021,8 @@ function ovRender() {
     OV.fitted = true;
   }
   ovLabels();
+  wkRender();
+  if (WK.routeOn) wkUpdateRoute(true);
   if (OV.selected && !$('ovPanel').classList.contains('hidden')) ovSelect(OV.selected.poleId, OV.selected.hit, true);
 }
 
@@ -2070,8 +2097,15 @@ function ovSelect(poleId, hit, quiet) {
   if (hasCoords(p)) panel.appendChild(el('div', { id: 'ovNear', class: 'near' }));
   const peek = [];
   if (hasCoords(p)) {
-    peek.push(el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
-      target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' }));
+    if (WALKS.length) {
+      const on = WK.routeOn && WK.routeFor === String(p.poleId);
+      const dir = el('button', { class: 'btn' + (on ? ' accent' : ''), type: 'button', text: on ? 'End route' : 'Directions' });
+      dir.addEventListener('click', () => wkToggleRoute(p));
+      peek.push(dir);
+    } else {
+      peek.push(el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
+        target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' }));
+    }
   }
   const toggle = el('button', { class: 'btn secondary', type: 'button', 'aria-expanded': String(!!OV.showData), text: OV.showData ? 'Hide data' : 'Show data' });
   toggle.addEventListener('click', () => {
@@ -2097,6 +2131,8 @@ function ovSelect(poleId, hit, quiet) {
       return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')), text: c.cameraId + (bad ? ' · ' + c.status : '') });
     });
     data.appendChild(el('div', { class: 'cam-chips' }, chips.length ? chips : [el('span', { text: 'No cameras recorded' })]));
+    if (hasCoords(p) && WALKS.length) data.appendChild(el('a', { class: 'gmaps-link', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
+      target: '_blank', rel: 'noopener', text: 'Google Maps directions (for getting to the depot from outside)' }));
     if (!isViewer()) {
       const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
       cap.addEventListener('click', () => { goTab('capture'); $('poleInput').value = String(p.poleId); lookup(false); });
@@ -2176,6 +2212,13 @@ function ovUpdateNear() {
   }
   const acc = OV.myPos.acc || 0;
   const here = t.d <= Math.max(8, acc);
+  const routing = WK.routeOn && WK.routeFor === String(p.poleId);
+  if (routing) wkUpdateRoute(false);
+  const ri = routing && WK.info && !WK.info.none && !here ? WK.info : null;
+  if (ri) {   // point the arrow at the route, not straight at the pole
+    t.b = bearingDeg(OV.myPos.lat, OV.myPos.lng, ri.ahead[0], ri.ahead[1]);
+    t.dir = 'follow the blue line';
+  }
   let trend = '', cls = '';
   if (OV.nearFor === p.poleId && OV.lastDist !== null && !here) {
     const delta = t.d - OV.lastDist;
@@ -2190,19 +2233,387 @@ function ovUpdateNear() {
   if (!here) arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
   box.appendChild(arrow);
   box.appendChild(el('div', null, [
-    el('div', { class: 'dist', text: here ? 'You\'re at ' + p.poleId : fmtDist(t.d) }),
-    el('div', { class: 'how', text: here ? 'Within ' + Math.round(Math.max(8, acc)) + ' m' : t.dir + ' of you' }),
+    el('div', { class: 'dist', text: here ? 'You\'re at ' + p.poleId : (ri ? fmtDist(ri.total) + ' walk' : fmtDist(t.d)) }),
+    ri ? el('div', { class: 'route-sum', text: 'About ' + Math.max(1, Math.round(ri.total / WALK_SPEED / 60)) + ' min along walkways' +
+      (ri.crossings ? ' · ' + ri.crossings + ' crossing' + (ri.crossings > 1 ? 's' : '') : '') + (ri.gates ? ' · ' + ri.gates + ' gate' + (ri.gates > 1 ? 's' : '') : '') +
+      (ri.toNet > 25 ? ' · walk ' + Math.round(ri.toNet) + ' m to the nearest walkway first' : '') }) : el('span'),
+    routing && WK.info && WK.info.none && !here ? el('div', { class: 'route-sum warn', text: 'No walkway reaches here yet, so this is the straight line. Ask an admin to draw one.' }) : el('span'),
+    el('div', { class: 'how', text: here ? 'Within ' + Math.round(Math.max(8, acc)) + ' m' : (ri ? 'Follow the blue line' : t.dir + ' of you') }),
     trend ? el('div', { class: 'trend ' + cls, text: trend }) : el('span'),
   ]));
   // dashed line from you to the pole
   ovNearHeading();
+  if (ri) { ovClearLine(); return; }
   const pts = [[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]];
   if (!OV.line) OV.line = L.polyline(pts, { color: '#F28A2E', weight: 3, dashArray: '6 8', interactive: false }).addTo(OV.map);
   else OV.line.setLatLngs(pts);
 }
 function ovClearLine() { if (OV.line) { OV.line.remove(); OV.line = null; } }
 
-function ovClosePanel() { OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); $('overview').classList.remove('has-panel'); }
+
+// =====================================================================
+// Walkways: approved walking routes inside the depot, and Directions along them.
+// =====================================================================
+let WALKS = [];                       // [{ id, name, type, pts: [[lat,lng],…], lengthM, by, at }]
+const WK = { graph: null, mode: '', draft: [], draftLine: null, recWatch: null, recAcc: null, selected: null,
+             layer: null, route: null, routeFor: '', routeOn: false, lastRouteAt: 0, lastRoutePos: null, info: null };
+const JOIN_M = 8;          // lines closer than this join up for routing
+const SNAP_M = 10;         // a tap this close to an existing walkway snaps onto it
+const NET_REACH_M = 150;   // how far you (or a pole) can be from the network and still get a route
+const WALK_SPEED = 1.2;    // m/s, for "about N min"
+
+// --- flat-earth helpers (metres, fine across a depot) ---
+function wkProj(lat0) { const k = Math.cos(lat0 * Math.PI / 180); return (p) => ({ x: p[1] * 111320 * k, y: p[0] * 110540 }); }
+function wkProjectOnSeg(P, A, B) {
+  const dx = B.x - A.x, dy = B.y - A.y, L2 = dx * dx + dy * dy;
+  let t = L2 ? ((P.x - A.x) * dx + (P.y - A.y) * dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const x = A.x + t * dx, y = A.y + t * dy;
+  return { t: t, d: Math.hypot(P.x - x, P.y - y) };
+}
+function wkLerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
+function wkLen(pts) { let d = 0; for (let i = 1; i < pts.length; i++) d += metresBetween(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]); return d; }
+
+// Build the routing graph: every point is a node, consecutive points are edges,
+// and where a point of one line comes within JOIN_M of another line, they join.
+function wkBuildGraph() {
+  const walks = WALKS.filter((w) => w.pts && w.pts.length >= 2);
+  if (!walks.length) { WK.graph = null; return null; }
+  const lat0 = walks[0].pts[0][0], P = wkProj(lat0);
+  const nodes = [];                 // { ll:[lat,lng], xy }
+  const adj = [];                   // adj[i] = [{ to, w, type }]
+  const addNode = (ll) => { nodes.push({ ll: ll, xy: P(ll) }); adj.push([]); return nodes.length - 1; };
+  const link = (a, b, type) => { if (a === b) return; const w = Math.hypot(nodes[a].xy.x - nodes[b].xy.x, nodes[a].xy.y - nodes[b].xy.y); adj[a].push({ to: b, w: w, type: type }); adj[b].push({ to: a, w: w, type: type }); };
+  const segs = [];                  // { a, b, walk, splits:[{t,node}] }
+  walks.forEach((w, wi) => {
+    let prev = -1;
+    w.pts.forEach((ll, i) => {
+      const n = addNode(ll);
+      if (prev >= 0) segs.push({ a: prev, b: n, walk: wi, type: w.type, splits: [] });
+      prev = n;
+    });
+  });
+  // joins: each line end / point near another line's segment
+  nodes.forEach((nd, ni) => {
+    segs.forEach((sg) => {
+      if (sg.a === ni || sg.b === ni) return;
+      const own = segs.find((x) => x.a === ni || x.b === ni);
+      if (own && own.walk === sg.walk) return;                    // same line: already connected
+      const pr = wkProjectOnSeg(nd.xy, nodes[sg.a].xy, nodes[sg.b].xy);
+      if (pr.d > JOIN_M) return;
+      if (pr.t <= 0.0001) { link(ni, sg.a, 'Join'); return; }
+      if (pr.t >= 0.9999) { link(ni, sg.b, 'Join'); return; }
+      const sp = addNode(wkLerp(nodes[sg.a].ll, nodes[sg.b].ll, pr.t));
+      sg.splits.push({ t: pr.t, node: sp });
+      link(ni, sp, 'Join');
+    });
+  });
+  segs.forEach((sg) => {
+    const chain = [{ t: 0, node: sg.a }].concat(sg.splits.sort((x, y) => x.t - y.t), [{ t: 1, node: sg.b }]);
+    sg.chain = chain;
+    for (let i = 1; i < chain.length; i++) link(chain[i - 1].node, chain[i].node, sg.type);
+  });
+  WK.graph = { nodes: nodes, adj: adj, segs: segs, P: P };
+  return WK.graph;
+}
+// Nearest point on the network to ll: { seg, t, d, ll, before, after } (before/after = chain neighbours).
+function wkNearest(ll) {
+  const g = WK.graph; if (!g) return null;
+  const X = g.P(ll);
+  let best = null;
+  g.segs.forEach((sg) => {
+    for (let i = 1; i < sg.chain.length; i++) {
+      const A = g.nodes[sg.chain[i - 1].node], B = g.nodes[sg.chain[i].node];
+      const pr = wkProjectOnSeg(X, A.xy, B.xy);
+      if (!best || pr.d < best.d) best = { d: pr.d, t: pr.t, A: sg.chain[i - 1].node, B: sg.chain[i].node, ll: wkLerp(A.ll, B.ll, pr.t), type: sg.type };
+    }
+  });
+  return best;
+}
+// Shortest path on the network from ll1 to ll2. Returns { pts, lengthM, crossings, gates, toNet, fromNet } or null.
+function wkRoute(ll1, ll2) {
+  const g = WK.graph || wkBuildGraph(); if (!g) return null;
+  const s = wkNearest(ll1), e = wkNearest(ll2);
+  if (!s || !e || s.d > NET_REACH_M || e.d > NET_REACH_M) return null;
+  const n = g.nodes.length, S = n, E = n + 1;
+  const dist = new Float64Array(n + 2).fill(Infinity), prev = new Int32Array(n + 2).fill(-1), prevType = new Array(n + 2);
+  const extra = { };                    // edges from the two virtual nodes
+  const len = (a, b) => metresBetween(a[0], a[1], b[0], b[1]);
+  extra[S] = [{ to: s.A, w: len(s.ll, g.nodes[s.A].ll), type: s.type }, { to: s.B, w: len(s.ll, g.nodes[s.B].ll), type: s.type }];
+  const toE = {}; toE[e.A] = len(e.ll, g.nodes[e.A].ll); toE[e.B] = len(e.ll, g.nodes[e.B].ll);
+  const sameSeg = (s.A === e.A && s.B === e.B) || (s.A === e.B && s.B === e.A);
+  if (sameSeg) extra[S].push({ to: E, w: len(s.ll, e.ll), type: s.type });
+  // tiny binary heap
+  const heap = []; const push = (d, i) => { heap.push([d, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  dist[S] = 0; push(0, S);
+  while (heap.length) {
+    const [d, u] = pop();
+    if (d > dist[u]) continue;
+    if (u === E) break;
+    const edges = (u === S ? extra[S] : (u < n ? g.adj[u] : [])).slice();
+    if (u < n && toE[u] !== undefined) edges.push({ to: E, w: toE[u], type: e.type });
+    edges.forEach((ed) => { const nd = d + ed.w; if (nd < dist[ed.to]) { dist[ed.to] = nd; prev[ed.to] = u; prevType[ed.to] = ed.type; push(nd, ed.to); } });
+  }
+  if (!isFinite(dist[E])) return null;
+  const path = []; const types = []; let k = E;
+  while (k !== -1) { path.push(k === S ? s.ll : (k === E ? e.ll : g.nodes[k].ll)); types.push(prevType[k]); k = prev[k]; }
+  path.reverse(); types.reverse();
+  let crossings = 0, gates = 0, lastT = '';
+  types.forEach((t) => { if (t !== lastT) { if (t === 'Crossing') crossings++; if (t === 'Gate') gates++; } lastT = t; });
+  return { pts: path, lengthM: dist[E], crossings: crossings, gates: gates, toNet: s.d, fromNet: e.d, start: s.ll, end: e.ll };
+}
+
+// --- drawing walkways on the map ---
+const WK_STYLE = {
+  Walkway: { color: '#FFFFFF', weight: 4, opacity: 0.95 },
+  Crossing: { color: '#F4B400', weight: 5, opacity: 1 },
+  Gate: { color: '#F4B400', weight: 4, opacity: 1, dashArray: '2 7' },
+};
+function wkEnsurePanes() {
+  if (!OV.map || OV.map.getPane('walks')) return;
+  OV.map.createPane('walks').style.zIndex = 380;
+  OV.map.createPane('route').style.zIndex = 390;
+  WK.layer = L.layerGroup().addTo(OV.map);
+}
+function wkRender() {
+  if (!OV.map) return;
+  wkEnsurePanes();
+  WK.layer.clearLayers();
+  WALKS.forEach((w) => {
+    const st = WK_STYLE[w.type] || WK_STYLE.Walkway;
+    const sel = WK.selected === w.id;
+    L.polyline(w.pts, { pane: 'walks', color: '#1B2631', weight: st.weight + 4, opacity: 0.45, interactive: false }).addTo(WK.layer);
+    const line = L.polyline(w.pts, Object.assign({ pane: 'walks' }, st, sel ? { color: '#2563EB', weight: st.weight + 2 } : {})).addTo(WK.layer);
+    line.on('click', (ev) => { if (WK.mode === 'draw') return; if (WK.mode !== 'edit') return; L.DomEvent.stopPropagation(ev); wkSelect(w.id); });
+    if (w.type === 'Gate') {
+      const mid = w.pts[Math.floor(w.pts.length / 2)];
+      L.marker(mid, { pane: 'walks', interactive: false, icon: L.divIcon({ className: '', html: '<div class="wk-gate">Gate</div>', iconSize: [40, 18], iconAnchor: [20, 9] }) }).addTo(WK.layer);
+    }
+  });
+  $('ovLegendWalk').classList.toggle('hidden', !WALKS.length);
+}
+function wkSetWalks(list) {
+  WALKS = (list || []).filter((w) => w && w.pts && w.pts.length >= 2);
+  WK.graph = null;
+  wkRender();
+  WK.lastRouteAt = 0;
+  if (WK.routeOn) wkUpdateRoute(true);
+}
+
+// --- Directions along walkways ---
+function wkClearRoute() {
+  if (WK.route) { WK.route.forEach((l) => l.remove()); WK.route = null; }
+  WK.info = null;
+}
+function wkToggleRoute(p) {
+  WK.routeOn = !(WK.routeOn && WK.routeFor === String(p.poleId));
+  WK.routeFor = String(p.poleId);
+  if (!WK.routeOn) { wkClearRoute(); ovUpdateNear(); ovSelect(p.poleId, OV.selected ? OV.selected.hit : '', true); return; }
+  if (!OV.myPos) { toast('Finding your location… the route appears once the blue dot shows.'); }
+  wkUpdateRoute(true);
+  ovSelect(p.poleId, OV.selected ? OV.selected.hit : '', true);
+  if (WK.info && WK.info.pts && OV.myPos) OV.map.fitBounds(L.latLngBounds(WK.info.pts.concat([[OV.myPos.lat, OV.myPos.lng], [p.lat, p.lng]])),
+    { paddingTopLeft: [40, 140], paddingBottomRight: [80, (($('overview').getBoundingClientRect().bottom - $('ovPanel').getBoundingClientRect().top) || 200) + 30], maxZoom: 19 });
+}
+function wkUpdateRoute(force) {
+  if (!WK.routeOn || !OV.map) return;
+  const p = MAP.poles.find((x) => String(x.poleId) === WK.routeFor);
+  if (!p || !hasCoords(p) || !OV.myPos) { wkClearRoute(); return; }
+  const now = Date.now(), here = [OV.myPos.lat, OV.myPos.lng];
+  if (!force && WK.lastRoutePos && now - WK.lastRouteAt < 3000 && metresBetween(here[0], here[1], WK.lastRoutePos[0], WK.lastRoutePos[1]) < 5) return;
+  WK.lastRouteAt = now; WK.lastRoutePos = here;
+  wkEnsurePanes();
+  const r = wkRoute(here, [p.lat, p.lng]);
+  wkClearRoute();
+  if (!r) { WK.info = { none: true }; return; }
+  const lines = [];
+  lines.push(L.polyline(r.pts, { pane: 'route', color: '#FFFFFF', weight: 10, opacity: 0.9, interactive: false }).addTo(OV.map));
+  lines.push(L.polyline(r.pts, { pane: 'route', color: '#2563EB', weight: 6, opacity: 1, interactive: false }).addTo(OV.map));
+  // dotted legs off the network (you -> walkway, walkway -> pole)
+  if (r.toNet > 2) lines.push(L.polyline([here, r.start], { pane: 'route', color: '#2563EB', weight: 4, dashArray: '2 8', opacity: 0.9, interactive: false }).addTo(OV.map));
+  if (r.fromNet > 2) lines.push(L.polyline([r.end, [p.lat, p.lng]], { pane: 'route', color: '#2563EB', weight: 4, dashArray: '2 8', opacity: 0.9, interactive: false }).addTo(OV.map));
+  WK.route = lines;
+  const total = r.lengthM + r.toNet + r.fromNet;
+  // where to head next: a point ~15 m along the route from where you are
+  let ahead = r.pts[r.pts.length - 1], acc = 0;
+  const seq = (r.toNet > 2 ? [here] : []).concat(r.pts);
+  for (let i = 1; i < seq.length; i++) {
+    const d = metresBetween(seq[i - 1][0], seq[i - 1][1], seq[i][0], seq[i][1]);
+    if (acc + d >= 15) { ahead = wkLerp(seq[i - 1], seq[i], (15 - acc) / d); break; }
+    acc += d; ahead = seq[i];
+  }
+  WK.info = { pts: r.pts, total: total, crossings: r.crossings, gates: r.gates, toNet: r.toNet, ahead: ahead };
+}
+
+// --- admin: walkway editor ---
+function wkOpenEditor() {
+  if (isViewer() || !OV.map) return;
+  ovClosePanel();
+  WK.mode = 'edit'; WK.selected = null;
+  $('overview').classList.add('wk-editing');
+  $('ovWalk').classList.add('on');
+  wkRender(); wkPanel();
+}
+function wkCloseEditor() {
+  wkStopRecord(); wkClearDraft();
+  WK.mode = ''; WK.selected = null;
+  $('overview').classList.remove('wk-editing');
+  $('ovWalk').classList.remove('on');
+  $('wkPanel').classList.add('hidden');
+  wkRender();
+}
+function wkClearDraft() { WK.draft = []; if (WK.draftLine) { WK.draftLine.remove(); WK.draftLine = null; } if (WK.draftDots) { WK.draftDots.remove(); WK.draftDots = null; } }
+function wkDrawDraft() {
+  wkEnsurePanes();
+  if (WK.draftLine) WK.draftLine.remove();
+  if (WK.draftDots) WK.draftDots.remove();
+  WK.draftLine = L.polyline(WK.draft, { pane: 'route', color: '#2563EB', weight: 5, dashArray: WK.mode === 'record' ? null : '8 6', interactive: false }).addTo(OV.map);
+  WK.draftDots = L.layerGroup(WK.mode === 'draw' ? WK.draft.map((ll, i) => L.circleMarker(ll, { pane: 'route', radius: i === 0 ? 6 : 4, color: '#FFFFFF', weight: 2, fillColor: '#2563EB', fillOpacity: 1, interactive: false })) : []).addTo(OV.map);
+  wkPanel();
+}
+// Snap a tapped point onto an existing walkway (point or line) so the lines join.
+function wkSnap(ll) {
+  if (!WALKS.length) return { ll: ll, snapped: false };
+  if (!WK.graph) wkBuildGraph();
+  const tol = Math.max(SNAP_M, 22 * metresPerPixel());
+  let best = null;
+  WK.graph.nodes.forEach((n) => { const d = metresBetween(ll[0], ll[1], n.ll[0], n.ll[1]); if (d <= tol && (!best || d < best.d)) best = { d: d, ll: n.ll }; });
+  if (best) return { ll: best.ll, snapped: true };
+  const nr = wkNearest(ll);
+  if (nr && nr.d <= tol) return { ll: nr.ll, snapped: true };
+  return { ll: ll, snapped: false };
+}
+function metresPerPixel() {
+  const c = OV.map.getCenter(), z = OV.map.getZoom();
+  return 156543.03392 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, z);
+}
+function wkMapClick(e) {
+  if (WK.mode === 'draw') {
+    const sn = wkSnap([e.latlng.lat, e.latlng.lng]);
+    WK.draft.push(sn.ll);
+    if (sn.snapped && navigator.vibrate) navigator.vibrate(15);
+    wkDrawDraft();
+    return true;
+  }
+  if (WK.mode === 'edit') { if (WK.selected) { WK.selected = null; wkRender(); wkPanel(); } return true; }
+  return !!WK.mode;
+}
+function wkStartDraw() { wkClearDraft(); WK.selected = null; WK.mode = 'draw'; wkRender(); wkPanel(); }
+function wkStartRecord() {
+  if (!navigator.geolocation) { toast('This phone can\'t record a route (no location).', true); return; }
+  wkClearDraft(); WK.selected = null; WK.mode = 'record'; WK.recAcc = null; wkPanel();
+  WK.recWatch = navigator.geolocation.watchPosition((pos) => {
+    WK.recAcc = pos.coords.accuracy;
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if (pos.coords.accuracy <= 15) {
+      const last = WK.draft[WK.draft.length - 1];
+      if (!last) WK.draft.push(wkSnap(ll).ll);
+      else if (metresBetween(last[0], last[1], ll[0], ll[1]) >= 4) WK.draft.push(ll);
+    }
+    wkDrawDraft();
+  }, (err) => { if (err && err.code === 1) { toast('Location access is blocked, so recording can\'t continue. Allow location for this app and try again.', true); wkStopRecord(); } else { WK.recAcc = null; wkPanel(); } },
+  { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+}
+function wkStopRecord() { if (WK.recWatch !== null) { navigator.geolocation.clearWatch(WK.recWatch); WK.recWatch = null; } }
+// Thin out a recorded trail (keeps corners, drops GPS wobble): Douglas–Peucker, 2.5 m.
+function wkSimplify(pts, tol) {
+  if (pts.length < 3) return pts.slice();
+  const P = wkProj(pts[0][0]), xy = pts.map(P);
+  const keep = new Array(pts.length).fill(false); keep[0] = keep[pts.length - 1] = true;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); let md = -1, mi = -1;
+    for (let i = a + 1; i < b; i++) { const d = wkProjectOnSeg(xy[i], xy[a], xy[b]).d; if (d > md) { md = d; mi = i; } }
+    if (md > tol) { keep[mi] = true; stack.push([a, mi], [mi, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+function wkFinish() {
+  wkStopRecord();
+  let pts = WK.draft.slice();
+  if (WK.mode === 'record') {
+    pts = wkSimplify(pts, 2.5);
+    if (pts.length >= 2) pts[pts.length - 1] = wkSnap(pts[pts.length - 1]).ll;
+  }
+  if (pts.length < 2) { toast('Add at least two points first.', true); return; }
+  WK.draft = pts; WK.mode = 'save'; wkDrawDraft();
+}
+async function wkSave(name, type, notes, btn) {
+  busy(btn, true, 'Saving…');
+  try {
+    const r = await api('saveWalkway', { walkway: { name: name, type: type, notes: notes, pts: WK.draft } });
+    toast('Saved ' + r.walkway.id + ' · ' + r.walkway.name + ' (' + r.walkway.lengthM + ' m).');
+    wkClearDraft(); WK.mode = 'edit';
+    wkSetWalks(r.walkways); wkPanel();
+  } catch (e) {
+    toast(e instanceof NetworkError ? 'No signal: the walkway is still on screen. Try Save again when you have signal.' : e.message, true);
+  } finally { busy(btn, false); }
+}
+function wkSelect(id) { WK.selected = id; wkRender(); wkPanel(); }
+async function wkDelete(id, btn) {
+  busy(btn, true, 'Deleting…');
+  try { const r = await api('deleteWalkway', { walkwayId: id }); toast(id + ' deleted. It can be restored in the Walkways tab.'); WK.selected = null; wkSetWalks(r.walkways); wkPanel(); }
+  catch (e) { toast(e.message, true); busy(btn, false); }
+}
+function wkPanel() {
+  const box = $('wkPanel');
+  box.innerHTML = '';
+  box.classList.toggle('hidden', !WK.mode);
+  if (!WK.mode) return;
+  const btn = (text, cls, fn) => { const b = el('button', { type: 'button', class: 'btn ' + (cls || ''), text: text }); b.addEventListener('click', () => fn(b)); return b; };
+  const row = (kids) => el('div', { class: 'wk-row' }, kids);
+  const dist = Math.round(wkLen(WK.draft));
+  if (WK.mode === 'edit') {
+    const w = WALKS.find((x) => x.id === WK.selected);
+    if (w) {
+      box.appendChild(el('div', { class: 'wk-title' }, [el('b', { text: w.id + ' · ' + w.name }), el('span', { class: 'wk-type t-' + w.type.toLowerCase(), text: w.type })]));
+      box.appendChild(el('p', { class: 'meta', text: Math.round(w.lengthM || wkLen(w.pts)) + ' m · ' + w.pts.length + ' points' + (w.by ? ' · added by ' + w.by : '') + (w.at ? ', ' + w.at : '') + (w.notes ? ' · ' + w.notes : '') }));
+      const del = btn('Delete', 'danger', (b) => twoTap(b, 'Tap again to delete ' + w.id, () => wkDelete(w.id, b)));
+      box.appendChild(row([btn('Done', 'secondary', () => { WK.selected = null; wkRender(); wkPanel(); }), del]));
+      return;
+    }
+    box.appendChild(el('div', { class: 'wk-title' }, [el('b', { text: 'Walkways' }), el('span', { class: 'meta', text: WALKS.length + ' drawn · ' + Math.round(WALKS.reduce((n, x) => n + (x.lengthM || 0), 0)) + ' m' })]));
+    box.appendChild(el('p', { class: 'meta', text: 'Draw only approved, safe walking routes. Directions will send people along these lines. Tap a line to see or delete it.' }));
+    box.appendChild(row([btn('Draw on map', '', wkStartDraw), btn('Record by walking', 'secondary', wkStartRecord)]));
+    box.appendChild(row([btn('Done', 'secondary', wkCloseEditor)]));
+    return;
+  }
+  if (WK.mode === 'draw') {
+    box.appendChild(el('div', { class: 'wk-title' }, [el('b', { text: 'Drawing a walkway' }), el('span', { class: 'meta', text: WK.draft.length + ' points · ' + dist + ' m' })]));
+    box.appendChild(el('p', { class: 'meta', text: 'Tap along the path on the photo. Taps near an existing walkway snap onto it, so the lines join up.' }));
+    const undo = btn('Undo', 'secondary', () => { WK.draft.pop(); wkDrawDraft(); }); undo.disabled = !WK.draft.length;
+    const fin = btn('Finish', '', wkFinish); fin.disabled = WK.draft.length < 2;
+    box.appendChild(row([btn('Cancel', 'secondary', () => { wkClearDraft(); WK.mode = 'edit'; wkPanel(); }), undo, fin]));
+    return;
+  }
+  if (WK.mode === 'record') {
+    box.appendChild(el('div', { class: 'wk-title' }, [el('b', { class: 'wk-rec', text: 'Recording' }), el('span', { class: 'meta', text: WK.draft.length + ' points · ' + dist + ' m' })]));
+    box.appendChild(el('p', { class: 'meta', text: WK.recAcc === null ? 'Waiting for GPS… walk the route at a normal pace.'
+      : ('GPS ±' + Math.round(WK.recAcc) + ' m' + (WK.recAcc > 15 ? ': too weak, points are paused until it improves.' : '. Keep walking the route.')) }));
+    const fin = btn('Stop and save', '', wkFinish); fin.disabled = WK.draft.length < 2;
+    box.appendChild(row([btn('Cancel', 'secondary', () => { wkStopRecord(); wkClearDraft(); WK.mode = 'edit'; wkPanel(); }), fin]));
+    return;
+  }
+  if (WK.mode === 'save') {
+    box.appendChild(el('div', { class: 'wk-title' }, [el('b', { text: 'Save walkway' }), el('span', { class: 'meta', text: WK.draft.length + ' points · ' + dist + ' m' })]));
+    const name = el('input', { placeholder: 'Name, e.g. Fence track ITB-10 to ITB-12', maxlength: '60', autocomplete: 'off' });
+    const seg = el('div', { class: 'seg wk-seg', role: 'group', 'aria-label': 'Type' });
+    let type = 'Walkway';
+    ['Walkway', 'Crossing', 'Gate'].forEach((t) => {
+      const b = el('button', { type: 'button', 'aria-pressed': String(t === type), text: t });
+      b.addEventListener('click', () => { type = t; seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); });
+      seg.appendChild(b);
+    });
+    const notes = el('input', { placeholder: 'Note (optional), e.g. key from DCC', maxlength: '200', autocomplete: 'off' });
+    box.appendChild(name); box.appendChild(seg); box.appendChild(notes);
+    box.appendChild(el('p', { class: 'meta', text: 'Crossing: an approved track or road crossing. Gate: a gate or door that may need a key.' }));
+    box.appendChild(row([btn('Back', 'secondary', () => { WK.mode = 'draw'; wkDrawDraft(); }), btn('Save walkway', '', (b) => wkSave(name.value.trim(), type, notes.value.trim(), b))]));
+    setTimeout(() => name.focus(), 50);
+  }
+}
+
+function ovClosePanel() { WK.routeOn = false; wkClearRoute(); OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); $('overview').classList.remove('has-panel'); }
 
 function ovStartMe() {
   if (OV.watch !== null || !navigator.geolocation) return;
@@ -2306,7 +2717,7 @@ function ovNearHeading() {
   } else {
     HEAD.arrow = towards(HEAD.arrow, b);
     arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
-    how.textContent = dir + ' of you (map north is up)' + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
+    how.textContent = (/^follow/.test(dir) ? 'Follow the blue line' : dir + ' of you') + ' (map north is up)' + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
   }
 }
 function startCompassListeners(byTap) {
@@ -2751,6 +3162,7 @@ function ovCentreMe() {
   OV.map.setView([OV.myPos.lat, OV.myPos.lng], Math.max(OV.map.getZoom(), 18), { animate: true });
 }
 $('ovMe').addEventListener('click', ovCentreMe);
+$('ovWalk').addEventListener('click', () => (WK.mode ? wkCloseEditor() : wkOpenEditor()));
 $('ovArea').addEventListener('click', ovAreaStart);
 $('ovAreaCancel').addEventListener('click', () => { ovAreaEnd(); ovFitHome(); });
 $('ovAreaSave').addEventListener('click', () => ovAreaSave(false));
