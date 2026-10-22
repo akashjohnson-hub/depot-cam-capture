@@ -430,6 +430,33 @@
     .sk, .is-busy::before, .net-bar i { animation: none !important; }
     body.net-busy .net-bar i { left: 0; width: 100%; opacity: .7; }
   }
+
+  /* map side buttons: two labelled groups (where to look / map) */
+  .ov-fabs { gap: 12px; }
+  .fab-group { display: flex; flex-direction: column; width: 60px; border-radius: 18px; overflow: hidden;
+    /* same frosted grey glass as the tab bar */
+    background: rgba(222, 227, 231, .62); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, .55); box-shadow: 0 8px 22px rgba(27, 38, 49, .22), inset 0 1px 0 rgba(255, 255, 255, .6); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fab-group { background: rgba(226, 230, 233, .96); } }
+  .fab-group .fab { width: 60px; height: 58px; border-radius: 0; background: none; box-shadow: none; flex-direction: column; gap: 3px;
+    color: var(--slate); padding: 4px 0 0; position: relative; }
+  .fab-group .fab + .fab { border-top: 1px solid rgba(255, 255, 255, .45); }
+  .fab-group .fab svg { width: 24px; height: 24px; }
+  .fab-group .fab .lbl { font-size: 11px; font-weight: 700; line-height: 1; color: #3E4954; letter-spacing: .1px; }
+  .fab-group .fab:active { background: rgba(255, 255, 255, .45); }
+  .fab-group .fab.on { background: rgba(255, 255, 255, .72); color: var(--line-blue); }
+  .fab-group .fab.on .lbl { color: var(--line-blue); }
+  .fab-group #ovMe svg { fill: currentColor; stroke: none; }
+  .fab-group #ovMe.following { color: #2563EB; } .fab-group #ovMe.following .lbl { color: #2563EB; }
+  .fab-group .fab.compass .n { top: 2px; font-size: 8.5px; }
+  .fab-group .fab.compass.on { box-shadow: none; background: rgba(255, 255, 255, .72); color: var(--slate); }
+  .fab-group .fab.compass.on .lbl { color: #2563EB; }
+  .fab-group .fab.compass.ask { animation: fab-nudge-in 1.6s ease-in-out 2; }
+  @keyframes fab-nudge-in { 50% { background: rgba(37, 99, 235, .18); } }
+  .fab-group #ovArea.on { background: rgba(255, 236, 170, .78); color: #7A5200; }
+  .fab-group #ovArea.on .lbl { color: #7A5200; }
+  .fab-group .fab.spinning svg { animation: spin .8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .fab-group .fab.spinning svg { animation: none; } }
 </style>
 </head>
 <body>
@@ -616,15 +643,21 @@
   </div>
   <div id="ovMap"></div>
   <div class="ov-fabs">
-    <button id="ovHome" type="button" class="fab" aria-label="Show the whole depot" title="Whole depot">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    <button id="ovRefresh" type="button" class="fab" aria-label="Refresh data" title="Refresh">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5"/><path d="M19.4 10A8 8 0 1 0 20 14"/></svg></button>
-    <button id="ovCompass" type="button" class="fab compass" aria-label="Show the direction you are facing" aria-pressed="false" title="Compass">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><g class="needle"><path d="M12 3.2 15 12h-6z" fill="#D0352B" stroke="none"/><path d="M12 20.8 9 12h6z" fill="currentColor" stroke="none" opacity=".55"/></g><circle cx="12" cy="12" r="1.3" fill="#fff" stroke="none"/></svg>
-      <span class="n" aria-hidden="true">N</span></button>
-    <button id="ovArea" type="button" class="fab viewer-hide" aria-label="Lock the map to this area" title="Lock area">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+    <div class="fab-group" role="group" aria-label="Where to look">
+      <button id="ovMe" type="button" class="fab" aria-label="Centre the map on me" title="Centre on me">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 20.5 3.5 13 20.5 11 13z"/></svg><span class="lbl">Me</span></button>
+      <button id="ovCompass" type="button" class="fab compass" aria-label="Show the direction you are facing" aria-pressed="false" title="Compass">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g class="needle"><path d="M12 4.2 14.8 12H9.2z" fill="#D0352B" stroke="none"/><path d="M12 19.8 9.2 12h5.6z" fill="currentColor" stroke="none" opacity=".55"/></g><circle cx="12" cy="12" r="1.2" fill="#fff" stroke="none"/></svg>
+        <span class="n" aria-hidden="true">N</span><span class="lbl">Compass</span></button>
+    </div>
+    <div class="fab-group" role="group" aria-label="Map">
+      <button id="ovHome" type="button" class="fab" aria-label="Show the whole depot" title="Whole depot">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20H3z"/><path d="M8.5 20v-5.5h7V20"/></svg><span class="lbl">Depot</span></button>
+      <button id="ovRefresh" type="button" class="fab" aria-label="Refresh data" title="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5"/><path d="M19.4 10A8 8 0 1 0 20 14"/></svg><span class="lbl">Refresh</span></button>
+      <button id="ovArea" type="button" class="fab viewer-hide" aria-label="Lock the map to this area" title="Lock area">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="lbl">Lock</span></button>
+    </div>
   </div>
   <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
@@ -650,7 +683,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-21.5';
+const APP_VERSION = '2026-10-22.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1881,6 +1914,7 @@ function ovAreaLabel() {
   b.classList.toggle('on', !!AREA);
   b.setAttribute('aria-label', AREA ? 'Map is locked to the depot. Change the area' : 'Lock the map to this area');
   b.title = AREA ? 'Change locked area' : 'Lock area';
+  const lb = b.querySelector('.lbl'); if (lb) lb.textContent = AREA ? 'Locked' : 'Lock';
 }
 function ovAreaStart() {
   if (!OV.map) return;
@@ -1927,7 +1961,8 @@ function closeOverview() {
 
 async function ovRefresh() {
   $('ovSummary').textContent = 'Loading…';
-  await loadPoles();
+  const rb = $('ovRefresh'); rb.classList.add('spinning');
+  try { await loadPoles(); } finally { rb.classList.remove('spinning'); }
   if (!MAP.polesLoaded) { $('ovSummary').textContent = 'Could not load poles (no signal, or Code.gs not updated).'; return; }
   ovRender();
 }
@@ -2274,13 +2309,13 @@ function ovNearHeading() {
     how.textContent = dir + ' of you (map north is up)' + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
   }
 }
-function startCompassListeners() {
+function startCompassListeners(byTap) {
   if (HEAD.listening) return;
   HEAD.listening = true;
   if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrient);
   else window.addEventListener('deviceorientation', onOrient);
   $('ovCompass').classList.add('on'); $('ovCompass').classList.remove('ask'); $('ovCompass').setAttribute('aria-pressed', 'true');
-  setTimeout(() => { if (HEAD.listening && !HEAD.compass) toast('No compass reading yet. Wave the phone in a figure-8 to calibrate, or start walking to use GPS direction.'); }, 4000);
+  if (byTap) setTimeout(() => { if (HEAD.listening && !HEAD.compass) toast('No compass reading yet. Wave the phone in a figure-8 to calibrate, or start walking to use GPS direction.'); }, 4000);
   ovNearHeading();
 }
 function stopCompass() {
@@ -2300,7 +2335,7 @@ async function compassTap() {
     } catch (e) { toast('Could not turn on the compass: ' + e.message, true); return; }
   }
   lsSet('dcc.compass', 'on');
-  startCompassListeners();
+  startCompassListeners(true);
 }
 // On opening the map: Android starts the compass straight away; iPhone needs one tap per launch.
 function autoCompass() {
@@ -2709,6 +2744,13 @@ $('ovBack').addEventListener('click', closeOverview);
 $('mapBtn').addEventListener('click', () => { if (OV.open) closeOverview(); else openOverview(); });
 $('vwSearch').addEventListener('input', renderViewerList);
 $('ovHome').addEventListener('click', ovFitHome);
+// "Me": centre the map on the blue dot (zooms in if far out).
+function ovCentreMe() {
+  if (!OV.map) return;
+  if (!OV.myPos) { ovStartMe(); toast('Finding your location… make sure location access is allowed.'); return; }
+  OV.map.setView([OV.myPos.lat, OV.myPos.lng], Math.max(OV.map.getZoom(), 18), { animate: true });
+}
+$('ovMe').addEventListener('click', ovCentreMe);
 $('ovArea').addEventListener('click', ovAreaStart);
 $('ovAreaCancel').addEventListener('click', () => { ovAreaEnd(); ovFitHome(); });
 $('ovAreaSave').addEventListener('click', () => ovAreaSave(false));
