@@ -735,7 +735,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-23.2';
+const APP_VERSION = '2026-10-23.3';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1625,6 +1625,7 @@ function poleStatus(p) {
   const acc = Number(p.gpsAccuracy);
   const adjusted = /map-adjusted/i.test(String(p.positionSource || ''));
   if (adjusted) return ['good', 'Mapped · map-set'];
+  if (/^confirmed/i.test(String(p.positionSource || ''))) return ['good', 'Mapped · confirmed on site'];
   if (!p.gpsAccuracy || !isFinite(acc)) return ['weak', 'Re-collect'];
   if (acc <= GPS_ACCEPT_M) return ['good', 'Mapped ±' + acc + ' m'];
   return ['weak', 'Weak ±' + acc + ' m'];
