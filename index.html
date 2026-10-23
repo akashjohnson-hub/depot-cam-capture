@@ -478,6 +478,30 @@
   .route-sum.warn { color: var(--poor); font-weight: 600; }
   .gmaps-link { display: block; margin: 10px 0 0; font-size: 14px; color: var(--muted); }
   @media (prefers-reduced-motion: reduce) { .wk-rec::before { animation: none; } }
+
+  /* map view switch + pin styles */
+  .ov-view { display: flex; width: max-content; margin: 8px 0 0 0; background: rgba(222, 227, 231, .70); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, .55); border-radius: 12px; box-shadow: 0 3px 12px rgba(27, 38, 49, .2); overflow: hidden; }
+  .ov-view button { background: none; color: var(--slate); font-weight: 600; font-size: 14px; padding: 6px 14px; border: 0; }
+  .ov-view button[aria-pressed="true"] { background: rgba(255, 255, 255, .9); color: var(--line-blue); }
+  .mk-cam { display: flex; align-items: center; justify-content: center; gap: 3px; width: 44px; height: 26px; border-radius: 13px; box-sizing: border-box;
+    font: 800 13px/1 var(--font); box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+  .mk-cam svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; }
+  .mk-cam.ok { background: #1D4F91; color: #FFFFFF; border: 2px solid #FFFFFF; }
+  .mk-cam.part { background: #1D4F91; color: #FFFFFF; border: 2px dashed #FFFFFF; }
+  .mk-cam.approx { background: rgba(255, 255, 255, .88); color: #3E4954; border: 2px dashed #5A6672; }
+  .mk-pole { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #FFFFFF; box-sizing: border-box; background: #8A96A3; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .mk-itb { width: 30px; height: 20px; border-radius: 5px; box-sizing: border-box; border: 2px solid #1B2631; font: 800 10px/16px var(--font-id, var(--font));
+    text-align: center; letter-spacing: .5px; color: #1B2631; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+  .mk-itb.s-good { background: #F4B400; } .mk-itb.s-weak, .mk-itb.s-todo { background: #FFFFFF; border-style: dashed; }
+  .lg-cam { display: inline-block; width: 16px; height: 10px; border-radius: 5px; margin-right: 4px; vertical-align: -1px; box-sizing: border-box; }
+  .lg-cam.ok { background: #1D4F91; } .lg-cam.approx { background: #FFFFFF; border: 1.5px dashed #5A6672; }
+  .lg-itb { display: inline-block; width: 16px; height: 11px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1.5px solid #1B2631; box-sizing: border-box; }
+  .lg-itb.s-good { background: #F4B400; } .lg-itb.s-weak { background: #FFFFFF; border-style: dashed; }
+  .cam-chips span.approx { background: #FFFFFF; box-shadow: inset 0 0 0 1.5px #8A96A3; border-radius: 8px; }
+  .cam-chips span.approx { outline: 1.5px dashed #8A96A3; outline-offset: -1.5px; box-shadow: none; }
+  .approx-note { font-size: 13px; color: var(--muted); margin: -4px 0 12px; line-height: 1.4; }
+  #vwKind button { flex: 1; }
 </style>
 </head>
 <body>
@@ -542,6 +566,8 @@
       <h2>Poles and cameras</h2>
       <div id="vwCount" class="meta">Loading…</div>
       <input id="vwSearch" type="search" placeholder="Filter by camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:10px">
+      <div id="vwKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
+        <button type="button" data-k="all" aria-pressed="true">All</button><button type="button" data-k="itb" aria-pressed="false">ITBs</button><button type="button" data-k="pole" aria-pressed="false">Other poles</button></div>
     </div>
     <div id="vwList" class="vw-list"></div>
   </section>
@@ -656,6 +682,8 @@
       <button id="ovGo" type="button" class="go">Go</button>
     </div>
     <div id="ovSummary" class="ov-summary">Loading…</div>
+    <div id="ovView" class="seg ov-view" role="group" aria-label="Show on the map">
+      <button type="button" data-v="cams" aria-pressed="true">Cameras</button><button type="button" data-v="itb" aria-pressed="false">ITBs</button></div>
     <div id="ovAreaEdit" class="ov-area-edit hidden">
       <div>Move and zoom so the whole depot fills the map, then tap <b>Save area</b>. Everyone's app will open on this area and stay inside it.</div>
       <div class="row"><button id="ovAreaCancel" type="button">Cancel</button><button id="ovAreaRemove" type="button">Remove lock</button><button id="ovAreaSave" type="button" class="primary">Save area</button></div>
@@ -707,7 +735,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-23.1';
+const APP_VERSION = '2026-10-23.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1725,6 +1753,7 @@ function renderCarousel() {
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 // ---------- viewer: read-only list ----------
+let VW_KIND = 'all';
 function renderViewerList() {
   const box = $('vwList');
   box.innerHTML = '';
@@ -1743,7 +1772,14 @@ function renderViewerList() {
   const matches = (p, cams) => !q || compactId(p.poleId).indexOf(q) >= 0 || compactId(p.itbNo).indexOf(q) >= 0 ||
     cams.some((c) => compactId(c.cameraId).indexOf(q) >= 0);
   const openOn = (poleId, cam) => { goTab('map').then(() => ovSelect(poleId, cam || '')); };
-  all.forEach((p) => {
+  const kind = VW_KIND;
+  let list = all.filter((p) => kind === 'all' || (kind === 'itb' ? isItbPole(p) : !isItbPole(p)));
+  if (kind === 'itb') {   // ITBs with a location first, so it's easy to see what's been collected
+    list = list.slice().sort((a, b) => (hasCoords(b) ? 1 : 0) - (hasCoords(a) ? 1 : 0));
+    const located = list.filter(hasCoords).length;
+    $('vwCount').textContent = located + ' of ' + list.length + ' ITBs located · ' + list.filter(hasCoords).reduce((n, p) => n + ((groups.byPole[String(p.poleId).toUpperCase()] || []).length), 0) + ' cameras listed under them' + cacheNote();
+  }
+  list.forEach((p) => {
     const cams = groups.byPole[String(p.poleId).toUpperCase()] || [];
     if (!matches(p, cams)) return;
     const st = poleStatus(p);
@@ -1882,6 +1918,26 @@ function mapCentreMe() {
 // ---------- overview ----------
 const OV = { map: null, layer: null, me: null, meCircle: null, watch: null, markers: {}, open: false, selected: null };
 
+
+// ---------- map view: Cameras or ITBs ----------
+function isItbPole(p) { return /^yes$/i.test(String(p.hasItb || '')) || /^ITB[-\s]?\d/i.test(String(p.poleId)); }
+function ovView() { const v = lsGet('dcc.mapView'); return v === 'itb' ? 'itb' : 'cams'; }
+function ovSetView(v) {
+  lsSet('dcc.mapView', v);
+  document.querySelectorAll('#ovView button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  ovRender();
+}
+function ovLegend(view) {
+  const box = document.querySelector('.ov-legend');
+  if (!box) return;
+  const walk = $('ovLegendWalk');
+  box.innerHTML = '';
+  const item = (cls, text) => el('span', null, [el('i', { class: cls }), text]);
+  if (view === 'itb') { box.appendChild(item('lg-itb s-good', 'ITB located')); box.appendChild(item('lg-itb s-weak', 'Re-collect')); }
+  else { box.appendChild(item('lg-cam ok', 'Confirmed')); box.appendChild(item('lg-cam approx', 'At ITB (approx)')); }
+  box.appendChild(item('dot d-me', 'You'));
+  box.appendChild(walk);
+}
 function ovStatusColour(st) { return st === 'good' ? '#1C7442' : '#D9A400'; }
 
 async function openOverview() {
@@ -1996,16 +2052,31 @@ function ovRender() {
   if (!OV.map) return;
   OV.layer.clearLayers();
   OV.markers = {};
-  let camTotal = CAMS.length || 0, camMapped = 0, poleMapped = 0;
+  const view = ovView();
+  const groups = camerasByPole();
+  const camTotal = CAMS.length || MAP.poles.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
+  let camOk = 0, camApprox = 0, itbAll = 0, itbLocated = 0;
   MAP.poles.forEach((p) => {
-    const n = Number(p.cameraCount) || 0;
-    if (!CAMS.length) camTotal += n;
+    const itb = isItbPole(p);
+    if (itb) { itbAll++; if (hasCoords(p)) itbLocated++; }
     if (!hasCoords(p)) return;
-    poleMapped++;
-    camMapped += n;
+    const cams = groups.byPole[String(p.poleId).toUpperCase()] || [];
+    const ok = cams.filter((c) => c.confirmed).length;
+    camOk += ok; camApprox += cams.length - ok;
+    if (view === 'itb' && !itb) return;
     const st = poleStatus(p)[0];
-    const m = L.circleMarker([p.lat, p.lng], { radius: 8, color: '#FFFFFF', weight: 2, fillColor: ovStatusColour(st), fillOpacity: 1 })
-      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, -8], className: 'pole-label' })
+    let html, size;
+    if (view === 'itb') {
+      html = '<div class="mk-itb s-' + st + '">ITB</div>'; size = [30, 20];
+    } else if (!cams.length) {
+      html = '<div class="mk-pole s-' + st + '"></div>'; size = [14, 14];
+    } else {
+      const cls = ok === cams.length ? 'ok' : (ok ? 'part' : 'approx');
+      html = '<div class="mk-cam ' + cls + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.2"/></svg><b>' + (cls === 'approx' ? '≈' : '') + cams.length + '</b></div>';
+      size = [44, 26];
+    }
+    const m = L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: html, iconSize: size, iconAnchor: [size[0] / 2, size[1] / 2] }), keyboard: false })
+      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, -size[1] / 2 - 2], className: 'pole-label' })
       .on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (WK.mode === 'draw') { WK.draft.push([p.lat, p.lng]); wkDrawDraft(); return; }   // drawing: a tap on a pole adds a point at the pole
@@ -2017,11 +2088,16 @@ function ovRender() {
   });
   const sum = $('ovSummary');
   sum.innerHTML = '';
-  sum.appendChild(el('span', null, [el('b', { text: camMapped + ' of ' + camTotal }), ' cameras mapped · ',
-    el('b', { text: poleMapped + ' of ' + MAP.poles.length }), ' poles', el('span', { id: 'ovAge' })]));
+  if (view === 'itb') {
+    sum.appendChild(el('span', null, [el('b', { text: itbLocated + ' of ' + itbAll }), ' ITBs located', el('span', { id: 'ovAge' })]));
+  } else {
+    sum.appendChild(el('span', null, [el('b', { text: String(camOk) }), ' confirmed · ', el('b', { text: String(camApprox) }), ' at ITB · ',
+      el('b', { text: String(Math.max(0, camTotal - camOk - camApprox)) }), ' not located', el('span', { id: 'ovAge' })]));
+  }
+  ovLegend(view);
   ovAgeLabel();
   ovAreaLabel();
-  if (!OV.fitted && (poleMapped || AREA)) {
+  if (!OV.fitted && (MAP.poles.some(hasCoords) || AREA)) {
     ovFitHome();
     OV.fitted = true;
   }
@@ -2134,9 +2210,12 @@ function ovSelect(poleId, hit, quiet) {
     data.appendChild(el('div', { class: 'facts' }, facts));
     const chips = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || p.cameras || []).map((c) => {
       const bad = c.status && !/^active$/i.test(c.status);
-      return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')), text: c.cameraId + (bad ? ' · ' + c.status : '') });
+      return el('span', { class: (hit && c.cameraId === hit ? 'hit' : (bad ? 'bad' : '')) + (c.confirmed === false ? ' approx' : ''), text: c.cameraId + (bad ? ' · ' + c.status : '') });
     });
     data.appendChild(el('div', { class: 'cam-chips' }, chips.length ? chips : [el('span', { text: 'No cameras recorded' })]));
+    const nApprox = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || []).filter((c) => c.confirmed === false).length;
+    if (nApprox) data.appendChild(el('p', { class: 'approx-note', text: nApprox + ' dashed camera' + (nApprox > 1 ? 's are' : ' is') + ' only listed under this ' + (isItbPole(p) ? 'ITB' : 'pole') +
+      ' from the switch data, not yet confirmed on it. They may be on a nearby pole; confirm them in Capture.' }));
     if (hasCoords(p) && WALKS.length) data.appendChild(el('a', { class: 'gmaps-link', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
       target: '_blank', rel: 'noopener', text: 'Google Maps directions (for getting to the depot from outside)' }));
     if (!isViewer()) {
@@ -3122,6 +3201,11 @@ async function flushQueue() {
 
 // ---------- wiring ----------
 $('cfgSave').addEventListener('click', saveSetup);
+document.querySelectorAll('#vwKind button').forEach((b) => b.addEventListener('click', () => {
+  VW_KIND = b.dataset.k;
+  document.querySelectorAll('#vwKind button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderViewerList();
+}));
 function setViewAs(on) {
   if (on && !canPreview()) return;
   setCfg({ viewAs: on ? 'Viewer' : '' });
@@ -3176,6 +3260,10 @@ function ovCentreMe() {
   OV.map.setView([OV.myPos.lat, OV.myPos.lng], Math.max(OV.map.getZoom(), 18), { animate: true });
 }
 $('ovMe').addEventListener('click', ovCentreMe);
+document.querySelectorAll('#ovView button').forEach((b) => {
+  b.setAttribute('aria-pressed', String(b.dataset.v === ovView()));
+  b.addEventListener('click', () => ovSetView(b.dataset.v));
+});
 $('ovWalk').addEventListener('click', () => (WK.mode ? wkCloseEditor() : wkOpenEditor()));
 $('ovArea').addEventListener('click', ovAreaStart);
 $('ovAreaCancel').addEventListener('click', () => { ovAreaEnd(); ovFitHome(); });
