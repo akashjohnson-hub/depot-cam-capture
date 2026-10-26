@@ -536,6 +536,11 @@
       <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them under Team below first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
     </div>
+    <div id="verWrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px">App version <b id="verNow"></b><br><span id="verStatus">Checks for updates automatically when the app opens and every 10 minutes.</span></p>
+      <button id="checkUpdBtn" class="btn secondary" type="button">Check for updates</button>
+      <button id="reloadBtn" class="link hidden" type="button" style="margin-top:8px">Still looks old? Reload the app</button>
+    </div>
   </section>
 
   <section id="devCard" class="card hidden" aria-label="Developer">
@@ -735,7 +740,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-23.3';
+const APP_VERSION = '2026-10-26.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -3317,17 +3322,45 @@ $('shareSetupBtn').addEventListener('click', shareSetupLink);
 // Home-screen apps keep an old copy of the page for a while. Fetch the live page
 // past the cache, compare versions, and offer a reload that loads the new copy.
 let updateTo = '';
+// Asks the hosted page (past every cache) which version is live.
+// Returns 'newer', 'same', or 'offline'.
+let lastUpdateCheck = 0;
 async function checkForUpdate() {
   try {
     const res = await fetch('./index.html?check=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
+    if (!res.ok) return 'offline';
     const m = /const APP_VERSION = '([^']+)'/.exec(await res.text());
+    lastUpdateCheck = Date.now();
     if (m && m[1] !== APP_VERSION) {
       updateTo = m[1];
       $('updateBar').classList.remove('hidden');
+      return 'newer';
     }
-  } catch (e) { /* offline: try again later */ }
+    return 'same';
+  } catch (e) { return 'offline'; }   // offline: try again later
 }
+async function manualUpdateCheck() {
+  const btn = $('checkUpdBtn'), st = $('verStatus');
+  if (updateTo && btn.dataset.ready) { applyUpdate(); return; }
+  busy(btn, true, 'Checking…');
+  const r = await checkForUpdate();
+  busy(btn, false);
+  if (r === 'newer') {
+    st.textContent = 'Version ' + updateTo + ' is available.';
+    btn.textContent = 'Update now'; btn.dataset.ready = '1'; btn.classList.remove('secondary');
+    toast('A new version is available.');
+  } else if (r === 'same') {
+    st.textContent = 'You have the latest version (checked just now).';
+    $('reloadBtn').classList.remove('hidden');
+    toast('You have the latest version.');
+  } else {
+    st.textContent = 'Couldn\'t reach the app server. Check your signal and try again.';
+    toast('No connection, so the app couldn\'t check for updates.', true);
+  }
+}
+$('verNow').textContent = APP_VERSION;
+$('checkUpdBtn').addEventListener('click', manualUpdateCheck);
+$('reloadBtn').addEventListener('click', () => { updateTo = updateTo || String(Date.now()); applyUpdate(); });
 let updateArmed = false;
 function applyUpdate() {
   if (state.collecting) { toast('Finish collecting the location first, then update.', true); return; }
