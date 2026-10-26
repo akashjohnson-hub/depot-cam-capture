@@ -502,6 +502,32 @@
   .cam-chips span.approx { outline: 1.5px dashed #8A96A3; outline-offset: -1.5px; box-shadow: none; }
   .approx-note { font-size: 13px; color: var(--muted); margin: -4px 0 12px; line-height: 1.4; }
   #vwKind button { flex: 1; }
+
+  /* simple map marks */
+  .mk2 { position: relative; width: 26px; height: 26px; background: none; border: 0; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; }
+  .mk2::before { content: ""; display: block; flex: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0, 0, 0, .45); }
+  .mk2.mkc.ok::before, .mk2.mkc.part::before { background: #1D4F91; border: 2px solid #FFFFFF; }
+  .mk2.mkc.part::before { box-shadow: 0 0 0 2px #F4B400, 0 1px 3px rgba(0,0,0,.45); }
+  .mk2.mkc.approx::before { background: #FFFFFF; border: 3px solid #5A6672; }
+  .mk2.mkp::before { width: 8px; height: 8px; background: #8A96A3; border: 1.5px solid #FFFFFF; }
+  .mk2.mki::before { display: none; }
+  .mk2.mki i { font: 800 11px/1 var(--font-id, var(--font)); font-style: normal; color: #1B2631; background: #F4B400; border: 2px solid #1B2631;
+    border-radius: 4px; padding: 2px 4px; min-width: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+  .mk2.mki.s-weak i, .mk2.mki.s-todo i { background: #FFFFFF; border-style: dashed; }
+  .mk-num { position: absolute; left: 16px; top: -3px; font: 800 9px/1 var(--font-id, var(--font)); font-style: normal; color: #1B2631;
+    background: #F4B400; border: 1.5px solid #1B2631; border-radius: 3px; padding: 1px 2px; pointer-events: none; }
+  .ov-near .mk-num { left: 20px; top: -6px; font-size: 10px; }
+  .mk2 b { display: none; position: absolute; font: 800 11px/1 var(--font); color: #FFFFFF; }
+  .ov-near .mk2.mkc::before { width: 22px; height: 22px; }
+  .ov-near .mk2.mkc b { display: block; }
+  .ov-near .mk2.mkc.approx b { color: #3E4954; }
+  .leaflet-tooltip.pole-label { font-size: 11px; padding: 1px 5px; }
+  .lg2 { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; box-sizing: border-box; }
+  .lg2.ok { background: #1D4F91; border: 1.5px solid #FFFFFF; box-shadow: 0 0 0 1px #1D4F91; }
+  .lg2.approx { background: #FFFFFF; border: 2.5px solid #5A6672; }
+  .lg2.pole { width: 7px; height: 7px; background: #8A96A3; }
+  .lg2.itb { border-radius: 2px; background: #F4B400; border: 1.5px solid #1B2631; }
+  .lg2.itb.weak { background: #FFFFFF; border-style: dashed; }
 </style>
 </head>
 <body>
@@ -740,7 +766,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-26.1';
+const APP_VERSION = '2026-10-26.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1926,6 +1952,7 @@ const OV = { map: null, layer: null, me: null, meCircle: null, watch: null, mark
 
 
 // ---------- map view: Cameras or ITBs ----------
+function itbNumber(p) { const m = /ITB[-\s]?0*(\d+)/i.exec(String(p.poleId)) || /ITB[-\s]?0*(\d+)/i.exec(String(p.itbNo || '')); return m ? m[1] : ''; }
 function isItbPole(p) { return /^yes$/i.test(String(p.hasItb || '')) || /^ITB[-\s]?\d/i.test(String(p.poleId)); }
 function ovView() { const v = lsGet('dcc.mapView'); return v === 'itb' ? 'itb' : 'cams'; }
 function ovSetView(v) {
@@ -1939,8 +1966,8 @@ function ovLegend(view) {
   const walk = $('ovLegendWalk');
   box.innerHTML = '';
   const item = (cls, text) => el('span', null, [el('i', { class: cls }), text]);
-  if (view === 'itb') { box.appendChild(item('lg-itb s-good', 'ITB located')); box.appendChild(item('lg-itb s-weak', 'Re-collect')); }
-  else { box.appendChild(item('lg-cam ok', 'Confirmed')); box.appendChild(item('lg-cam approx', 'At ITB (approx)')); }
+  if (view === 'itb') { box.appendChild(item('lg2 itb', 'ITB located')); box.appendChild(item('lg2 itb weak', 'Re-collect')); }
+  else { box.appendChild(item('lg2 ok', 'Confirmed')); box.appendChild(item('lg2 approx', 'At ITB')); box.appendChild(item('lg2 pole', 'No cameras')); }
   box.appendChild(item('dot d-me', 'You'));
   box.appendChild(walk);
 }
@@ -2071,18 +2098,20 @@ function ovRender() {
     camOk += ok; camApprox += cams.length - ok;
     if (view === 'itb' && !itb) return;
     const st = poleStatus(p)[0];
-    let html, size;
+    let html;
+    const size = [26, 26];   // tap area stays finger-sized; the visible mark is drawn smaller in CSS
+    const num = itbNumber(p);   // e.g. "12" for ITB-12
+    const badge = itb && num ? '<i class="mk-num">' + num + '</i>' : '';
     if (view === 'itb') {
-      html = '<div class="mk-itb s-' + st + '">ITB</div>'; size = [30, 20];
+      html = '<div class="mk2 mki s-' + st + '"><i>' + (num || 'ITB') + '</i></div>';
     } else if (!cams.length) {
-      html = '<div class="mk-pole s-' + st + '"></div>'; size = [14, 14];
+      html = '<div class="mk2 mkp">' + badge + '</div>';
     } else {
       const cls = ok === cams.length ? 'ok' : (ok ? 'part' : 'approx');
-      html = '<div class="mk-cam ' + cls + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.2"/></svg><b>' + (cls === 'approx' ? '≈' : '') + cams.length + '</b></div>';
-      size = [44, 26];
+      html = '<div class="mk2 mkc ' + cls + '"><b>' + cams.length + '</b>' + badge + '</div>';
     }
     const m = L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: html, iconSize: size, iconAnchor: [size[0] / 2, size[1] / 2] }), keyboard: false })
-      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, -size[1] / 2 - 2], className: 'pole-label' })
+      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, -11], className: 'pole-label' })
       .on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (WK.mode === 'draw') { WK.draft.push([p.lat, p.lng]); wkDrawDraft(); return; }   // drawing: a tap on a pole adds a point at the pole
@@ -2116,7 +2145,9 @@ function ovRender() {
 
 function ovLabels() {
   if (!OV.map) return;
-  OV.map.getContainer().classList.toggle('ov-labels-off', OV.map.getZoom() < 17);
+  const z = OV.map.getZoom(), c = OV.map.getContainer();
+  c.classList.toggle('ov-labels-off', z < 18);   // pole names only when zoomed in
+  c.classList.toggle('ov-near', z >= 19);         // camera counts only when close
 }
 
 // Search across Camera ID, ITB No and Pole ID.
