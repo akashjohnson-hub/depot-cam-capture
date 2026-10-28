@@ -306,6 +306,68 @@
   .tabs svg { width: 23px; height: 23px; }
   .tabs button.active svg { stroke-width: 2.4; }
   .role-viewer .admin-only { display: none !important; }
+  body:not(.role-occ) .occ-only, .role-occ .depot-only, .role-occ .occ-hide { display: none !important; }
+  .tabs button span { white-space: nowrap; }
+  .tab-badge { position: absolute; top: 3px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+    background: #C62828; color: #FFFFFF; font: 700 11px/18px var(--font); font-style: normal; text-align: center; box-shadow: 0 0 0 2px rgba(255,255,255,.9); }
+
+  /* OCC report */
+  .rp-photo { position: relative; margin-top: 12px; border-radius: 12px; overflow: hidden; border: 1px solid var(--rule); background: #0F161D; }
+  .rp-photo img { display: block; width: 100%; max-height: 260px; object-fit: contain; }
+  .rp-reading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(15,22,29,.62); color: #FFFFFF; font-weight: 700; font-size: 16px; }
+  .rp-spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #FFFFFF; animation: spin .8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .rp-spin { animation: none; } }
+  #rpReadNote { margin-top: 8px; }
+  .rp-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .rp-item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--rule); border-radius: 12px; padding: 8px 10px; background: #FFFFFF; }
+  .rp-item.off { background: #F1F3F5; }
+  .rp-item.off .plate { opacity: .55; }
+  .rp-item input[type=checkbox] { flex: none; width: 24px; height: 24px; margin: 0; accent-color: var(--line-blue); }
+  .rp-item .rp-main { flex: 1; min-width: 0; }
+  .rp-item .rp-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .rp-item .rp-how { font-size: 13px; font-weight: 600; color: #7A5200; margin-top: 2px; }
+  .rp-item .rp-x { flex: none; border: 0; background: none; color: var(--muted); font-size: 22px; width: 36px; height: 36px; border-radius: 18px; }
+  .rp-unknown { font-size: 14px; color: var(--poor); margin-top: 4px; }
+  .rp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
+  .rp-done { margin-top: 12px; background: #E3F1E8; border: 1px solid #B9DCC7; border-radius: 12px; padding: 10px 12px; color: #1E5B3A; font-weight: 600; }
+  .rp-rep { border-top: 1px solid var(--rule); padding: 10px 0; }
+  .rp-rep:first-child { border-top: 0; padding-top: 0; }
+  .rp-rep .rp-cams { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+  /* faults inbox */
+  .ft-list { display: flex; flex-direction: column; gap: 12px; }
+  .ft-group { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 14px; }
+  .ft-ghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .ft-ghead b { font-size: 16px; color: var(--slate); }
+  .ft-ghead .meta a { color: var(--line-blue); }
+  .ft-item { border-top: 1px solid var(--rule); padding: 10px 0 2px; margin-top: 10px; }
+  .ft-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ft-st { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .ft-st.open { background: #FBE3E0; color: #A3261B; }
+  .ft-st.ack { background: #FFF1C2; color: #6B4E00; }
+  .ft-st.fixed { background: #DDEEE4; color: #1E6B45; }
+  .ft-where { font-size: 15px; margin-top: 4px; color: var(--slate); }
+  .ft-note { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .ft-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .ft-acts button { border: 1px solid var(--rule); background: #FFFFFF; color: var(--line-blue); border-radius: 10px; padding: 8px 12px; font-size: 15px; font-weight: 650; }
+  .ft-acts button.go { background: var(--line-blue); color: #FFFFFF; border-color: var(--line-blue); }
+  .ft-acts button.ok { background: #1E6B45; color: #FFFFFF; border-color: #1E6B45; }
+  .ft-acts button.armed { background: #FFF1C2; color: #6B4E00; border-color: #E5C04A; }
+  .ft-empty { text-align: center; padding: 28px 12px; color: var(--muted); }
+  .badge.occ { background: #FFF1C2; color: #6B4E00; }
+  .member .email { font-size: 14px; margin-top: 2px; color: var(--slate); word-break: break-all; }
+  .member .email.none { color: var(--muted); font-style: italic; }
+  .member select.role-sel { width: auto; min-height: 38px; padding: 4px 8px; font-size: 15px; }
+  .member .acts button.on { background: #DDEEE4; color: #1E6B45; border-color: #B9DCC7; }
+
+  /* offline + GPS status on the map */
+  #ovStatus { display: block; max-width: calc(100% - 78px); }
+  .ov-status { display: inline-block; margin: 8px 0 0 6px; border-radius: 14px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
+  .ov-status.off { background: #FFF1C2; color: #6B4E00; }
+  .ov-status.gps { background: #FBE3E0; color: #A3261B; }
+  .me-stale { filter: grayscale(1); opacity: .65; }
+  .wk-q { color: #F4B400; }
+  .wk-lost { color: #A3261B; font-weight: 700; }
 
   /* overview sits between header and tab bar */
   /* the map runs under the floating tab bar; things pinned to the map's bottom sit above it */
@@ -562,6 +624,10 @@
       <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them under Team below first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
     </div>
+    <div id="offWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px"><b>Offline map</b><br><span id="offStatus">Save the depot's satellite map on this phone, so the Map tab, walkways and directions work with no signal.</span></p>
+      <button id="offSaveBtn" class="btn secondary" type="button">Save depot map for offline use</button>
+    </div>
     <div id="verWrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
       <p class="meta" style="margin:0 0 8px">App version <b id="verNow"></b><br><span id="verStatus">Checks for updates automatically when the app opens and every 10 minutes.</span></p>
       <button id="checkUpdBtn" class="btn secondary" type="button">Check for updates</button>
@@ -575,10 +641,14 @@
       <span><b>View as viewer</b><br><span class="meta">See and use the app exactly as a viewer does. The server treats you as a viewer too, so edits are refused. Switch off to go back to your own account.</span></span>
       <input id="viewAsToggle" type="checkbox" role="switch">
     </label>
+    <label class="switch-row" for="viewAsOccToggle" style="margin-top:14px">
+      <span><b>View as OCC</b><br><span class="meta">See the OCC screen: photograph a fault list and send it. Reports you send in this mode are real.</span></span>
+      <input id="viewAsOccToggle" type="checkbox" role="switch">
+    </label>
   </section>
   <section id="teamCard" class="card hidden" aria-label="Team">
     <h2>Team</h2>
-    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers can only look up poles and use the map.</p>
+    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers look up poles and use the map. OCC accounts photograph the fault list and send it to the depot team. Everyone with <b>Fault alerts</b> on is the depot team: they see new faults in the app, and by email if an email is set.</p>
     <div id="teamList" class="team-list"><div class="meta">Loading…</div></div>
     <div id="pinReveal" class="pin-reveal hidden" role="status"></div>
     <h3 class="team-h3">Add a person</h3>
@@ -588,9 +658,46 @@
     <input id="newDepot" list="depotList" autocomplete="off" placeholder="e.g. Mandai Depot">
     <datalist id="depotList"></datalist>
     <label for="newRole">Access</label>
-    <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option></select>
+    <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option><option value="OCC">OCC: report faulty cameras to the depot team</option></select>
+    <label for="newEmail">Email for fault alerts (optional)</label>
+    <input id="newEmail" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@smrt.com.sg">
     <div style="height:12px"></div>
     <button id="addPersonBtn" class="btn" type="button">Add person</button>
+  </section>
+  <section id="report" class="hidden" aria-label="Report faulty cameras">
+    <div class="card">
+      <h2>Report faulty cameras</h2>
+      <p class="meta" style="margin:0 0 12px">Take a photo of the fault list. The app reads the camera IDs; tick the right ones and send them to the depot team.</p>
+      <label for="rpPhoto" class="btn" style="display:flex;align-items:center;justify-content:center;margin:0">Take photo of the list</label>
+      <input id="rpPhoto" type="file" accept="image/*" capture="environment" class="hidden">
+      <div id="rpPhotoWrap" class="rp-photo hidden"><img id="rpThumb" alt="Photo of the fault list"><div id="rpReading" class="rp-reading hidden"><i class="rp-spin" aria-hidden="true"></i><span>Reading the camera IDs…</span></div></div>
+      <div id="rpReadNote" class="meta hidden" role="status"></div>
+      <div id="rpList" class="rp-list"></div>
+      <label for="rpType">Or type a camera ID</label>
+      <div class="row">
+        <input id="rpType" list="rpCamList" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. PF214">
+        <button id="rpAdd" class="btn shrink" type="button" style="width:auto;padding:0 18px">Add</button>
+      </div>
+      <datalist id="rpCamList"></datalist>
+      <label for="rpNote">Note for the depot team (optional)</label>
+      <input id="rpNote" maxlength="300" autocomplete="off" placeholder="e.g. no video since 07:30">
+      <div style="height:12px"></div>
+      <button id="rpSend" class="btn go" type="button" disabled>Send to depot team</button>
+      <div id="rpResult"></div>
+    </div>
+    <div class="card">
+      <h2>Recent reports</h2>
+      <div id="rpRecent"><div class="meta">Loading…</div></div>
+    </div>
+  </section>
+  <section id="faults" class="hidden" aria-label="Camera faults">
+    <div class="card">
+      <h2>Camera faults</h2>
+      <div id="ftCount" class="meta">Loading…</div>
+      <div id="ftKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
+        <button type="button" data-k="open" aria-pressed="true">Open</button><button type="button" data-k="fixed" aria-pressed="false">Fixed (14 days)</button></div>
+    </div>
+    <div id="ftList" class="ft-list"></div>
   </section>
   <section id="viewer" class="hidden" aria-label="Poles and cameras">
     <div class="card">
@@ -712,7 +819,7 @@
       <input id="ovSearch" type="search" placeholder="Search camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Search camera, ITB or pole" enterkeyhint="search">
       <button id="ovGo" type="button" class="go">Go</button>
     </div>
-    <div id="ovSummary" class="ov-summary">Loading…</div>
+    <div id="ovSummary" class="ov-summary">Loading…</div><span id="ovStatus"></span>
     <div id="ovView" class="seg ov-view" role="group" aria-label="Show on the map">
       <button type="button" data-v="cams" aria-pressed="true">Cameras</button><button type="button" data-v="itb" aria-pressed="false">ITBs</button></div>
     <div id="ovAreaEdit" class="ov-area-edit hidden">
@@ -746,6 +853,9 @@
   <div id="ovPanel" class="ov-panel hidden"></div>
 </section>
 <nav id="tabs" class="tabs hidden" aria-label="Sections">
+  <button type="button" data-tab="report" class="occ-only">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M12 9v4.5"/><circle cx="12" cy="16.6" r=".4"/></svg>
+    <span>Report</span></button>
   <button type="button" data-tab="capture" class="admin-only">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg>
     <span>Capture</span></button>
@@ -755,18 +865,21 @@
   <button type="button" data-tab="poles">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg>
     <span>Poles</span></button>
+  <button type="button" data-tab="faults" class="depot-only">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r=".4"/></svg>
+    <span>Faults</span><i id="faultBadge" class="tab-badge hidden" aria-label="open faults"></i></button>
   <button type="button" data-tab="settings">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>
     <span>Settings</span></button>
 </nav>
-  <div id="previewPill" class="preview-pill hidden" role="status"><span>Viewer preview</span><button id="previewExit" type="button">Back to my account</button></div>
+  <div id="previewPill" class="preview-pill hidden" role="status"><span id="previewText">Viewer preview</span><button id="previewExit" type="button">Back to my account</button></div>
 <div id="toast" class="hidden"></div>
 
 <script>
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-26.2';
+const APP_VERSION = '2026-10-28.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -850,26 +963,32 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e
 function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
-  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs === 'Viewer' ? 'Viewer' : '' };
+  return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '',
+    viewAs: c.viewAs === 'Viewer' || c.viewAs === 'OCC' ? c.viewAs : '', alerts: c.alerts !== false };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
 
-function isViewer() { const c = getCfg(); return c.role === 'Viewer' || c.viewAs === 'Viewer'; }
+// OCC accounts are read-only for pole data too, so they count as viewers here.
+function isViewer() { const c = getCfg(); return c.role === 'Viewer' || c.role === 'OCC' || !!c.viewAs; }
+function isOcc() { const c = getCfg(); return c.viewAs ? c.viewAs === 'OCC' : c.role === 'OCC'; }
 // Owner / master passcode only: may preview the app as a viewer (developer switch).
 function canPreview() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
 function canManageTeam() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
-function roleLabel(c) { if (c.viewAs === 'Viewer') return 'Viewer preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
+function roleLabel(c) { if (c.viewAs) return c.viewAs + ' preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'OCC' ? 'OCC' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
 function setCfg(patch) {
   const c = Object.assign({}, getCfg(), patch);
-  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '' }));
+  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '', alerts: c.alerts !== false }));
 }
 function applyRole() {
   const viewer = isViewer();
   document.body.classList.toggle('role-viewer', viewer);
+  document.body.classList.toggle('role-occ', isOcc());
   const c = getCfg();
   const chip = $('whoChip');
   $('previewPill').classList.toggle('hidden', !(c.viewAs && c.url && c.passcode));
+  $('previewText').textContent = (c.viewAs || 'Viewer') + ' preview';
+  renderFaultBadge();
   if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + roleLabel(c) + (c.depot ? ' · ' + c.depot : ''); chip.title = chip.textContent; chip.classList.remove('hidden'); }
   else chip.classList.add('hidden');
 }
@@ -918,7 +1037,7 @@ async function apiCall(action, body) {
     res = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // keeps it a "simple" request (no CORS preflight)
-      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode }, cfg.viewAs ? { viewAs: cfg.viewAs } : {}, body || {})),
+      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode, submittedBy: cfg.name || '' }, cfg.viewAs ? { viewAs: cfg.viewAs } : {}, body || {})),
       redirect: 'follow',
     });
   } catch (e) {
@@ -955,9 +1074,13 @@ function fillSetup() {
   $('shareWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   $('devCard').classList.toggle('hidden', !(cfg.url && cfg.passcode && canPreview()));
   $('viewAsToggle').checked = cfg.viewAs === 'Viewer';
+  $('viewAsOccToggle').checked = cfg.viewAs === 'OCC';
+  $('offWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
+  offRenderStatus();
   const who = $('cfgWho');
   if (cfg.url && cfg.passcode) {
-    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' && !cfg.viewAs ? 'Viewer (read-only)' : roleLabel(cfg)) + (cfg.depot ? ' · ' + cfg.depot : '');
+    who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' && !cfg.viewAs ? 'Viewer (read-only)' : roleLabel(cfg)) + (cfg.depot ? ' · ' + cfg.depot : '') +
+      (!isOcc() && cfg.alerts && FAULTS_OK ? ' · fault alerts on' : '');
     who.classList.remove('hidden');
   } else who.classList.add('hidden');
 }
@@ -965,9 +1088,11 @@ function showApp() {
   applyRole();
   $('tabs').classList.remove('hidden');
   document.body.classList.add('has-tabs');
-  goTab(isViewer() ? 'poles' : 'capture');
+  goTab(homeTab());
   loadPoles();
+  loadFaults(true);
 }
+function homeTab() { return isOcc() ? 'report' : (isViewer() ? 'poles' : 'capture'); }
 
 // ---------- team (admins) ----------
 async function loadTeam() {
@@ -1003,15 +1128,24 @@ function renderTeam(users) {
   depots.forEach((d) => dl.appendChild(el('option', { value: d })));
   if (!$('newDepot').value) $('newDepot').value = getCfg().depot || (depots.length === 1 ? depots[0] : '');
   users.forEach((u) => {
-    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : 'admin'), text: u.role })];
+    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : u.role === 'OCC' ? 'occ' : 'admin'), text: u.role })];
     if (!u.active) badges.push(el('span', { class: 'badge off', text: 'Switched off' }));
     if (u.name.toUpperCase() === me) badges.push(el('span', { class: 'badge you', text: 'You' }));
     const acts = [];
     const isOwner = u.role === 'Owner';
     if (!isOwner) {
-      const roleBtn = el('button', { type: 'button', text: u.role === 'Admin' ? 'Make viewer' : 'Make admin' });
-      roleBtn.addEventListener('click', () => changeUser(u, { role: u.role === 'Admin' ? 'Viewer' : 'Admin' }, roleBtn));
-      acts.push(roleBtn);
+      const roleSel = el('select', { class: 'role-sel', 'aria-label': 'Access for ' + u.name });
+      [['Viewer', 'Viewer'], ['Admin', 'Admin'], ['OCC', 'OCC']].forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === u.role) o.selected = true; roleSel.appendChild(o); });
+      roleSel.addEventListener('change', () => changeUser(u, { role: roleSel.value }, roleSel));
+      acts.push(roleSel);
+    }
+    if (u.role !== 'OCC' && u.alerts !== undefined) {
+      const alBtn = el('button', { type: 'button', class: u.alerts ? 'on' : '', text: u.alerts ? 'Fault alerts: on' : 'Fault alerts: off' });
+      alBtn.addEventListener('click', () => changeUser(u, { alerts: !u.alerts }, alBtn));
+      acts.push(alBtn);
+      const emBtn = el('button', { type: 'button', text: u.email ? 'Change email' : 'Add email' });
+      emBtn.addEventListener('click', () => editField(u, emBtn, 'email', 'name@smrt.com.sg', 'email'));
+      acts.push(emBtn);
     }
     const depBtn = el('button', { type: 'button', text: u.depot ? 'Change depot' : 'Set depot' });
     depBtn.addEventListener('click', () => editDepot(u, depBtn));
@@ -1029,16 +1163,20 @@ function renderTeam(users) {
     box.appendChild(el('div', { class: 'member' + (u.active ? '' : ' off') }, [
       el('div', { class: 'top' }, badges),
       el('div', { class: 'depot' + (u.depot ? '' : ' none'), text: u.depot ? u.depot : 'No depot set' }),
+      u.role === 'OCC' || u.alerts === undefined ? el('span') : el('div', { class: 'email' + (u.email ? '' : ' none'),
+        text: !u.alerts ? 'No fault alerts' : (u.email ? 'Alerts in the app and to ' + u.email : 'Alerts in the app only (no email)') }),
       el('div', { class: 'seen', text: u.lastSeen ? 'Last signed in ' + u.lastSeen : 'Not signed in yet' }),
       el('div', { class: 'acts' }, acts),
     ]));
   });
 }
-function editDepot(u, btn) {
+function editDepot(u, btn) { editField(u, btn, 'depot', 'Depot name', 'text'); }
+function editField(u, btn, key, placeholder, type) {
   const acts = btn.parentNode;
-  const input = el('input', { type: 'text', value: u.depot || '', placeholder: 'Depot name' });
-  input.setAttribute('list', 'depotList');
-  const save = el('button', { type: 'button', text: 'Save depot' });
+  const input = el('input', { type: type || 'text', value: u[key] || '', placeholder: placeholder });
+  if (key === 'depot') input.setAttribute('list', 'depotList');
+  if (key === 'email') { input.setAttribute('autocapitalize', 'off'); input.setAttribute('spellcheck', 'false'); }
+  const save = el('button', { type: 'button', text: key === 'email' ? 'Save email' : 'Save depot' });
   const cancel = el('button', { type: 'button', text: 'Cancel' });
   const row = el('div', { class: 'depot-edit' }, [input, el('div', { class: 'acts' }, [save, cancel])]);
   acts.replaceWith(row);
@@ -1046,8 +1184,9 @@ function editDepot(u, btn) {
   cancel.addEventListener('click', () => row.replaceWith(acts));
   const go = () => {
     const v = input.value.trim();
-    if (!v) { toast('Enter a depot name.', true); return; }
-    changeUser(u, { depot: v }, save);
+    if (!v && key === 'depot') { toast('Enter a depot name.', true); return; }
+    const patch = {}; patch[key] = v;
+    changeUser(u, patch, save);
   };
   save.addEventListener('click', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
@@ -1061,7 +1200,7 @@ async function changeUser(u, patch, btn) {
   busy(btn, true, '…');
   try {
     const r = await api('updateUser', { user: Object.assign({ name: u.name }, patch) });
-    if (r.user && r.user.name.toUpperCase() === String(getCfg().name || '').toUpperCase() && !getCfg().viaMaster) { setCfg({ depot: r.user.depot || '' }); applyRole(); }
+    if (r.user && r.user.name.toUpperCase() === String(getCfg().name || '').toUpperCase() && !getCfg().viaMaster) { setCfg({ depot: r.user.depot || '', alerts: r.user.alerts !== false }); applyRole(); }
     if (r.pin) showPin(u.name, r.pin, true);
     else toast(u.name + ': ' + (r.changed && r.changed.length ? r.changed.join(', ') : 'no change') + '.');
     loadTeam();
@@ -1075,8 +1214,8 @@ async function addPerson() {
   const btn = $('addPersonBtn');
   busy(btn, true, 'Adding…');
   try {
-    const r = await api('addUser', { user: { name: name, role: $('newRole').value, depot: depot } });
-    $('newName').value = '';
+    const r = await api('addUser', { user: { name: name, role: $('newRole').value, depot: depot, email: $('newEmail').value.trim() } });
+    $('newName').value = ''; $('newEmail').value = '';
     const ownerOpt = $('newRole').querySelector('option[value="Owner"]');
     if (ownerOpt && r.user.role === 'Owner') ownerOpt.remove();
     $('newRole').value = 'Viewer';   // never carry Admin over to the next person by accident
@@ -1101,7 +1240,7 @@ function showPin(name, pin, isReset) {
     use.addEventListener('click', async () => {
       const prev = getCfg();
       setCfg({ passcode: pin });
-      try { const r = await api('ping'); setCfg({ name: r.name, role: r.realRole || r.role, viaMaster: !!r.viaMaster, depot: r.depot || '' }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
+      try { const r = await api('ping'); setCfg({ name: r.name, role: r.realRole || r.role, viaMaster: !!r.viaMaster, depot: r.depot || '', alerts: r.alerts !== false }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
       catch (e) { setCfg({ passcode: prev.passcode }); toast(e.message, true); }
     });
     btns.push(use);
@@ -1134,11 +1273,17 @@ function setActiveTab(t) {
   });
 }
 function goTab(t) {
-  if (t === 'capture' && isViewer()) t = 'poles';
+  if (t === 'capture' && isViewer()) t = homeTab();
+  if (t === 'faults' && isOcc()) t = 'report';
+  if (t === 'report' && !isOcc()) t = 'faults';
   if (t !== 'map' && OV.open) closeOverview();
   $('setup').classList.toggle('hidden', t !== 'settings');
   $('app').classList.toggle('hidden', t !== 'capture');
   $('viewer').classList.toggle('hidden', t !== 'poles');
+  $('report').classList.toggle('hidden', t !== 'report');
+  $('faults').classList.toggle('hidden', t !== 'faults');
+  if (t === 'report') { rpRender(); rpRecent(); loadFaults(true); }
+  if (t === 'faults') { renderFaults(); loadFaults(); }
   setActiveTab(t);
   if (t === 'settings') fillSetup();
   showTeamCard(t === 'settings');
@@ -1215,7 +1360,8 @@ async function saveSetup() {
       toast('That is the shared master passcode: enter your name too, so the log shows who made changes.', true);
       return;
     }
-    setCfg({ role: r.realRole || r.role || 'Admin', viewAs: '', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
+    setCfg({ role: r.realRole || r.role || 'Admin', viewAs: '', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || ''), alerts: r.alerts !== false });
+    FAULTS_OK = !!r.faults;
     toast('Signed in as ' + getCfg().name + ' (' + roleLabel(getCfg()).toLowerCase() + ').');
     showApp();
     flushQueue();
@@ -2077,6 +2223,7 @@ async function ovRefresh() {
   $('ovSummary').textContent = 'Loading…';
   const rb = $('ovRefresh'); rb.classList.add('spinning');
   try { await loadPoles(); } finally { rb.classList.remove('spinning'); }
+  ovStatus();
   if (!MAP.polesLoaded) { $('ovSummary').textContent = 'Could not load poles (no signal, or Code.gs not updated).'; return; }
   ovRender();
 }
@@ -2513,6 +2660,7 @@ function wkRender() {
       L.marker(mid, { pane: 'walks', interactive: false, icon: L.divIcon({ className: '', html: '<div class="wk-gate">Gate</div>', iconSize: [40, 18], iconAnchor: [20, 9] }) }).addTo(WK.layer);
     }
   });
+  wkQueue.forEach((q) => L.polyline(q.walkway.pts, { pane: 'walks', color: '#F4B400', weight: 4, opacity: 0.95, dashArray: '6 6', interactive: false }).addTo(WK.layer));
   $('ovLegendWalk').classList.toggle('hidden', !WALKS.length);
 }
 function wkSetWalks(list) {
@@ -2590,13 +2738,14 @@ function wkCloseEditor() {
   $('wkPanel').classList.add('hidden');
   wkRender();
 }
-function wkClearDraft() { WK.draft = []; if (WK.draftLine) { WK.draftLine.remove(); WK.draftLine = null; } if (WK.draftDots) { WK.draftDots.remove(); WK.draftDots = null; } }
+function wkClearDraft() { WK.draft = []; WK.manual = 0; wkDraftClear(); if (WK.draftLine) { WK.draftLine.remove(); WK.draftLine = null; } if (WK.draftDots) { WK.draftDots.remove(); WK.draftDots = null; } }
 function wkDrawDraft() {
   wkEnsurePanes();
   if (WK.draftLine) WK.draftLine.remove();
   if (WK.draftDots) WK.draftDots.remove();
   WK.draftLine = L.polyline(WK.draft, { pane: 'route', color: '#2563EB', weight: 5, dashArray: WK.mode === 'record' ? null : '8 6', interactive: false }).addTo(OV.map);
   WK.draftDots = L.layerGroup(WK.mode === 'draw' ? WK.draft.map((ll, i) => L.circleMarker(ll, { pane: 'route', radius: i === 0 ? 6 : 4, color: '#FFFFFF', weight: 2, fillColor: '#2563EB', fillOpacity: 1, interactive: false })) : []).addTo(OV.map);
+  if (WK.draft.length) wkDraftSave(); else wkDraftClear();
   wkPanel();
 }
 // Snap a tapped point onto an existing walkway (point or line) so the lines join.
@@ -2624,14 +2773,26 @@ function wkMapClick(e) {
     return true;
   }
   if (WK.mode === 'edit') { if (WK.selected) { WK.selected = null; wkRender(); wkPanel(); } return true; }
+  if (WK.mode === 'record') {
+    // GPS weak or lost: tap where you are to keep the line going
+    const sn = wkSnap([e.latlng.lat, e.latlng.lng]);
+    WK.draft.push(sn.ll); WK.manual = (WK.manual || 0) + 1;
+    if (navigator.vibrate) navigator.vibrate(15);
+    wkDrawDraft();
+    return true;
+  }
   return !!WK.mode;
 }
 function wkStartDraw() { wkClearDraft(); WK.selected = null; WK.mode = 'draw'; wkRender(); wkPanel(); wkRefresh(); }
-function wkStartRecord() {
+function wkStartRecord(resume) {
   if (!navigator.geolocation) { toast('This phone can\'t record a route (no location).', true); return; }
-  wkClearDraft(); WK.selected = null; WK.mode = 'record'; WK.recAcc = null; wkPanel(); wkRefresh();
+  const keep = resume ? WK.draft.slice() : [];
+  wkClearDraft(); WK.draft = keep; WK.selected = null; WK.mode = 'record'; WK.recAcc = null; WK.recStart = Date.now(); WK.recLastFix = 0;
+  if (keep.length) wkDrawDraft(); else wkPanel();
+  wkRefresh(); wakeOn();
   WK.recWatch = navigator.geolocation.watchPosition((pos) => {
     WK.recAcc = pos.coords.accuracy;
+    if (pos.coords.accuracy <= 15) WK.recLastFix = Date.now();
     const ll = [pos.coords.latitude, pos.coords.longitude];
     if (pos.coords.accuracy <= 15) {
       const last = WK.draft[WK.draft.length - 1];
@@ -2642,7 +2803,7 @@ function wkStartRecord() {
   }, (err) => { if (err && err.code === 1) { toast('Location access is blocked, so recording can\'t continue. Allow location for this app and try again.', true); wkStopRecord(); } else { WK.recAcc = null; wkPanel(); } },
   { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
 }
-function wkStopRecord() { if (WK.recWatch !== null) { navigator.geolocation.clearWatch(WK.recWatch); WK.recWatch = null; } }
+function wkStopRecord() { if (WK.recWatch !== null) { navigator.geolocation.clearWatch(WK.recWatch); WK.recWatch = null; } wakeOff(); }
 // Thin out a recorded trail (keeps corners, drops GPS wobble): Douglas–Peucker, 2.5 m.
 function wkSimplify(pts, tol) {
   if (pts.length < 3) return pts.slice();
@@ -2668,13 +2829,20 @@ function wkFinish() {
 }
 async function wkSave(name, type, notes, btn) {
   busy(btn, true, 'Saving…');
+  const walkway = { name: name, type: type, notes: notes, pts: WK.draft.slice() };
   try {
-    const r = await api('saveWalkway', { walkway: { name: name, type: type, notes: notes, pts: WK.draft } });
+    const r = await api('saveWalkway', { walkway: walkway });
     toast('Saved ' + r.walkway.id + ' · ' + r.walkway.name + ' (' + r.walkway.lengthM + ' m).');
     wkClearDraft(); WK.mode = 'edit';
     wkSetWalks(r.walkways); wkPanel();
   } catch (e) {
-    toast(e instanceof NetworkError ? 'No signal: the walkway is still on screen. Try Save again when you have signal.' : e.message, true);
+    if (e instanceof NetworkError) {
+      // keep it on the phone and upload it when there is signal
+      wkQueue.push({ walkway: walkway, queuedAt: new Date().toISOString() });
+      const ok = wkQueueSave();
+      toast(ok ? 'No signal: the walkway is saved on this phone and uploads by itself when you\'re back online.' : 'No signal, and the phone is out of space to keep it. Stay on this screen and try Save again with signal.', !ok);
+      if (ok) { wkClearDraft(); WK.mode = 'edit'; wkRender(); wkPanel(); renderPending(); }
+    } else toast(e.message, true);
   } finally { busy(btn, false); }
 }
 function wkSelect(id) { WK.selected = id; wkRender(); wkPanel(); }
@@ -2705,7 +2873,14 @@ function wkPanel() {
     }
     box.appendChild(el('div', { class: 'wk-title' }, [el('b', { text: 'Walkways' }), el('span', { class: 'meta', text: WALKS.length + ' drawn · ' + Math.round(WALKS.reduce((n, x) => n + (x.lengthM || 0), 0)) + ' m' })]));
     box.appendChild(el('p', { class: 'meta', text: 'Draw only approved, safe walking routes. Directions will send people along these lines. Tap a line to see or delete it.' }));
-    box.appendChild(row([btn('Draw on map', '', wkStartDraw), btn('Record by walking', 'secondary', wkStartRecord)]));
+    if (wkQueue.length) box.appendChild(el('p', { class: 'meta wk-q', text: wkQueue.length + ' walkway' + (wkQueue.length === 1 ? '' : 's') + ' saved on this phone, waiting for signal to upload (dashed yellow).' }));
+    const d = wkDraftStored();
+    if (d) {
+      box.appendChild(el('p', { class: 'meta', text: 'Unsaved ' + (d.mode === 'record' ? 'recording' : 'drawing') + ' from ' + new Date(d.at).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' }) + ': ' + d.pts.length + ' points, ' + Math.round(wkLen(d.pts)) + ' m.' }));
+      box.appendChild(row([btn('Discard it', 'secondary', (b) => twoTap(b, 'Tap again to discard', () => { wkDraftClear(); wkPanel(); })),
+        btn(d.mode === 'record' ? 'Resume recording' : 'Resume', '', () => { WK.draft = d.pts.slice(); if (d.mode === 'record') wkStartRecord(true); else { WK.mode = d.mode === 'save' ? 'save' : 'draw'; wkDrawDraft(); } })]));
+    }
+    box.appendChild(row([btn('Draw on map', '', wkStartDraw), btn('Record by walking', 'secondary', () => wkStartRecord(false))]));
     box.appendChild(row([btn('Done', 'secondary', wkCloseEditor)]));
     return;
   }
@@ -2719,10 +2894,16 @@ function wkPanel() {
   }
   if (WK.mode === 'record') {
     box.appendChild(el('div', { class: 'wk-title' }, [el('b', { class: 'wk-rec', text: 'Recording' }), el('span', { class: 'meta', text: WK.draft.length + ' points · ' + dist + ' m' })]));
-    box.appendChild(el('p', { class: 'meta', text: WK.recAcc === null ? 'Waiting for GPS… walk the route at a normal pace.'
-      : ('GPS ±' + Math.round(WK.recAcc) + ' m' + (WK.recAcc > 15 ? ': too weak, points are paused until it improves.' : '. Keep walking the route.')) }));
+    const lostFor = WK.draft.length ? Math.round((Date.now() - (WK.recLastFix || WK.recStart || Date.now())) / 1000) : 0;
+    if (WK.draft.length && lostFor >= 12) {
+      box.appendChild(el('p', { class: 'meta wk-lost', text: 'GPS lost for ' + (lostFor < 90 ? lostFor + ' s' : Math.round(lostFor / 60) + ' min') + '. Keep walking: tap the map where you are to add points, or wait for GPS to come back. Nothing recorded so far is lost.' }));
+    } else {
+      box.appendChild(el('p', { class: 'meta', text: WK.recAcc === null ? 'Waiting for GPS… walk the route at a normal pace. No GPS? Tap the map where you are to add points.'
+        : ('GPS ±' + Math.round(WK.recAcc) + ' m' + (WK.recAcc > 15 ? ': too weak, points are paused until it improves. You can tap the map where you are.' : '. Keep walking the route. Keep the app open; the screen stays on.')) }));
+    }
+    if (WK.manual) box.appendChild(el('p', { class: 'meta', text: WK.manual + ' point' + (WK.manual === 1 ? '' : 's') + ' added by tapping.' }));
     const fin = btn('Stop and save', '', wkFinish); fin.disabled = WK.draft.length < 2;
-    box.appendChild(row([btn('Cancel', 'secondary', () => { wkStopRecord(); wkClearDraft(); WK.mode = 'edit'; wkPanel(); }), fin]));
+    box.appendChild(row([btn('Cancel', 'secondary', (b) => (WK.draft.length > 3 ? twoTap(b, 'Tap again: recording is lost', () => { wkStopRecord(); wkClearDraft(); WK.mode = 'edit'; wkPanel(); }) : (wkStopRecord(), wkClearDraft(), WK.mode = 'edit', wkPanel()))), fin]));
     return;
   }
   if (WK.mode === 'save') {
@@ -2751,6 +2932,9 @@ function ovStartMe() {
     if (!OV.map) return;
     const ll = [pos.coords.latitude, pos.coords.longitude];
     OV.myPos = { lat: ll[0], lng: ll[1], acc: pos.coords.accuracy };
+    const wasLost = OV.lastFixAt && Date.now() - OV.lastFixAt > 20000;
+    OV.lastFixAt = Date.now();
+    if (wasLost) ovStatus();
     // Walking direction from GPS: only used when the compass isn't available and you're moving.
     if (!HEAD.compass && pos.coords.heading !== null && !isNaN(pos.coords.heading) && (pos.coords.speed || 0) > 0.7) setHeading(pos.coords.heading, 'gps');
     if (!OV.me) {
@@ -2763,7 +2947,7 @@ function ovStartMe() {
     }
     ovUpdateNear();
     if (!$('ovResults').classList.contains('hidden')) ovShowResults();
-  }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  }, () => { ovStatus(); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
 function ovStopMe() {
   if (OV.watch !== null) navigator.geolocation.clearWatch(OV.watch);
@@ -3206,12 +3390,15 @@ async function submit() {
 // ---------- offline queue ----------
 let flushing = false;
 function renderPending() {
-  const n = queue.length;
-  $('pending').classList.toggle('hidden', n === 0);
-  $('pendingText').textContent = n + ' record' + (n === 1 ? '' : 's') + ' waiting to upload (' +
-    queue.map((q) => q.payload.poleId).join(', ') + ')';
+  const n = queue.length, w = typeof wkQueue === 'undefined' ? 0 : wkQueue.length;
+  $('pending').classList.toggle('hidden', n + w === 0);
+  const parts = [];
+  if (n) parts.push(n + ' record' + (n === 1 ? '' : 's') + ' (' + queue.map((q) => q.payload.poleId).join(', ') + ')');
+  if (w) parts.push(w + ' walkway' + (w === 1 ? '' : 's'));
+  $('pendingText').textContent = parts.join(' and ') + ' waiting to upload';
 }
 async function flushQueue() {
+  if (typeof wkQueue !== 'undefined' && wkQueue.length && !flushing) wkFlush();
   if (flushing || !queue.length || !getCfg().url) { renderPending(); return; }
   flushing = true;
   busy($('flushBtn'), true, 'Uploading…');
@@ -3236,6 +3423,461 @@ async function flushQueue() {
   }
 }
 
+// ---------- camera faults: reading the OCC list ----------
+// Turns the text read from a photo of the handwritten list into camera IDs
+// from the Cameras tab. Handles the usual misreads (O/0, I/l/1, S/5, B/8),
+// "PF 214, 216, 219" shorthand, and a stray letter in the prefix (PE214 → PF214).
+const OCR_DIGIT = { O: '0', Q: '0', D: '0', U: '0', I: '1', L: '1', '|': '1', T: '7', S: '5', B: '8', Z: '2', G: '6' };
+function camKey(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function parseFaultText(text, cams) {
+  const byPrefix = {}, maxLen = {};
+  (cams || []).forEach((c) => {
+    const m = /^([A-Z]+)(\d+)$/.exec(camKey(c.cameraId));
+    if (!m) return;
+    (byPrefix[m[1]] = byPrefix[m[1]] || {})[String(Number(m[2]))] = c;
+    maxLen[m[1]] = Math.max(maxLen[m[1]] || 0, m[2].length);
+  });
+  const prefixes = Object.keys(byPrefix);
+  const near = (p) => {                       // one wrong letter, same length
+    if (byPrefix[p]) return p;
+    const hits = prefixes.filter((q) => q.length === p.length && q.length >= 2 && [...q].filter((ch, i) => ch !== p[i]).length === 1);
+    return hits.length === 1 ? hits[0] : '';
+  };
+  const found = new Map(), unknown = new Set();
+  const RANK = { exact: 4, fixed: 3, after: 3, guess: 1 };
+  const add = (cam, raw, how) => {
+    const k = camKey(cam.cameraId), ex = found.get(k);
+    if (!ex || RANK[how] > RANK[ex.how]) found.set(k, { cam: cam, raw: raw, how: how });
+  };
+  const digits = (s) => [...s].map((ch) => OCR_DIGIT[ch] || ch).join('');
+  let T = String(text || '').toUpperCase().replace(/[‐-―]/g, '-');
+  T = T.replace(/\b\d{1,2}[:.]\d{2}\b/g, ' ')                     // times
+       .replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ')            // dates
+       .replace(/\bP\s+F\b/g, 'PF');
+  T.split(/\n+/).forEach((line) => {
+    let lastPfx = '', skip = false;
+    const toks = line.match(/[A-Z|]*\d[A-Z0-9|]*|[A-Z|]+/g) || [];
+    for (let i = 0; i < toks.length; i++) {
+      const tok = toks[i];
+      const wasSkip = skip; skip = false;
+      let pfx = '', num = '', raw = tok;
+      // split "PF2l4" into prefix + number; prefer a split whose prefix is a real camera prefix
+      let m = null;
+      for (let k = 1; k <= Math.min(4, tok.length - 1) && !m; k++) {
+        const a = tok.slice(0, k), b = tok.slice(k);
+        if (/^[A-Z]+$/.test(a) && /^[0-9OQDUILTSBZG|]{1,4}$/.test(b) && /\d/.test(b) && byPrefix[a]) m = [tok, a, b];
+      }
+      for (let k = 1; k <= Math.min(4, tok.length - 1) && !m; k++) {
+        const a = tok.slice(0, k), b = tok.slice(k);
+        if (/^[A-Z]+$/.test(a) && /^[0-9OQDUILTSBZG|]{1,4}$/.test(b) && /\d/.test(b) && near(a)) m = [tok, a, b];
+      }
+      if (!m) { const z = /^([A-Z]{1,4}?)([0-9OQDUILTSBZG|]{1,4})$/.exec(tok); if (z && /\d/.test(z[2])) m = z; }
+      if (m) { pfx = m[1]; num = m[2]; }
+      else if (/^[A-Z]{1,4}$/.test(tok) && near(tok) && toks[i + 1] && /^[0-9OQDUILTSBZG|]{1,4}$/.test(toks[i + 1]) && /\d/.test(toks[i + 1])) {
+        pfx = tok; num = toks[i + 1]; raw = tok + ' ' + toks[i + 1]; i++;
+      } else if (/^[0-9OQDUILTSBZG|]{2,4}$/.test(tok) && /^\d/.test(tok)) { if (wasSkip) continue; num = tok; }
+      else { if (/^[A-Z]{1,5}$/.test(tok)) { skip = true; if (tok.length >= 2) lastPfx = ''; } continue; }   // "ITB 15", "POE 3": the number isn't a camera
+      const n = String(Number(digits(num)));
+      if (!/^\d+$/.test(digits(num))) continue;
+      if (pfx) {
+        const p = near(pfx);
+        if (!p) { lastPfx = ''; continue; }        // ITB15, P22, POE3 … are not cameras
+        lastPfx = p;
+        const cam = byPrefix[p][n];
+        if (cam) add(cam, raw, p === pfx && /^\d+$/.test(num) ? 'exact' : 'fixed');
+        else if (digits(num).length <= maxLen[p]) unknown.add(p + digits(num).padStart(maxLen[p], '0'));
+      } else if (lastPfx) {
+        if (digits(num).length > maxLen[lastPfx]) continue;   // e.g. a time like 0730
+        const cam = byPrefix[lastPfx][n];
+        if (cam) add(cam, raw, 'after'); else unknown.add(lastPfx + digits(num).padStart(maxLen[lastPfx], '0'));
+      } else {
+        const hits = prefixes.map((p) => byPrefix[p][n]).filter(Boolean);
+        if (hits.length === 1 && n.length >= 2) add(hits[0], raw, 'guess');
+      }
+    }
+  });
+  const items = [...found.values()].map((x) => ({ cameraId: x.cam.cameraId, raw: x.raw, how: x.how, on: x.how !== 'guess' }));
+  items.sort((a, b) => a.cameraId.localeCompare(b.cameraId, undefined, { numeric: true }));
+  return { items: items, unknown: [...unknown].filter((u) => !found.has(camKey(u))) };
+}
+
+// ---------- camera faults: OCC report screen ----------
+const RP = { photo: '', photoUrl: '', items: [], unknown: [], reading: false, note: '' };
+let FAULTS_OK = false;      // the backend has the fault actions (Code.gs updated)
+function camWhere(cameraId) {
+  const c = CAMS.find((x) => camKey(x.cameraId) === camKey(cameraId));
+  if (!c) return '';
+  const pole = c.poleId || '';
+  const itb = c.itbNo && c.itbNo !== pole ? ' · ' + c.itbNo : '';
+  return pole ? (c.confirmed === false ? 'At ' + pole + itb + ' (pole not confirmed yet)' : 'Pole ' + pole + itb) : (c.itbNo ? 'Listed under ' + c.itbNo : 'No pole yet');
+}
+function rpRender() {
+  const dl = $('rpCamList');
+  if (dl.childElementCount !== CAMS.length) { dl.innerHTML = ''; CAMS.forEach((c) => dl.appendChild(el('option', { value: c.cameraId }))); }
+  $('rpPhotoWrap').classList.toggle('hidden', !RP.photo);
+  if (RP.photo && $('rpThumb').src !== RP.photo) $('rpThumb').src = RP.photo;
+  $('rpReading').classList.toggle('hidden', !RP.reading);
+  const box = $('rpList');
+  box.innerHTML = '';
+  if (RP.items.length) {
+    const on = RP.items.filter((x) => x.on).length;
+    box.appendChild(el('div', { class: 'rp-head' }, [el('b', { text: on + ' camera' + (on === 1 ? '' : 's') + ' to send' }),
+      el('span', { class: 'meta', text: RP.items.length > on ? (RP.items.length - on) + ' not ticked' : 'Untick any that are wrong' })]));
+  }
+  RP.items.forEach((it, i) => {
+    const cb = el('input', { type: 'checkbox', 'aria-label': 'Send ' + it.cameraId });
+    cb.checked = it.on;
+    cb.addEventListener('change', () => { it.on = cb.checked; rpRender(); });
+    const how = it.how === 'fixed' ? 'Read as “' + it.raw + '”: check it is ' + it.cameraId
+      : it.how === 'guess' ? 'Only “' + it.raw + '” was written. Tick if it means ' + it.cameraId : '';
+    const open = (FAULTS || []).find((f) => f.status !== 'Fixed' && camKey(f.cameraId) === camKey(it.cameraId));
+    const x = el('button', { type: 'button', class: 'rp-x', 'aria-label': 'Remove ' + it.cameraId, text: '×' });
+    x.addEventListener('click', () => { RP.items.splice(i, 1); rpRender(); });
+    box.appendChild(el('div', { class: 'rp-item' + (it.on ? '' : ' off') }, [cb,
+      el('div', { class: 'rp-main' }, [el('span', { class: 'plate small', text: it.cameraId }),
+        el('div', { class: 'rp-sub', text: camWhere(it.cameraId) + (open ? ' · already reported (' + (open.status === 'Acknowledged' ? open.ackBy + ' is on it' : 'open') + ')' : '') }),
+        how ? el('div', { class: 'rp-how', text: how }) : el('span')]), x]));
+  });
+  if (RP.unknown.length) box.appendChild(el('div', { class: 'rp-unknown', text: 'Not in the camera list, so not added: ' + RP.unknown.join(', ') + '. Check the photo and type the right ID if needed.' }));
+  const n = RP.items.filter((x) => x.on).length;
+  const btn = $('rpSend');
+  if (!btn.classList.contains('is-busy')) { btn.disabled = !n || RP.reading; btn.textContent = n ? 'Send ' + n + ' camera' + (n === 1 ? '' : 's') + ' to depot team' : 'Send to depot team'; }
+}
+function rpMerge(items) {
+  items.forEach((it) => {
+    const ex = RP.items.find((x) => camKey(x.cameraId) === camKey(it.cameraId));
+    if (!ex) RP.items.push(it);
+  });
+}
+async function rpOnPhoto(file) {
+  if (!file) return;
+  $('rpResult').innerHTML = '';
+  const note = $('rpReadNote');
+  note.classList.add('hidden');
+  try { RP.photo = await compressImage(file, 2000, 0.85); }
+  catch (e) { toast('Could not read that photo. Try again.', true); return; }
+  RP.reading = true; RP.photoUrl = ''; rpRender();
+  try {
+    if (!CAMS.length) await loadPoles();
+    const r = await api('readFaultList', { photoDataUrl: RP.photo });
+    RP.photoUrl = r.photoUrl || '';
+    const got = parseFaultText(r.text || '', CAMS);
+    rpMerge(got.items);
+    RP.unknown = [...new Set(RP.unknown.concat(got.unknown))];
+    note.textContent = got.items.length
+      ? 'Found ' + got.items.length + ' camera ID' + (got.items.length === 1 ? '' : 's') + '. Check them against the paper before sending.'
+      : 'No camera IDs could be read from this photo. Take it again closer and flatter, or type the IDs below.';
+    note.classList.remove('hidden');
+  } catch (e) {
+    note.textContent = (e instanceof NetworkError ? 'No signal, so the photo could not be read. ' : /Unknown action/.test(e.message) ? 'The server needs the new Code.gs to read photos. ' : e.message + ' ') + 'You can still type the camera IDs below.';
+    note.classList.remove('hidden');
+  } finally { RP.reading = false; rpRender(); }
+}
+function rpAddTyped() {
+  const v = $('rpType').value.trim();
+  if (!v) return;
+  const got = parseFaultText(v, CAMS);
+  const exact = CAMS.find((c) => camKey(c.cameraId) === camKey(v));
+  const items = exact ? [{ cameraId: exact.cameraId, raw: v, how: 'exact', on: true }] : got.items.map((x) => Object.assign(x, { on: true }));
+  if (!items.length) { toast(v.toUpperCase() + ' is not in the camera list.', true); return; }
+  rpMerge(items);
+  $('rpType').value = '';
+  rpRender();
+}
+async function rpSend() {
+  const cams = RP.items.filter((x) => x.on).map((x) => ({ cameraId: x.cameraId }));
+  if (!cams.length) return;
+  const btn = $('rpSend');
+  busy(btn, true, 'Sending…');
+  try {
+    const r = await api('reportFaults', { report: { cameras: cams, note: $('rpNote').value.trim(), photoUrl: RP.photoUrl, appUrl: location.origin + location.pathname } });
+    const parts = [];
+    if (r.added.length) parts.push('Sent ' + r.added.length + ' camera' + (r.added.length === 1 ? '' : 's') + ' (' + r.report + ')');
+    if (r.again.length) parts.push(r.again.map((a) => a.cameraId).join(', ') + ' already reported, so noted again');
+    if (r.unknown.length) parts.push('not in the list: ' + r.unknown.join(', '));
+    const mailNote = r.emailed > 0 ? ' The depot team got an email (' + r.emailed + (r.emailed === 1 ? ' person' : ' people') + ').' : r.emailed < 0 ? ' The alert email could not be sent; the team still sees it in the app.' : '';
+    $('rpResult').innerHTML = '';
+    $('rpResult').appendChild(el('div', { class: 'rp-done', text: parts.join('. ') + '.' + mailNote }));
+    RP.items = []; RP.unknown = []; RP.photo = ''; RP.photoUrl = ''; $('rpNote').value = ''; $('rpReadNote').classList.add('hidden');
+    if (r.faults) setFaults(r.faults);
+    toast(parts[0] || 'Sent.');
+  } catch (e) {
+    toast(e instanceof NetworkError ? 'No signal. Nothing was sent; the list is still here, try again.' : e.message, true);
+  } finally { busy(btn, false); rpRender(); rpRecent(); }
+}
+function faultStatusChip(f) {
+  if (f.status === 'Fixed') return el('span', { class: 'ft-st fixed', text: 'Fixed' + (f.fixedBy ? ' · ' + f.fixedBy : '') });
+  if (f.status === 'Acknowledged') return el('span', { class: 'ft-st ack', text: (f.ackBy || 'Someone') + ' is on it' });
+  return el('span', { class: 'ft-st open', text: 'Open' });
+}
+function faultGroups(list) {
+  const g = new Map();
+  list.forEach((f) => { const k = f.report || f.id; if (!g.has(k)) g.set(k, []); g.get(k).push(f); });
+  return [...g.entries()].sort((a, b) => faultNum(b[1][0].id) - faultNum(a[1][0].id));
+}
+function rpRecent() {
+  const box = $('rpRecent');
+  box.innerHTML = '';
+  if (!FAULTS) { box.appendChild(el('div', { class: 'meta', text: FAULTS_OK || !getCfg().url ? 'Loading…' : 'Reports appear here once Code.gs is updated.' })); return; }
+  const groups = faultGroups(FAULTS).slice(0, 10);
+  if (!groups.length) { box.appendChild(el('div', { class: 'meta', text: 'No reports yet.' })); return; }
+  groups.forEach(([rep, fs]) => {
+    box.appendChild(el('div', { class: 'rp-rep' }, [
+      el('div', { class: 'meta', text: rep + ' · ' + fs[0].by + ' · ' + fs[0].at }),
+      el('div', { class: 'rp-cams' }, fs.map((f) => el('span', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), faultStatusChip(f)]))),
+    ]));
+  });
+}
+
+// ---------- camera faults: depot team inbox ----------
+const LS_FAULT_SEEN = 'dcc.faultseen.v1';
+let FAULTS = null;
+let FT_KIND = 'open';
+let faultsLoading = false, faultsMissing = false, faultToastAt = 0;
+function faultNum(id) { const m = /^F(\d+)$/i.exec(String(id || '')); return m ? Number(m[1]) : 0; }
+async function loadFaults(quiet) {
+  const c = getCfg();
+  if (!c.url || !c.passcode || faultsLoading || faultsMissing) return;
+  faultsLoading = true;
+  try { const r = await api('listFaults', null, { quiet: !!quiet }); FAULTS_OK = true; setFaults(r.faults || []); }
+  catch (e) {
+    if (/Unknown action/.test(e.message)) faultsMissing = true;
+    if (currentTab === 'faults') renderFaults(e);
+    if (currentTab === 'report') rpRecent();
+  } finally { faultsLoading = false; }
+}
+function setFaults(list) {
+  const first = FAULTS === null;
+  FAULTS = list;
+  const newest = list.reduce((m, f) => Math.max(m, faultNum(f.id)), 0);
+  const seenRaw = lsGet(LS_FAULT_SEEN), seen = Number(seenRaw || 0);
+  if (!isOcc()) {
+    if (seenRaw === null || currentTab === 'faults') lsSet(LS_FAULT_SEEN, String(newest));   // first time on this phone: don't alert old faults
+    else if (getCfg().alerts && newest > Math.max(seen, faultToastAt)) {
+      const fresh = list.filter((f) => f.status === 'Open' && faultNum(f.id) > seen);
+      if (fresh.length) {
+        faultToastAt = newest;
+        toast((first ? 'Since you last looked: ' : 'New from ' + fresh[0].by + ': ') + fresh.length + ' faulty camera' + (fresh.length === 1 ? '' : 's') + ' (' +
+          fresh.slice(0, 4).map((f) => f.cameraId).join(', ') + (fresh.length > 4 ? '…' : '') + '). Open the Faults tab.');
+        if (navigator.vibrate) navigator.vibrate([90, 60, 90]);
+      }
+    }
+  }
+  renderFaultBadge();
+  if (currentTab === 'faults') renderFaults();
+  if (currentTab === 'report') { rpRecent(); rpRender(); }
+}
+function renderFaultBadge() {
+  const b = $('faultBadge');
+  if (!b) return;
+  const n = (FAULTS || []).filter((f) => f.status === 'Open').length;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('hidden', !n || isOcc());
+}
+function renderFaults(err) {
+  const box = $('ftList');
+  box.innerHTML = '';
+  if (!FAULTS) {
+    $('ftCount').textContent = err ? (faultsMissing ? 'Update Code.gs to receive fault reports from OCC.' : err instanceof NetworkError ? 'No signal. Faults will load when you\'re back online.' : err.message) : 'Loading…';
+    return;
+  }
+  const open = FAULTS.filter((f) => f.status !== 'Fixed'), fixed = FAULTS.filter((f) => f.status === 'Fixed');
+  const waiting = open.filter((f) => f.status === 'Open').length;
+  $('ftCount').textContent = open.length ? open.length + ' open · ' + waiting + ' not picked up yet' + (open.length - waiting ? ' · ' + (open.length - waiting) + ' being fixed' : '') : 'No open faults.';
+  const shown = FT_KIND === 'open' ? open : fixed;
+  if (!shown.length) { box.appendChild(el('div', { class: 'ft-empty', text: FT_KIND === 'open' ? 'Nothing open. New reports from OCC appear here.' : 'Nothing fixed in the last 14 days.' })); return; }
+  faultGroups(shown).forEach(([rep, fs]) => {
+    const head = el('div', { class: 'ft-ghead' }, [
+      el('div', null, [el('b', { text: rep + ' · ' + fs[0].by }), el('div', { class: 'meta' }, [fs[0].at + ' · ' + fs.length + ' camera' + (fs.length === 1 ? '' : 's'),
+        fs[0].photoUrl ? ' · ' : '', fs[0].photoUrl ? el('a', { href: fs[0].photoUrl, target: '_blank', rel: 'noopener', text: 'photo of the list' }) : ''])]),
+    ]);
+    const todo = fs.filter((f) => f.status === 'Open');
+    if (todo.length > 1) {
+      const all = el('button', { type: 'button', class: 'btn secondary', style: 'width:auto;min-height:38px;padding:0 12px;font-size:15px', text: 'I\'m on all ' + todo.length });
+      all.addEventListener('click', () => faultUpdate(todo.map((f) => f.id), 'Acknowledged', all));
+      head.appendChild(all);
+    }
+    const g = el('div', { class: 'ft-group' }, [head]);
+    fs.forEach((f) => {
+      const acts = [];
+      const mapB = el('button', { type: 'button', class: 'go', text: 'Show on map' });
+      mapB.addEventListener('click', () => faultOnMap(f));
+      acts.push(mapB);
+      if (f.status === 'Open') { const a = el('button', { type: 'button', text: 'I\'m on it' }); a.addEventListener('click', () => faultUpdate([f.id], 'Acknowledged', a)); acts.push(a); }
+      if (f.status !== 'Fixed') { const x = el('button', { type: 'button', class: 'ok', text: 'Mark fixed' }); x.addEventListener('click', () => twoTap(x, 'Tap again: ' + f.cameraId + ' fixed', () => faultUpdate([f.id], 'Fixed', x))); acts.push(x); }
+      else { const o = el('button', { type: 'button', text: 'Reopen' }); o.addEventListener('click', () => twoTap(o, 'Tap again to reopen', () => faultUpdate([f.id], 'Open', o))); acts.push(o); }
+      const where = camWhere(f.cameraId) || ((f.poleId ? 'Pole ' + f.poleId : '') + (f.itbNo && f.itbNo !== f.poleId ? ' · ' + f.itbNo : ''));
+      g.appendChild(el('div', { class: 'ft-item' }, [
+        el('div', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), faultStatusChip(f), el('span', { class: 'meta', text: f.id })]),
+        el('div', { class: 'ft-where', text: where + (f.location ? ' · ' + f.location : '') }),
+        f.note ? el('div', { class: 'ft-note', text: 'OCC: ' + f.note }) : el('span'),
+        f.status === 'Acknowledged' && f.ackAt ? el('div', { class: 'ft-note', text: 'Picked up ' + f.ackAt }) : el('span'),
+        f.status === 'Fixed' ? el('div', { class: 'ft-note', text: 'Fixed ' + f.fixedAt + (f.fixNote ? ' · ' + f.fixNote : '') }) : el('span'),
+        el('div', { class: 'ft-acts' }, acts),
+      ]));
+    });
+    box.appendChild(g);
+  });
+}
+async function faultUpdate(ids, status, btn) {
+  busy(btn, true, '…');
+  try {
+    const r = await api('updateFault', { update: { ids: ids, status: status } });
+    toast((r.updated || []).join(', ') + (status === 'Fixed' ? ' marked fixed.' : status === 'Acknowledged' ? ': you\'re on it. OCC can see that.' : ' reopened.'));
+    setFaults(r.faults || []);
+  } catch (e) { toast(e instanceof NetworkError ? 'No signal. Try again when you have signal.' : e.message, true); busy(btn, false); }
+}
+async function faultOnMap(f) {
+  await goTab('map');
+  const hits = ovSearch(f.cameraId);
+  const r = hits.find((x) => x.exact) || hits[0];
+  if (r) { ovPick(r); return; }
+  const p = f.poleId || f.itbNo;
+  if (p && MAP.poles.some((x) => String(x.poleId).toUpperCase() === p.toUpperCase())) ovSelect(p, f.cameraId);
+  else toast(f.cameraId + ' is not on the map yet.', true);
+}
+// Keep the inbox (and the tab badge) fresh while the app is open.
+setInterval(() => { if (!document.hidden && getCfg().passcode && (FAULTS_OK || FAULTS)) loadFaults(true); }, 60000);
+$('rpPhoto').addEventListener('change', (e) => { rpOnPhoto(e.target.files && e.target.files[0]); e.target.value = ''; });
+$('rpAdd').addEventListener('click', rpAddTyped);
+$('rpType').addEventListener('keydown', (e) => { if (e.key === 'Enter') rpAddTyped(); });
+$('rpSend').addEventListener('click', rpSend);
+document.querySelectorAll('#ftKind button').forEach((b) => b.addEventListener('click', () => {
+  FT_KIND = b.dataset.k;
+  document.querySelectorAll('#ftKind button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderFaults();
+}));
+
+// ---------- offline: app + depot map saved on the phone ----------
+// sw.js keeps a copy of the app, the map library and every map tile seen, and
+// serves them when there is no signal. "Save depot map" fetches every tile of
+// the depot area ahead of time.
+const LS_OFFMAP = 'dcc.offmap.v1';
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
+const TILE_CACHE = 'cc-tiles-1';
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+  navigator.serviceWorker.register('./sw.js').catch(() => { /* offline extras just won't be there */ });
+}
+function offBounds() {
+  if (AREA) return { s: AREA.south, w: AREA.west, n: AREA.north, e: AREA.east };
+  const pts = MAP.poles.filter(hasCoords);
+  if (!pts.length) return null;
+  const pad = 0.0015;   // ~170 m around the outermost poles
+  return { s: Math.min(...pts.map((p) => p.lat)) - pad, n: Math.max(...pts.map((p) => p.lat)) + pad,
+           w: Math.min(...pts.map((p) => p.lng)) - pad, e: Math.max(...pts.map((p) => p.lng)) + pad };
+}
+function tileXY(lat, lng, z) {
+  const n = Math.pow(2, z), r = lat * Math.PI / 180;
+  return [Math.floor((lng + 180) / 360 * n), Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)];
+}
+function offTileUrls(b) {
+  const out = [];
+  for (let z = 14; z <= 19; z++) {
+    const a = tileXY(b.n, b.w, z), c = tileXY(b.s, b.e, z);
+    for (let x = a[0]; x <= c[0]; x++) for (let y = a[1]; y <= c[1]; y++) out.push(TILE_URL + z + '/' + y + '/' + x);
+  }
+  return out;
+}
+function offRenderStatus() {
+  const st = $('offStatus'), btn = $('offSaveBtn');
+  if (!st || btn.classList.contains('is-busy')) return;
+  let m = null;
+  try { m = JSON.parse(lsGet(LS_OFFMAP) || 'null'); } catch (e) { m = null; }
+  if (!('caches' in window) || !('serviceWorker' in navigator)) { st.textContent = 'This browser can\'t keep the map offline. Add Cam Capture to the home screen and open it from there.'; btn.disabled = true; return; }
+  if (m && m.n) {
+    st.textContent = 'Depot map saved on this phone: ' + m.n + ' map pieces (' + (m.bytes / 1048576).toFixed(1) + ' MB), ' + new Date(m.at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short' }) + '. The Map tab, walkways and directions work without signal.';
+    btn.textContent = 'Update saved map';
+  }
+}
+async function offSaveMap() {
+  const btn = $('offSaveBtn'), st = $('offStatus');
+  if (!('caches' in window)) { toast('This phone can\'t keep the map offline.', true); return; }
+  if (!MAP.polesLoaded) await loadPoles();
+  const b = offBounds();
+  if (!b) { toast('Map some poles (or lock the depot area on the map) first, so the app knows which area to save.', true); return; }
+  const urls = offTileUrls(b);
+  busy(btn, true, 'Saving map…');
+  let done = 0, failed = 0, bytes = 0;
+  try {
+    const cache = await caches.open(TILE_CACHE);
+    let i = 0;
+    const worker = async () => {
+      while (i < urls.length) {
+        const u = urls[i++];
+        try {
+          let res = await cache.match(u);
+          if (!res) {
+            res = await fetch(u, { mode: 'cors' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            await cache.put(u, res.clone());
+          }
+          bytes += Number(res.headers.get('content-length')) || (await res.clone().blob()).size;
+          done++;
+        } catch (e) { failed++; }
+        st.textContent = 'Saving the depot map… ' + (done + failed) + ' of ' + urls.length;
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    lsSet(LS_OFFMAP, JSON.stringify({ at: Date.now(), n: done, bytes: bytes, bounds: b }));
+    if (navigator.storage && navigator.storage.persist) { try { await navigator.storage.persist(); } catch (e) { /* optional */ } }
+    toast(failed ? 'Saved ' + done + ' of ' + urls.length + ' map pieces (' + failed + ' failed: weak signal?). Tap again to fill the gaps.' : 'Depot map saved. The Map tab now works without signal.', !!failed);
+  } catch (e) { toast('Could not save the map: ' + e.message, true); }
+  finally { busy(btn, false); offRenderStatus(); }
+}
+$('offSaveBtn').addEventListener('click', offSaveMap);
+
+// Map status pill: offline, and GPS lost.
+function ovStatus() {
+  const box = $('ovStatus');
+  if (!box) return;
+  const gpsLost = OV.watch !== null && OV.lastFixAt && Date.now() - OV.lastFixAt > 20000;
+  if (OV.me && OV.me.getElement()) OV.me.getElement().classList.toggle('me-stale', !!gpsLost);
+  let off = '';
+  if (!navigator.onLine || MAP.cacheOffline) off = 'Offline · saved map and data' + (MAP.loadedAt ? ' from ' + new Date(MAP.loadedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' }) : '');
+  box.innerHTML = '';
+  if (off) box.appendChild(el('span', { class: 'ov-status off', text: off }));
+  if (gpsLost) box.appendChild(el('span', { class: 'ov-status gps', text: 'GPS lost · last position ' + agoText((Date.now() - OV.lastFixAt) / 1000) }));
+}
+window.addEventListener('online', () => { MAP.cacheOffline = ''; ovStatus(); });
+window.addEventListener('offline', ovStatus);
+setInterval(() => { if (OV.open) ovStatus(); }, 5000);
+
+// ---------- walkways: never lose a recording ----------
+// Unsaved drawings/recordings are kept on the phone (so a reload or a dead
+// battery doesn't lose them), walkways saved with no signal wait in an outbox,
+// and the screen is kept awake while recording.
+const LS_WK_DRAFT = 'dcc.wkdraft.v1';
+const LS_WK_QUEUE = 'dcc.wkqueue.v1';
+let wkQueue = (() => { try { return JSON.parse(lsGet(LS_WK_QUEUE) || '[]') || []; } catch (e) { return []; } })();
+function wkQueueSave() { return lsSet(LS_WK_QUEUE, JSON.stringify(wkQueue)); }
+function wkDraftSave() {
+  if (WK.draft.length && (WK.mode === 'record' || WK.mode === 'draw' || WK.mode === 'save')) lsSet(LS_WK_DRAFT, JSON.stringify({ mode: WK.mode, pts: WK.draft, at: Date.now() }));
+}
+function wkDraftClear() { try { localStorage.removeItem(LS_WK_DRAFT); } catch (e) { /* ignore */ } }
+function wkDraftStored() { try { const d = JSON.parse(lsGet(LS_WK_DRAFT) || 'null'); return d && d.pts && d.pts.length >= 1 ? d : null; } catch (e) { return null; } }
+let wakeLock = null;
+async function wakeOn() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { /* not supported */ } }
+function wakeOff() { try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && WK.mode === 'record') { wakeOn(); wkPanel(); } });
+setInterval(() => { if (WK.mode === 'record') wkPanel(); }, 4000);
+async function wkFlush() {
+  if (!wkQueue.length || !getCfg().url || isViewer()) return;
+  while (wkQueue.length) {
+    const item = wkQueue[0];
+    try {
+      const r = await api('saveWalkway', { walkway: item.walkway }, { quiet: true });
+      wkQueue.shift(); wkQueueSave();
+      toast('Uploaded walkway ' + r.walkway.id + ' · ' + r.walkway.name + '.');
+      if (r.walkways) wkSetWalks(r.walkways);
+    } catch (e) {
+      if (!(e instanceof NetworkError)) { toast('Walkway "' + (item.walkway.name || 'unnamed') + '": ' + e.message, true); wkQueue.shift(); wkQueueSave(); continue; }
+      break;
+    }
+  }
+  renderPending();
+  if (OV.map) wkRender();
+}
+
 // ---------- wiring ----------
 $('cfgSave').addEventListener('click', saveSetup);
 document.querySelectorAll('#vwKind button').forEach((b) => b.addEventListener('click', () => {
@@ -3243,17 +3885,19 @@ document.querySelectorAll('#vwKind button').forEach((b) => b.addEventListener('c
   document.querySelectorAll('#vwKind button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   renderViewerList();
 }));
-function setViewAs(on) {
+function setViewAs(on, as) {
   if (on && !canPreview()) return;
-  setCfg({ viewAs: on ? 'Viewer' : '' });
+  as = as || 'Viewer';
+  setCfg({ viewAs: on ? as : '' });
   fillSetup();
   showApp();
   if (!on) goTab('settings');
-  toast(on ? 'Viewer preview on. The server treats you as a viewer until you switch back.' : 'Back to your own account (' + roleLabel(getCfg()) + ').');
+  toast(on ? as + ' preview on. The server treats you as ' + (as === 'OCC' ? 'an OCC account' : 'a viewer') + ' until you switch back.' : 'Back to your own account (' + roleLabel(getCfg()) + ').');
 }
-$('viewAsToggle').addEventListener('change', (e) => setViewAs(e.target.checked));
+$('viewAsToggle').addEventListener('change', (e) => setViewAs(e.target.checked, 'Viewer'));
+$('viewAsOccToggle').addEventListener('change', (e) => setViewAs(e.target.checked, 'OCC'));
 $('previewExit').addEventListener('click', () => setViewAs(false));
-$('cfgCancel').addEventListener('click', () => goTab(isViewer() ? 'poles' : 'capture'));
+$('cfgCancel').addEventListener('click', () => goTab(homeTab()));
 $('settingsBtn').addEventListener('click', () => goTab('settings'));
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.tab === currentTab && b.dataset.tab === 'capture' && state.step > 1) { setStep(state.step); return; }
@@ -3417,6 +4061,7 @@ if (linkedUrl && !(getCfg().url && getCfg().passcode)) {
   showApp();
   flushQueue();
   refreshRole();
+  if (/#faults/.test(location.hash || '')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } goTab(isOcc() ? 'report' : 'faults'); }
 } else { showSetup(false); }
 
 // The role can change in the Users tab at any time: check it on start.
@@ -3424,7 +4069,8 @@ async function refreshRole() {
   try {
     const r = await api('ping', { submittedBy: getCfg().name });
     const before = getCfg().role;
-    setCfg({ role: r.realRole || r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || '') });
+    setCfg({ role: r.realRole || r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || ''), alerts: r.alerts !== false });
+    FAULTS_OK = !!r.faults;
     applyRole();
     if (r.viaMaster && !getCfg().name) { showSetup(true); toast('Add your name, so your changes show who made them.'); return; }
     if (before !== getCfg().role) { showApp(); toast('Your access is now ' + roleLabel(getCfg()).toLowerCase() + '.'); }
