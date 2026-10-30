@@ -319,6 +319,21 @@
   @media (prefers-reduced-motion: reduce) { .rp-spin { animation: none; } }
   #rpReadNote { margin-top: 8px; }
   .rp-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .rp-box { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #FFFFFF; }
+  .rp-box-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .rp-box-head b { font-size: 16px; color: var(--slate); }
+  .rp-box-head input { flex: 1; min-height: 38px; padding: 6px 10px; font-size: 16px; font-weight: 600; }
+  .rp-box textarea { min-height: 64px; font-family: var(--font-id, var(--font)); font-size: 16px; letter-spacing: .3px; text-transform: uppercase; }
+  .rp-box-sum { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .rp-box-sum .bad { color: var(--poor); }
+  .rp-photo-box { margin-top: 14px; border-top: 1px solid var(--rule); padding-top: 10px; }
+  .rp-photo-box summary { font-weight: 650; color: var(--line-blue); cursor: pointer; padding: 4px 0; }
+  .rp-group { font-size: 14px; font-weight: 700; color: var(--slate); margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .iss { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #E3E7EB; color: #3E4954; white-space: nowrap; }
+  .iss.i-dirty { background: #F3E6CF; color: #7A4B00; }
+  .iss.i-fov { background: #DDE7F5; color: #1D4F91; }
+  .iss.i-blackout { background: #1B2631; color: #FFFFFF; }
+  #ftIssue { margin-top: 8px; flex-wrap: wrap; }
   .rp-item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--rule); border-radius: 12px; padding: 8px 10px; background: #FFFFFF; }
   .rp-item.off { background: #F1F3F5; }
   .rp-item.off .plate { opacity: .55; }
@@ -667,18 +682,20 @@
   <section id="report" class="hidden" aria-label="Report faulty cameras">
     <div class="card">
       <h2>Report faulty cameras</h2>
-      <p class="meta" style="margin:0 0 12px">Take a photo of the fault list. The app reads the camera IDs; tick the right ones and send them to the depot team.</p>
-      <label for="rpPhoto" class="btn" style="display:flex;align-items:center;justify-content:center;margin:0">Take photo of the list</label>
-      <input id="rpPhoto" type="file" accept="image/*" capture="environment" class="hidden">
-      <div id="rpPhotoWrap" class="rp-photo hidden"><img id="rpThumb" alt="Photo of the fault list"><div id="rpReading" class="rp-reading hidden"><i class="rp-spin" aria-hidden="true"></i><span>Reading the camera IDs…</span></div></div>
-      <div id="rpReadNote" class="meta hidden" role="status"></div>
+      <p class="meta" style="margin:0 0 4px">Copy each tab of the OCC sheet and paste it in the matching box. Commas, spaces or new lines all work.</p>
+      <div id="rpBoxes"></div>
+      <button id="rpAddIssue" class="link" type="button">+ Another issue</button>
+      <details id="rpPhotoBox" class="rp-photo-box">
+        <summary>Or take a photo of a handwritten list</summary>
+        <label for="rpPhotoIssue">These cameras are</label>
+        <select id="rpPhotoIssue"></select>
+        <div style="height:10px"></div>
+        <label for="rpPhoto" class="btn secondary" style="display:flex;align-items:center;justify-content:center;margin:0">Take photo of the list</label>
+        <input id="rpPhoto" type="file" accept="image/*" capture="environment" class="hidden">
+        <div id="rpPhotoWrap" class="rp-photo hidden"><img id="rpThumb" alt="Photo of the fault list"><div id="rpReading" class="rp-reading hidden"><i class="rp-spin" aria-hidden="true"></i><span>Reading the camera IDs…</span></div></div>
+        <div id="rpReadNote" class="meta hidden" role="status"></div>
+      </details>
       <div id="rpList" class="rp-list"></div>
-      <label for="rpType">Or type a camera ID</label>
-      <div class="row">
-        <input id="rpType" list="rpCamList" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. PF214">
-        <button id="rpAdd" class="btn shrink" type="button" style="width:auto;padding:0 18px">Add</button>
-      </div>
-      <datalist id="rpCamList"></datalist>
       <label for="rpNote">Note for the depot team (optional)</label>
       <input id="rpNote" maxlength="300" autocomplete="off" placeholder="e.g. no video since 07:30">
       <div style="height:12px"></div>
@@ -696,6 +713,7 @@
       <div id="ftCount" class="meta">Loading…</div>
       <div id="ftKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
         <button type="button" data-k="open" aria-pressed="true">Open</button><button type="button" data-k="fixed" aria-pressed="false">Fixed (14 days)</button></div>
+      <div id="ftIssue" class="seg hidden" role="group" aria-label="Issue"></div>
     </div>
     <div id="ftList" class="ft-list"></div>
   </section>
@@ -879,7 +897,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-28.1';
+const APP_VERSION = '2026-10-30.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -3502,7 +3520,74 @@ function parseFaultText(text, cams) {
 }
 
 // ---------- camera faults: OCC report screen ----------
-const RP = { photo: '', photoUrl: '', items: [], unknown: [], reading: false, note: '' };
+const RP = { photo: '', photoUrl: '', items: [], unknown: [], reading: false, note: '', boxes: [] };
+// The OCC sheet has one tab per issue; the app has one paste box per issue.
+const ISSUES = ['Dirty', 'FOV fix', 'Blackout'];
+function normIssue(v) {
+  v = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!v) return '';
+  if (/dirt|clean|dust|wipe/i.test(v)) return 'Dirty';
+  if (/fov|field of view|angle|view/i.test(v)) return 'FOV fix';
+  if (/black|no video|no image|blank|offline/i.test(v)) return 'Blackout';
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+function issueChip(issue) {
+  if (!issue) return el('span');
+  const cls = issue === 'Dirty' ? 'i-dirty' : issue === 'FOV fix' ? 'i-fov' : issue === 'Blackout' ? 'i-blackout' : '';
+  return el('span', { class: 'iss ' + cls, text: issue });
+}
+function rpResetBoxes() {
+  RP.boxes = ISSUES.map((n, i) => ({ id: 'b' + i, issue: n, text: '', unknown: [], custom: false }));
+}
+rpResetBoxes();
+let rpBoxSeq = 10;
+function rpParseBox(bx) {
+  const prev = {};
+  RP.items.filter((x) => x.src === bx.id).forEach((x) => { prev[camKey(x.cameraId)] = x.on; });
+  RP.items = RP.items.filter((x) => x.src !== bx.id);
+  const got = bx.text.trim() ? parseFaultText(bx.text, CAMS) : { items: [], unknown: [] };
+  got.items.forEach((x) => {
+    const k = camKey(x.cameraId);
+    RP.items.push(Object.assign(x, { src: bx.id, issue: normIssue(bx.issue) || 'Other', on: k in prev ? prev[k] : x.on }));
+  });
+  bx.unknown = got.unknown;
+}
+function rpRenderBoxes() {
+  const wrap = $('rpBoxes');
+  wrap.innerHTML = '';
+  RP.boxes.forEach((bx) => {
+    const ta = el('textarea', { rows: '2', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Camera IDs: ' + (bx.issue || 'other issue'), placeholder: 'e.g. PF214, PF216, PF219' });
+    ta.value = bx.text;
+    let tmr = null;
+    // re-read on every change, but only redraw the list below, so the cursor stays put
+    ta.addEventListener('input', () => { bx.text = ta.value; clearTimeout(tmr); tmr = setTimeout(async () => { if (!CAMS.length) await loadPoles(); rpParseBox(bx); rpRenderList(); }, 250); });
+    const head = el('div', { class: 'rp-box-head' });
+    if (bx.custom) {
+      const nm = el('input', { type: 'text', maxlength: '40', placeholder: 'Issue, e.g. Flickering', 'aria-label': 'Issue name', value: bx.issue });
+      nm.addEventListener('input', () => { bx.issue = nm.value; RP.items.filter((x) => x.src === bx.id).forEach((x) => { x.issue = normIssue(nm.value) || 'Other'; }); rpRenderList(); rpPhotoIssues(); });
+      const rm = el('button', { type: 'button', class: 'rp-x', 'aria-label': 'Remove this issue', text: '×' });
+      rm.addEventListener('click', () => { RP.boxes = RP.boxes.filter((b) => b !== bx); RP.items = RP.items.filter((x) => x.src !== bx.id); rpRender(); });
+      head.appendChild(nm); head.appendChild(rm);
+      setTimeout(() => { if (!bx.issue) nm.focus(); }, 30);
+    } else head.appendChild(el('b', { text: bx.issue }));
+    const sum = el('div', { class: 'rp-box-sum' });
+    bx.sumEl = sum; rpSum(bx);
+    wrap.appendChild(el('div', { class: 'rp-box' }, [head, ta, sum]));
+  });
+}
+function rpSum(bx) {
+  const sum = bx.sumEl; if (!sum) return;
+  const n = RP.items.filter((x) => x.src === bx.id).length;
+  sum.innerHTML = '';
+  sum.appendChild(document.createTextNode(bx.text.trim() ? (n + ' camera' + (n === 1 ? '' : 's') + ' found') : 'Paste the IDs from the ' + (bx.issue || 'new') + ' tab'));
+  if (bx.unknown.length) sum.appendChild(el('span', { class: 'bad', text: ' · not in the camera list: ' + bx.unknown.join(', ') }));
+}
+function rpPhotoIssues() {
+  const sel = $('rpPhotoIssue'), cur = sel.value || 'Blackout';
+  sel.innerHTML = '';
+  const names = [...new Set(RP.boxes.map((b) => normIssue(b.issue)).filter(Boolean).concat(ISSUES))];
+  names.forEach((n) => { const o = el('option', { value: n, text: n }); if (n === cur) o.selected = true; sel.appendChild(o); });
+}
 let FAULTS_OK = false;      // the backend has the fault actions (Code.gs updated)
 function camWhere(cameraId) {
   const c = CAMS.find((x) => camKey(x.cameraId) === camKey(cameraId));
@@ -3512,8 +3597,11 @@ function camWhere(cameraId) {
   return pole ? (c.confirmed === false ? 'At ' + pole + itb + ' (pole not confirmed yet)' : 'Pole ' + pole + itb) : (c.itbNo ? 'Listed under ' + c.itbNo : 'No pole yet');
 }
 function rpRender() {
-  const dl = $('rpCamList');
-  if (dl.childElementCount !== CAMS.length) { dl.innerHTML = ''; CAMS.forEach((c) => dl.appendChild(el('option', { value: c.cameraId }))); }
+  rpRenderBoxes();
+  rpPhotoIssues();
+  rpRenderList();
+}
+function rpRenderList() {
   $('rpPhotoWrap').classList.toggle('hidden', !RP.photo);
   if (RP.photo && $('rpThumb').src !== RP.photo) $('rpThumb').src = RP.photo;
   $('rpReading').classList.toggle('hidden', !RP.reading);
@@ -3524,28 +3612,33 @@ function rpRender() {
     box.appendChild(el('div', { class: 'rp-head' }, [el('b', { text: on + ' camera' + (on === 1 ? '' : 's') + ' to send' }),
       el('span', { class: 'meta', text: RP.items.length > on ? (RP.items.length - on) + ' not ticked' : 'Untick any that are wrong' })]));
   }
-  RP.items.forEach((it, i) => {
-    const cb = el('input', { type: 'checkbox', 'aria-label': 'Send ' + it.cameraId });
-    cb.checked = it.on;
-    cb.addEventListener('change', () => { it.on = cb.checked; rpRender(); });
-    const how = it.how === 'fixed' ? 'Read as “' + it.raw + '”: check it is ' + it.cameraId
-      : it.how === 'guess' ? 'Only “' + it.raw + '” was written. Tick if it means ' + it.cameraId : '';
-    const open = (FAULTS || []).find((f) => f.status !== 'Fixed' && camKey(f.cameraId) === camKey(it.cameraId));
-    const x = el('button', { type: 'button', class: 'rp-x', 'aria-label': 'Remove ' + it.cameraId, text: '×' });
-    x.addEventListener('click', () => { RP.items.splice(i, 1); rpRender(); });
-    box.appendChild(el('div', { class: 'rp-item' + (it.on ? '' : ' off') }, [cb,
-      el('div', { class: 'rp-main' }, [el('span', { class: 'plate small', text: it.cameraId }),
-        el('div', { class: 'rp-sub', text: camWhere(it.cameraId) + (open ? ' · already reported (' + (open.status === 'Acknowledged' ? open.ackBy + ' is on it' : 'open') + ')' : '') }),
-        how ? el('div', { class: 'rp-how', text: how }) : el('span')]), x]));
+  // grouped by issue, in the order of the boxes
+  const order = [...new Set(RP.items.map((x) => x.issue))];
+  order.forEach((iss) => {
+    const list = RP.items.filter((x) => x.issue === iss);
+    box.appendChild(el('div', { class: 'rp-group' }, [issueChip(iss), list.filter((x) => x.on).length + ' of ' + list.length]));
+    list.forEach((it) => {
+      const cb = el('input', { type: 'checkbox', 'aria-label': 'Send ' + it.cameraId + ' (' + it.issue + ')' });
+      cb.checked = it.on;
+      cb.addEventListener('change', () => { it.on = cb.checked; rpRenderList(); });
+      const how = it.how === 'fixed' ? 'Read as “' + it.raw + '”: check it is ' + it.cameraId
+        : it.how === 'guess' ? 'Only “' + it.raw + '” was written. Tick if it means ' + it.cameraId : '';
+      const open = (FAULTS || []).find((f) => f.status !== 'Fixed' && camKey(f.cameraId) === camKey(it.cameraId) && (!f.issue || f.issue === it.issue));
+      box.appendChild(el('div', { class: 'rp-item' + (it.on ? '' : ' off') }, [cb,
+        el('div', { class: 'rp-main' }, [el('span', { class: 'plate small', text: it.cameraId }),
+          el('div', { class: 'rp-sub', text: camWhere(it.cameraId) + (open ? ' · already reported (' + (open.status === 'Acknowledged' ? open.ackBy + ' is on it' : 'open') + ')' : '') }),
+          how ? el('div', { class: 'rp-how', text: how }) : el('span')])]));
+    });
   });
   if (RP.unknown.length) box.appendChild(el('div', { class: 'rp-unknown', text: 'Not in the camera list, so not added: ' + RP.unknown.join(', ') + '. Check the photo and type the right ID if needed.' }));
+  RP.boxes.forEach(rpSum);
   const n = RP.items.filter((x) => x.on).length;
   const btn = $('rpSend');
   if (!btn.classList.contains('is-busy')) { btn.disabled = !n || RP.reading; btn.textContent = n ? 'Send ' + n + ' camera' + (n === 1 ? '' : 's') + ' to depot team' : 'Send to depot team'; }
 }
 function rpMerge(items) {
   items.forEach((it) => {
-    const ex = RP.items.find((x) => camKey(x.cameraId) === camKey(it.cameraId));
+    const ex = RP.items.find((x) => camKey(x.cameraId) === camKey(it.cameraId) && x.issue === it.issue);
     if (!ex) RP.items.push(it);
   });
 }
@@ -3562,30 +3655,23 @@ async function rpOnPhoto(file) {
     const r = await api('readFaultList', { photoDataUrl: RP.photo });
     RP.photoUrl = r.photoUrl || '';
     const got = parseFaultText(r.text || '', CAMS);
-    rpMerge(got.items);
+    rpMerge(got.items.map((x) => Object.assign(x, { src: 'photo', issue: $('rpPhotoIssue').value || 'Blackout' })));
     RP.unknown = [...new Set(RP.unknown.concat(got.unknown))];
     note.textContent = got.items.length
       ? 'Found ' + got.items.length + ' camera ID' + (got.items.length === 1 ? '' : 's') + '. Check them against the paper before sending.'
-      : 'No camera IDs could be read from this photo. Take it again closer and flatter, or type the IDs below.';
+      : 'No camera IDs could be read from this photo. Take it again closer and flatter, or paste the IDs above.';
     note.classList.remove('hidden');
   } catch (e) {
-    note.textContent = (e instanceof NetworkError ? 'No signal, so the photo could not be read. ' : /Unknown action/.test(e.message) ? 'The server needs the new Code.gs to read photos. ' : e.message + ' ') + 'You can still type the camera IDs below.';
+    note.textContent = (e instanceof NetworkError ? 'No signal, so the photo could not be read. ' : /Unknown action/.test(e.message) ? 'The server needs the new Code.gs to read photos. ' : e.message + ' ') + 'You can still paste the camera IDs above.';
     note.classList.remove('hidden');
   } finally { RP.reading = false; rpRender(); }
 }
-function rpAddTyped() {
-  const v = $('rpType').value.trim();
-  if (!v) return;
-  const got = parseFaultText(v, CAMS);
-  const exact = CAMS.find((c) => camKey(c.cameraId) === camKey(v));
-  const items = exact ? [{ cameraId: exact.cameraId, raw: v, how: 'exact', on: true }] : got.items.map((x) => Object.assign(x, { on: true }));
-  if (!items.length) { toast(v.toUpperCase() + ' is not in the camera list.', true); return; }
-  rpMerge(items);
-  $('rpType').value = '';
+function rpAddIssue() {
+  RP.boxes.push({ id: 'b' + (rpBoxSeq++), issue: '', text: '', unknown: [], custom: true });
   rpRender();
 }
 async function rpSend() {
-  const cams = RP.items.filter((x) => x.on).map((x) => ({ cameraId: x.cameraId }));
+  const cams = RP.items.filter((x) => x.on).map((x) => ({ cameraId: x.cameraId, issue: x.issue === 'Other' ? '' : x.issue }));
   if (!cams.length) return;
   const btn = $('rpSend');
   busy(btn, true, 'Sending…');
@@ -3598,7 +3684,7 @@ async function rpSend() {
     const mailNote = r.emailed > 0 ? ' The depot team got an email (' + r.emailed + (r.emailed === 1 ? ' person' : ' people') + ').' : r.emailed < 0 ? ' The alert email could not be sent; the team still sees it in the app.' : '';
     $('rpResult').innerHTML = '';
     $('rpResult').appendChild(el('div', { class: 'rp-done', text: parts.join('. ') + '.' + mailNote }));
-    RP.items = []; RP.unknown = []; RP.photo = ''; RP.photoUrl = ''; $('rpNote').value = ''; $('rpReadNote').classList.add('hidden');
+    RP.items = []; RP.unknown = []; RP.photo = ''; RP.photoUrl = ''; $('rpNote').value = ''; $('rpReadNote').classList.add('hidden'); rpResetBoxes();
     if (r.faults) setFaults(r.faults);
     toast(parts[0] || 'Sent.');
   } catch (e) {
@@ -3624,7 +3710,7 @@ function rpRecent() {
   groups.forEach(([rep, fs]) => {
     box.appendChild(el('div', { class: 'rp-rep' }, [
       el('div', { class: 'meta', text: rep + ' · ' + fs[0].by + ' · ' + fs[0].at }),
-      el('div', { class: 'rp-cams' }, fs.map((f) => el('span', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), faultStatusChip(f)]))),
+      el('div', { class: 'rp-cams' }, fs.map((f) => el('span', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), issueChip(f.issue), faultStatusChip(f)]))),
     ]));
   });
 }
@@ -3632,7 +3718,7 @@ function rpRecent() {
 // ---------- camera faults: depot team inbox ----------
 const LS_FAULT_SEEN = 'dcc.faultseen.v1';
 let FAULTS = null;
-let FT_KIND = 'open';
+let FT_KIND = 'open', FT_ISSUE = '';
 let faultsLoading = false, faultsMissing = false, faultToastAt = 0;
 function faultNum(id) { const m = /^F(\d+)$/i.exec(String(id || '')); return m ? Number(m[1]) : 0; }
 async function loadFaults(quiet) {
@@ -3657,15 +3743,16 @@ function setFaults(list) {
       const fresh = list.filter((f) => f.status === 'Open' && faultNum(f.id) > seen);
       if (fresh.length) {
         faultToastAt = newest;
-        toast((first ? 'Since you last looked: ' : 'New from ' + fresh[0].by + ': ') + fresh.length + ' faulty camera' + (fresh.length === 1 ? '' : 's') + ' (' +
-          fresh.slice(0, 4).map((f) => f.cameraId).join(', ') + (fresh.length > 4 ? '…' : '') + '). Open the Faults tab.');
+        const kinds = [...new Set(fresh.map((f) => f.issue).filter(Boolean))];
+        toast((first ? 'Since you last looked: ' : 'New from ' + fresh[0].by + ': ') + fresh.length + ' faulty camera' + (fresh.length === 1 ? '' : 's') + (kinds.length ? ' (' + kinds.join(', ') + ')' : '') + ': ' +
+          fresh.slice(0, 4).map((f) => f.cameraId).join(', ') + (fresh.length > 4 ? ' and ' + (fresh.length - 4) + ' more' : '') + '. Open the Faults tab.');
         if (navigator.vibrate) navigator.vibrate([90, 60, 90]);
       }
     }
   }
   renderFaultBadge();
   if (currentTab === 'faults') renderFaults();
-  if (currentTab === 'report') { rpRecent(); rpRender(); }
+  if (currentTab === 'report') { rpRecent(); rpRenderList(); }
 }
 function renderFaultBadge() {
   const b = $('faultBadge');
@@ -3684,11 +3771,25 @@ function renderFaults(err) {
   const open = FAULTS.filter((f) => f.status !== 'Fixed'), fixed = FAULTS.filter((f) => f.status === 'Fixed');
   const waiting = open.filter((f) => f.status === 'Open').length;
   $('ftCount').textContent = open.length ? open.length + ' open · ' + waiting + ' not picked up yet' + (open.length - waiting ? ' · ' + (open.length - waiting) + ' being fixed' : '') : 'No open faults.';
-  const shown = FT_KIND === 'open' ? open : fixed;
+  // filter by issue (e.g. send the cleaner list to whoever is doing Dirty cameras)
+  const base = FT_KIND === 'open' ? open : fixed;
+  const issues = [...new Set(base.map((f) => f.issue || 'Other'))];
+  const fbox = $('ftIssue');
+  fbox.innerHTML = '';
+  if (issues.length > 1 || (issues.length === 1 && issues[0] !== 'Other')) {
+    if (FT_ISSUE && issues.indexOf(FT_ISSUE) < 0) FT_ISSUE = '';
+    [['', 'All ' + base.length]].concat(issues.map((i) => [i, i + ' ' + base.filter((f) => (f.issue || 'Other') === i).length])).forEach(([v, t]) => {
+      const b = el('button', { type: 'button', 'aria-pressed': String(FT_ISSUE === v), text: t });
+      b.addEventListener('click', () => { FT_ISSUE = v; renderFaults(); });
+      fbox.appendChild(b);
+    });
+    fbox.classList.remove('hidden');
+  } else { fbox.classList.add('hidden'); FT_ISSUE = ''; }
+  const shown = FT_ISSUE ? base.filter((f) => (f.issue || 'Other') === FT_ISSUE) : base;
   if (!shown.length) { box.appendChild(el('div', { class: 'ft-empty', text: FT_KIND === 'open' ? 'Nothing open. New reports from OCC appear here.' : 'Nothing fixed in the last 14 days.' })); return; }
   faultGroups(shown).forEach(([rep, fs]) => {
     const head = el('div', { class: 'ft-ghead' }, [
-      el('div', null, [el('b', { text: rep + ' · ' + fs[0].by }), el('div', { class: 'meta' }, [fs[0].at + ' · ' + fs.length + ' camera' + (fs.length === 1 ? '' : 's'),
+      el('div', null, [el('b', { text: rep + ' · ' + fs[0].by }), el('div', { class: 'meta' }, [fs[0].at + ' · ' + [...new Set(fs.map((f) => f.issue || 'Other'))].map((i) => fs.filter((f) => (f.issue || 'Other') === i).length + ' ' + i).join(', '),
         fs[0].photoUrl ? ' · ' : '', fs[0].photoUrl ? el('a', { href: fs[0].photoUrl, target: '_blank', rel: 'noopener', text: 'photo of the list' }) : ''])]),
     ]);
     const todo = fs.filter((f) => f.status === 'Open');
@@ -3708,7 +3809,7 @@ function renderFaults(err) {
       else { const o = el('button', { type: 'button', text: 'Reopen' }); o.addEventListener('click', () => twoTap(o, 'Tap again to reopen', () => faultUpdate([f.id], 'Open', o))); acts.push(o); }
       const where = camWhere(f.cameraId) || ((f.poleId ? 'Pole ' + f.poleId : '') + (f.itbNo && f.itbNo !== f.poleId ? ' · ' + f.itbNo : ''));
       g.appendChild(el('div', { class: 'ft-item' }, [
-        el('div', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), faultStatusChip(f), el('span', { class: 'meta', text: f.id })]),
+        el('div', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), issueChip(f.issue), faultStatusChip(f), el('span', { class: 'meta', text: f.id })]),
         el('div', { class: 'ft-where', text: where + (f.location ? ' · ' + f.location : '') }),
         f.note ? el('div', { class: 'ft-note', text: 'OCC: ' + f.note }) : el('span'),
         f.status === 'Acknowledged' && f.ackAt ? el('div', { class: 'ft-note', text: 'Picked up ' + f.ackAt }) : el('span'),
@@ -3739,8 +3840,8 @@ async function faultOnMap(f) {
 // Keep the inbox (and the tab badge) fresh while the app is open.
 setInterval(() => { if (!document.hidden && getCfg().passcode && (FAULTS_OK || FAULTS)) loadFaults(true); }, 60000);
 $('rpPhoto').addEventListener('change', (e) => { rpOnPhoto(e.target.files && e.target.files[0]); e.target.value = ''; });
-$('rpAdd').addEventListener('click', rpAddTyped);
-$('rpType').addEventListener('keydown', (e) => { if (e.key === 'Enter') rpAddTyped(); });
+$('rpAddIssue').addEventListener('click', rpAddIssue);
+$('rpPhotoIssue').addEventListener('change', () => { RP.items.filter((x) => x.src === 'photo').forEach((x) => { x.issue = $('rpPhotoIssue').value; }); rpRenderList(); });
 $('rpSend').addEventListener('click', rpSend);
 document.querySelectorAll('#ftKind button').forEach((b) => b.addEventListener('click', () => {
   FT_KIND = b.dataset.k;
