@@ -334,6 +334,26 @@
   .iss.i-fov { background: #DDE7F5; color: #1D4F91; }
   .iss.i-blackout { background: #1B2631; color: #FFFFFF; }
   #ftIssue { margin-top: 8px; flex-wrap: wrap; }
+  .pl-sum { background: #EEF1F4; border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--slate); }
+  .pl-sum b { font-size: 15px; }
+  .pl-rule { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .pl-stop { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 14px; display: flex; gap: 12px; }
+  .pl-num { flex: none; width: 34px; height: 34px; border-radius: 17px; color: #FFFFFF; font: 800 17px/34px var(--font); text-align: center; }
+  .pl-num.p1 { background: #1B2631; } .pl-num.p2 { background: #1D4F91; } .pl-num.p3 { background: #9A6200; } .pl-num.p4 { background: #6B7782; }
+  .pl-body { flex: 1; min-width: 0; }
+  .pl-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .pl-head b { font-size: 17px; color: var(--slate); }
+  .pl-leg { font-size: 13px; color: var(--muted); }
+  .pl-cam { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .pl-cam .acts { margin-left: auto; display: flex; gap: 6px; }
+  .pl-cam .acts button { border: 1px solid var(--rule); background: #FFFFFF; color: var(--line-blue); border-radius: 9px; padding: 5px 9px; font-size: 13px; font-weight: 650; }
+  .pl-cam .acts button.ok { background: #1E6B45; color: #FFFFFF; border-color: #1E6B45; }
+  .pl-cam .acts button.armed { background: #FFF1C2; color: #6B4E00; border-color: #E5C04A; }
+  .pl-stop .ft-acts { margin-top: 10px; }
+  .pl-tier { font-size: 13px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 6px 2px -4px; }
+  .ov-plan-pill { display: inline-flex; align-items: center; gap: 8px; margin: 8px 0 0 6px; background: #1B2631; color: #FFFFFF; border-radius: 14px; padding: 4px 6px 4px 12px; font-size: 13px; font-weight: 650; }
+  .ov-plan-pill button { border: 0; background: rgba(255,255,255,.18); color: #FFFFFF; border-radius: 10px; padding: 3px 9px; font-size: 13px; font-weight: 700; }
+  .pl-mk { width: 26px; height: 26px; border-radius: 13px; border: 2px solid #FFFFFF; color: #FFFFFF; font: 800 13px/22px var(--font); text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
   .rp-item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--rule); border-radius: 12px; padding: 8px 10px; background: #FFFFFF; }
   .rp-item.off { background: #F1F3F5; }
   .rp-item.off .plate { opacity: .55; }
@@ -714,6 +734,8 @@
       <div id="ftKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
         <button type="button" data-k="open" aria-pressed="true">Open</button><button type="button" data-k="fixed" aria-pressed="false">Fixed (14 days)</button></div>
       <div id="ftIssue" class="seg hidden" role="group" aria-label="Issue"></div>
+      <div id="ftView" class="seg" role="group" aria-label="Order" style="margin-top:8px">
+        <button type="button" data-v="plan" aria-pressed="true">Suggested order</button><button type="button" data-v="report" aria-pressed="false">By report</button></div>
     </div>
     <div id="ftList" class="ft-list"></div>
   </section>
@@ -838,6 +860,7 @@
       <button id="ovGo" type="button" class="go">Go</button>
     </div>
     <div id="ovSummary" class="ov-summary">Loading…</div><span id="ovStatus"></span>
+    <div id="ovPlanPill" class="ov-plan-pill hidden"><span></span><button type="button" id="ovPlanHide">Hide</button></div>
     <div id="ovView" class="seg ov-view" role="group" aria-label="Show on the map">
       <button type="button" data-v="cams" aria-pressed="true">Cameras</button><button type="button" data-v="itb" aria-pressed="false">ITBs</button></div>
     <div id="ovAreaEdit" class="ov-area-edit hidden">
@@ -897,7 +920,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-30.1';
+const APP_VERSION = '2026-10-30.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -3786,7 +3809,9 @@ function renderFaults(err) {
     fbox.classList.remove('hidden');
   } else { fbox.classList.add('hidden'); FT_ISSUE = ''; }
   const shown = FT_ISSUE ? base.filter((f) => (f.issue || 'Other') === FT_ISSUE) : base;
+  $('ftView').classList.toggle('hidden', FT_KIND !== 'open');
   if (!shown.length) { box.appendChild(el('div', { class: 'ft-empty', text: FT_KIND === 'open' ? 'Nothing open. New reports from OCC appear here.' : 'Nothing fixed in the last 14 days.' })); return; }
+  if (FT_KIND === 'open' && FT_VIEW === 'plan') { renderPlan(box, shown); return; }
   faultGroups(shown).forEach(([rep, fs]) => {
     const head = el('div', { class: 'ft-ghead' }, [
       el('div', null, [el('b', { text: rep + ' · ' + fs[0].by }), el('div', { class: 'meta' }, [fs[0].at + ' · ' + [...new Set(fs.map((f) => f.issue || 'Other'))].map((i) => fs.filter((f) => (f.issue || 'Other') === i).length + ' ' + i).join(', '),
@@ -3828,15 +3853,151 @@ async function faultUpdate(ids, status, btn) {
     setFaults(r.faults || []);
   } catch (e) { toast(e instanceof NetworkError ? 'No signal. Try again when you have signal.' : e.message, true); busy(btn, false); }
 }
-async function faultOnMap(f) {
+async function faultOnMap(f, directions) {
   await goTab('map');
   const hits = ovSearch(f.cameraId);
   const r = hits.find((x) => x.exact) || hits[0];
-  if (r) { ovPick(r); return; }
+  if (r) {
+    ovPick(r);
+    if (directions) setTimeout(() => { const b = document.querySelector('#ovPanel .peek-btns .btn'); if (b && /Directions/.test(b.textContent)) b.click(); }, 400);
+    return;
+  }
   const p = f.poleId || f.itbNo;
   if (p && MAP.poles.some((x) => String(x.poleId).toUpperCase() === p.toUpperCase())) ovSelect(p, f.cameraId);
   else toast(f.cameraId + ' is not on the map yet.', true);
 }
+// ---------- suggested job order ----------
+// Blackout first (no picture at all), then FOV fix, then cleaning; anything else after.
+// Within each priority: start with the camera nearest to you (or the first reported),
+// then always go to the nearest camera left. Cameras on the same pole are one stop,
+// so a pole is never visited twice.
+const PRIO = { 'Blackout': 1, 'FOV fix': 2, 'Dirty': 3 };
+const PRIO_NAME = { 1: 'Blackout', 2: 'FOV fix', 3: 'Cleaning', 4: 'Other issues' };
+function prioOf(f) { return PRIO[f.issue] || 4; }
+let FT_VIEW = 'plan', FT_START = null, FT_START_AT = 0;
+function faultLoc(f) {
+  const cam = CAMS.find((c) => camKey(c.cameraId) === camKey(f.cameraId)) || {};
+  const find = (id) => id && MAP.poles.find((p) => String(p.poleId).toUpperCase() === String(id).toUpperCase() && hasCoords(p));
+  const pole = find(cam.poleId || f.poleId);
+  if (pole) return { lat: pole.lat, lng: pole.lng, key: String(pole.poleId).toUpperCase(), label: pole.poleId, itb: cam.itbNo || f.itbNo || '', approx: cam.confirmed === false };
+  const itb = find(cam.itbNo || f.itbNo);
+  if (itb) return { lat: itb.lat, lng: itb.lng, key: String(itb.poleId).toUpperCase(), label: itb.poleId, itb: '', approx: true };
+  return null;
+}
+function planFaults(list, start) {
+  const stops = new Map(), unlocated = [];
+  list.forEach((f) => {
+    const loc = faultLoc(f);
+    if (!loc) { unlocated.push(f); return; }
+    if (!stops.has(loc.key)) stops.set(loc.key, { loc: loc, faults: [] });
+    stops.get(loc.key).faults.push(f);
+  });
+  const all = [...stops.values()];
+  all.forEach((st) => {
+    st.faults.sort((a, b) => prioOf(a) - prioOf(b) || faultNum(a.id) - faultNum(b.id));
+    st.prio = prioOf(st.faults[0]);
+    st.first = Math.min(...st.faults.map((f) => faultNum(f.id)));
+    st.approx = st.faults.every((f) => (faultLoc(f) || {}).approx);
+  });
+  const order = [];
+  let here = start ? [start.lat, start.lng] : null;
+  for (let p = 1; p <= 4; p++) {
+    const left = all.filter((st) => st.prio === p);
+    while (left.length) {
+      let bi = 0;
+      if (here) { let bd = Infinity; left.forEach((st, i) => { const d = metresBetween(here[0], here[1], st.loc.lat, st.loc.lng); if (d < bd) { bd = d; bi = i; } }); }
+      else left.forEach((st, i) => { if (st.first < left[bi].first) bi = i; });
+      const st = left.splice(bi, 1)[0];
+      st.leg = here ? metresBetween(here[0], here[1], st.loc.lat, st.loc.lng) : null;
+      order.push(st);
+      here = [st.loc.lat, st.loc.lng];
+    }
+  }
+  unlocated.sort((a, b) => prioOf(a) - prioOf(b) || faultNum(a.id) - faultNum(b.id));
+  return { stops: order, unlocated: unlocated, total: order.reduce((n, st) => n + (st.leg && order.indexOf(st) > 0 ? st.leg : 0), 0) };
+}
+// Where you are now (for picking the first stop). Uses the map's GPS if it's running.
+function planStart() {
+  if (OV.myPos && Date.now() - (OV.lastFixAt || 0) < 120000) return { lat: OV.myPos.lat, lng: OV.myPos.lng };
+  if (FT_START && Date.now() - FT_START_AT < 300000) return FT_START;
+  if (navigator.geolocation && !planStart.asked) {
+    planStart.asked = true;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      FT_START = { lat: pos.coords.latitude, lng: pos.coords.longitude }; FT_START_AT = Date.now(); planStart.asked = false;
+      if (currentTab === 'faults' && FT_VIEW === 'plan') renderFaults();
+    }, () => { planStart.asked = false; }, { enableHighAccuracy: true, maximumAge: 60000, timeout: 8000 });
+  }
+  return null;
+}
+function renderPlan(box, list) {
+  const start = planStart();
+  const plan = planFaults(list, start);
+  const counts = [1, 2, 3, 4].map((p) => [p, list.filter((f) => prioOf(f) === p).length]).filter((x) => x[1]);
+  const sum = el('div', { class: 'pl-sum' }, [
+    el('b', { text: plan.stops.length + ' stop' + (plan.stops.length === 1 ? '' : 's') + ' · ' + list.length + ' camera' + (list.length === 1 ? '' : 's') + (plan.total ? ' · about ' + fmtDist(plan.total) + ' between stops' : '') }),
+    el('div', { class: 'pl-rule', text: 'Priority: ' + counts.map(([p, n]) => n + ' ' + PRIO_NAME[p]).join(' → ') + '. Starts at the ' + (start ? 'top-priority camera nearest to you' : 'first-reported top-priority camera (turn on location to start nearest to you)') + ', then the nearest camera each time. Cameras on the same pole are done together.' }),
+  ]);
+  const showAll = el('button', { type: 'button', class: 'btn secondary', style: 'margin-top:10px;min-height:42px', text: 'Show the route on the map' });
+  showAll.addEventListener('click', () => planOnMap(plan));
+  if (plan.stops.length) sum.appendChild(showAll);
+  box.appendChild(sum);
+  let lastTier = 0;
+  plan.stops.forEach((st, i) => {
+    if (st.prio !== lastTier) { box.appendChild(el('div', { class: 'pl-tier', text: 'Priority ' + st.prio + ' · ' + PRIO_NAME[st.prio] })); lastTier = st.prio; }
+    const cams = st.faults.map((f) => {
+      const acts = [];
+      if (f.status === 'Open') { const a = el('button', { type: 'button', text: 'I\'m on it' }); a.addEventListener('click', () => faultUpdate([f.id], 'Acknowledged', a)); acts.push(a); }
+      const x = el('button', { type: 'button', class: 'ok', text: 'Fixed' }); x.addEventListener('click', () => twoTap(x, 'Tap again', () => faultUpdate([f.id], 'Fixed', x))); acts.push(x);
+      return el('div', { class: 'pl-cam' }, [el('span', { class: 'plate small', text: f.cameraId }), issueChip(f.issue),
+        f.status === 'Acknowledged' ? faultStatusChip(f) : el('span'), el('div', { class: 'acts' }, acts)]);
+    });
+    const go = el('button', { type: 'button', class: 'go', text: 'Directions' });
+    go.addEventListener('click', () => faultOnMap(st.faults[0], true));
+    // lower-priority cameras a few poles away: the tech can choose to do them now
+    const near = plan.stops.slice(i + 1).filter((o) => o.prio > st.prio && metresBetween(st.loc.lat, st.loc.lng, o.loc.lat, o.loc.lng) <= 40);
+    if (near.length) cams.push(el('div', { class: 'pl-leg', style: 'margin-top:6px', text: 'Nearby: ' + near.map((o) => o.faults.map((f) => f.cameraId).join(', ') + ' (' + (o.faults[0].issue || 'other').toLowerCase() + ', ' + o.loc.label + ', ' + fmtDist(metresBetween(st.loc.lat, st.loc.lng, o.loc.lat, o.loc.lng)) + ', stop ' + (plan.stops.indexOf(o) + 1) + ')').join('; ') + '. Do it now if you have the time.' }));
+    const legTxt = i === 0 ? (start ? 'Start here · ' + fmtDist(st.leg) + ' from you' : 'Start here') : fmtDist(st.leg) + ' from stop ' + i;
+    const extra = st.faults.some((f) => prioOf(f) > st.prio) ? ' · also do ' + [...new Set(st.faults.filter((f) => prioOf(f) > st.prio).map((f) => f.issue || 'other'))].join(', ').toLowerCase() + ' while there' : '';
+    box.appendChild(el('div', { class: 'pl-stop' }, [el('div', { class: 'pl-num p' + st.prio, text: String(i + 1) }),
+      el('div', { class: 'pl-body' }, [
+        el('div', { class: 'pl-head' }, [el('b', { text: st.loc.label + (st.loc.itb && st.loc.itb !== st.loc.label ? ' · ' + st.loc.itb : '') }), el('span', { class: 'pl-leg', text: legTxt })]),
+        st.approx ? el('div', { class: 'pl-leg', text: 'Location by ITB: the exact pole is not confirmed yet' + extra }) : (extra ? el('div', { class: 'pl-leg', text: extra.slice(3) }) : el('span')),
+      ].concat(cams, [el('div', { class: 'ft-acts' }, [go])]))]));
+  });
+  if (plan.unlocated.length) {
+    box.appendChild(el('div', { class: 'pl-tier', text: 'Not on the map yet' }));
+    box.appendChild(el('div', { class: 'pl-stop' }, [el('div', { class: 'pl-body' }, plan.unlocated.map((f) => el('div', { class: 'pl-cam' }, [el('span', { class: 'plate small', text: f.cameraId }), issueChip(f.issue), el('span', { class: 'pl-leg', text: f.itbNo ? 'listed under ' + f.itbNo : 'no pole yet' })])))]));
+  }
+}
+// Numbered stops and the order line on the Map tab.
+let PLAN_LAYER = null;
+function planOnMap(plan) {
+  goTab('map').then(() => {
+    if (!OV.map) return;
+    if (PLAN_LAYER) PLAN_LAYER.remove();
+    PLAN_LAYER = L.layerGroup().addTo(OV.map);
+    const pts = plan.stops.map((st) => [st.loc.lat, st.loc.lng]);
+    if (pts.length > 1) L.polyline(pts, { color: '#F4B400', weight: 4, opacity: 0.95, dashArray: '8 7', interactive: false }).addTo(PLAN_LAYER);
+    const col = { 1: '#1B2631', 2: '#1D4F91', 3: '#9A6200', 4: '#6B7782' };
+    plan.stops.forEach((st, i) => {
+      L.marker([st.loc.lat, st.loc.lng], { zIndexOffset: 2000 - i, icon: L.divIcon({ className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+        html: '<div class="pl-mk" style="background:' + col[st.prio] + '">' + (i + 1) + '</div>' }) })
+        .on('click', () => ovSelect(st.faults[0].poleId && MAP.poles.some((p) => String(p.poleId).toUpperCase() === st.loc.key) ? st.loc.label : st.loc.label, st.faults[0].cameraId))
+        .addTo(PLAN_LAYER);
+    });
+    if (pts.length) OV.map.fitBounds(L.latLngBounds(pts).pad(0.25), { maxZoom: 19 });
+    const pill = $('ovPlanPill');
+    pill.querySelector('span').textContent = 'Job order: ' + plan.stops.length + ' stops (1 = start)';
+    pill.classList.remove('hidden');
+  });
+}
+function planHide() { if (PLAN_LAYER) { PLAN_LAYER.remove(); PLAN_LAYER = null; } $('ovPlanPill').classList.add('hidden'); }
+$('ovPlanHide').addEventListener('click', planHide);
+document.querySelectorAll('#ftView button').forEach((b) => b.addEventListener('click', () => {
+  FT_VIEW = b.dataset.v;
+  document.querySelectorAll('#ftView button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderFaults();
+}));
 // Keep the inbox (and the tab badge) fresh while the app is open.
 setInterval(() => { if (!document.hidden && getCfg().passcode && (FAULTS_OK || FAULTS)) loadFaults(true); }, 60000);
 $('rpPhoto').addEventListener('change', (e) => { rpOnPhoto(e.target.files && e.target.files[0]); e.target.value = ''; });
