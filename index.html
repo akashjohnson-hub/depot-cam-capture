@@ -928,7 +928,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-02.1';
+const APP_VERSION = '2026-11-02.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -2149,8 +2149,9 @@ const OV = { map: null, layer: null, me: null, meCircle: null, watch: null, mark
 // ---------- map view: Cameras or ITBs ----------
 function itbNumber(p) { const m = /ITB[-\s]?0*(\d+)/i.exec(String(p.poleId)) || /ITB[-\s]?0*(\d+)/i.exec(String(p.itbNo || '')); return m ? m[1] : ''; }
 function isItbPole(p) { return /^yes$/i.test(String(p.hasItb || '')) || /^ITB[-\s]?\d/i.test(String(p.poleId)); }
-function isSwitchBox(p) { return /MDDSB/i.test(String(p.poleId || '')); }   // TVSS switch boxes on track, e.g. "MDDSB117" or "TVSS MDDSB116"
-function sbNumber(p) { const m = /MDDSB[-\s]?0*(\d+)/i.exec(String(p.poleId || '')); return m ? m[1] : ''; }
+// TVSS switch boxes on track: "MDDSB" in the Pole ID (MDDSB117) or in the Location Description (pole P90 → "TVSS MDDSB switch box")
+function isSwitchBox(p) { return /MDDSB/i.test(String(p.poleId || '')) || /MDDSB/i.test(String(p.locationDescription || '')); }
+function sbNumber(p) { const m = /MDDSB[-\s]?0*(\d+)/i.exec(String(p.poleId || '')) || /MDDSB[-\s]?0*(\d+)/i.exec(String(p.locationDescription || '')); return m ? m[1] : ''; }
 function ovView() { const v = lsGet('dcc.mapView'); return v === 'itb' ? 'itb' : 'cams'; }
 function ovSetView(v) {
   lsSet('dcc.mapView', v);
