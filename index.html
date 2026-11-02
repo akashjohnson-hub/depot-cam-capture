@@ -625,6 +625,14 @@
   .lg2.pole { width: 7px; height: 7px; background: #8A96A3; }
   .lg2.itb { border-radius: 2px; background: #F4B400; border: 1.5px solid #1B2631; }
   .lg2.itb.weak { background: #FFFFFF; border-style: dashed; }
+  /* TVSS switch box (MDDSB) on track: purple square, number inside */
+  .mk2.mks::before { display: none; }
+  .mk2.mks i { font: 800 9px/1 var(--font-id, var(--font)); font-style: normal; color: #FFFFFF; background: #6B2FA0; border: 2px solid #FFFFFF;
+    min-width: 18px; height: 18px; padding: 0 3px; flex: none; white-space: nowrap; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px;
+    box-shadow: 0 0 0 1.5px #6B2FA0, 0 1px 3px rgba(0,0,0,.45); }
+  .mk2.mks.s-weak i, .mk2.mks.s-todo i { background: #FFFFFF; color: #6B2FA0; border: 2px dashed #6B2FA0; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+  .lg2.sb { border-radius: 2px; background: #6B2FA0; border: 1.5px solid #FFFFFF; box-shadow: 0 0 0 1px #6B2FA0; }
+  .sb-tag { display: inline-block; font: 700 10px/1 var(--font); color: #FFFFFF; background: #6B2FA0; border-radius: 4px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
 </style>
 </head>
 <body>
@@ -745,7 +753,7 @@
       <div id="vwCount" class="meta">Loading…</div>
       <input id="vwSearch" type="search" placeholder="Filter by camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:10px">
       <div id="vwKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
-        <button type="button" data-k="all" aria-pressed="true">All</button><button type="button" data-k="itb" aria-pressed="false">ITBs</button><button type="button" data-k="pole" aria-pressed="false">Other poles</button></div>
+        <button type="button" data-k="all" aria-pressed="true">All</button><button type="button" data-k="itb" aria-pressed="false">ITBs</button><button type="button" data-k="sb" aria-pressed="false">Switch boxes</button><button type="button" data-k="pole" aria-pressed="false">Other poles</button></div>
     </div>
     <div id="vwList" class="vw-list"></div>
   </section>
@@ -920,7 +928,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-10-30.2';
+const APP_VERSION = '2026-11-02.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1942,7 +1950,7 @@ function renderCarousel() {
     const cams = groups.byPole[key] || [];
     const wip = claimOnPole(p.poleId);
     const head = el('button', { type: 'button', class: 'phead', 'aria-label': p.poleId + ', ' + st[1] + ', ' + cams.length + ' cameras' + (wip ? ', ' + wip.by + ' is working on it' : '') }, [
-      el('span', { class: 'cid', text: String(p.poleId) }),
+      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '']),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') }),
     ].concat(wip ? [el('span', { class: 'cwip', text: 'In progress · ' + wip.by })] : []));
     head.addEventListener('click', () => openPoleFromCarousel(p.poleId));
@@ -1992,7 +2000,7 @@ function renderViewerList() {
     cams.some((c) => compactId(c.cameraId).indexOf(q) >= 0);
   const openOn = (poleId, cam) => { goTab('map').then(() => ovSelect(poleId, cam || '')); };
   const kind = VW_KIND;
-  let list = all.filter((p) => kind === 'all' || (kind === 'itb' ? isItbPole(p) : !isItbPole(p)));
+  let list = all.filter((p) => kind === 'all' || (kind === 'itb' ? isItbPole(p) : kind === 'sb' ? isSwitchBox(p) : !isItbPole(p) && !isSwitchBox(p)));
   if (kind === 'itb') {   // ITBs with a location first, so it's easy to see what's been collected
     list = list.slice().sort((a, b) => (hasCoords(b) ? 1 : 0) - (hasCoords(a) ? 1 : 0));
     const located = list.filter(hasCoords).length;
@@ -2004,7 +2012,7 @@ function renderViewerList() {
     const st = poleStatus(p);
     const t = typeof distTo === 'function' ? distTo(p) : null;
     const head = el('button', { type: 'button', class: 'phead' }, [
-      el('span', { class: 'cid', text: String(p.poleId) }),
+      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '']),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') + (p.locationDescription ? ' · ' + p.locationDescription : '') }),
       t ? el('span', { class: 'dist', text: t.d < 8 ? 'You are at this pole' : fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
     ]);
@@ -2141,6 +2149,8 @@ const OV = { map: null, layer: null, me: null, meCircle: null, watch: null, mark
 // ---------- map view: Cameras or ITBs ----------
 function itbNumber(p) { const m = /ITB[-\s]?0*(\d+)/i.exec(String(p.poleId)) || /ITB[-\s]?0*(\d+)/i.exec(String(p.itbNo || '')); return m ? m[1] : ''; }
 function isItbPole(p) { return /^yes$/i.test(String(p.hasItb || '')) || /^ITB[-\s]?\d/i.test(String(p.poleId)); }
+function isSwitchBox(p) { return /MDDSB/i.test(String(p.poleId || '')); }   // TVSS switch boxes on track, e.g. "MDDSB117" or "TVSS MDDSB116"
+function sbNumber(p) { const m = /MDDSB[-\s]?0*(\d+)/i.exec(String(p.poleId || '')); return m ? m[1] : ''; }
 function ovView() { const v = lsGet('dcc.mapView'); return v === 'itb' ? 'itb' : 'cams'; }
 function ovSetView(v) {
   lsSet('dcc.mapView', v);
@@ -2155,6 +2165,7 @@ function ovLegend(view) {
   const item = (cls, text) => el('span', null, [el('i', { class: cls }), text]);
   if (view === 'itb') { box.appendChild(item('lg2 itb', 'ITB located')); box.appendChild(item('lg2 itb weak', 'Re-collect')); }
   else { box.appendChild(item('lg2 ok', 'Confirmed')); box.appendChild(item('lg2 approx', 'At ITB')); box.appendChild(item('lg2 pole', 'No cameras')); }
+  if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p))) box.appendChild(item('lg2 sb', 'Switch box'));
   box.appendChild(item('dot d-me', 'You'));
   box.appendChild(walk);
 }
@@ -2284,13 +2295,16 @@ function ovRender() {
     const cams = groups.byPole[String(p.poleId).toUpperCase()] || [];
     const ok = cams.filter((c) => c.confirmed).length;
     camOk += ok; camApprox += cams.length - ok;
-    if (view === 'itb' && !itb) return;
+    const sb = isSwitchBox(p);
+    if (view === 'itb' && !itb && !sb) return;   // switch boxes are on track, so they show in both views
     const st = poleStatus(p)[0];
     let html;
     const size = [26, 26];   // tap area stays finger-sized; the visible mark is drawn smaller in CSS
     const num = itbNumber(p);   // e.g. "12" for ITB-12
     const badge = itb && num ? '<i class="mk-num">' + num + '</i>' : '';
-    if (view === 'itb') {
+    if (sb) {
+      html = '<div class="mk2 mks s-' + st + '"><i>' + (sbNumber(p) || 'SB') + '</i></div>';
+    } else if (view === 'itb') {
       html = '<div class="mk2 mki s-' + st + '"><i>' + (num || 'ITB') + '</i></div>';
     } else if (!cams.length) {
       html = '<div class="mk2 mkp">' + badge + '</div>';
@@ -2299,7 +2313,7 @@ function ovRender() {
       html = '<div class="mk2 mkc ' + cls + '"><b>' + cams.length + '</b>' + badge + '</div>';
     }
     const m = L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: html, iconSize: size, iconAnchor: [size[0] / 2, size[1] / 2] }), keyboard: false })
-      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, -11], className: 'pole-label' })
+      .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, sb ? -15 : -11], className: 'pole-label' })
       .on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (WK.mode === 'draw') { WK.draft.push([p.lat, p.lng]); wkDrawDraft(); return; }   // drawing: a tap on a pole adds a point at the pole
