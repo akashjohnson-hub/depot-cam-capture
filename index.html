@@ -631,6 +631,11 @@
     min-width: 18px; height: 18px; padding: 0 3px; flex: none; white-space: nowrap; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px;
     box-shadow: 0 0 0 1.5px #6B2FA0, 0 1px 3px rgba(0,0,0,.45); }
   .mk2.mks.s-weak i, .mk2.mks.s-todo i { background: #FFFFFF; color: #6B2FA0; border: 2px dashed #6B2FA0; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+  .cap-kind { margin: -2px 0 12px; }
+  .cap-kind button { flex: 1; }
+  .cap-kind button[data-k="sb"][aria-pressed="true"] { background: #6B2FA0; }
+  #wizHead.sb .wiz-bar i:nth-child(5) { display: none; }
+  #wizHead.sb .wiz-bar i.now { background: #6B2FA0; }
   .lg2.sb { border-radius: 2px; background: #6B2FA0; border: 1.5px solid #FFFFFF; box-shadow: 0 0 0 1px #6B2FA0; }
   .sb-tag { display: inline-block; font: 700 10px/1 var(--font); color: #FFFFFF; background: #6B2FA0; border-radius: 4px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
 </style>
@@ -766,7 +771,9 @@
     <div id="claimNote" class="claim-note hidden" role="status"></div>
     <!-- 1. Pole -->
     <section class="card step" data-step="1">
-      <h2>Which pole are you at?</h2>
+      <div id="capKind" class="seg cap-kind" role="group" aria-label="What are you capturing">
+        <button type="button" data-k="pole" aria-pressed="true">Pole</button><button type="button" data-k="sb" aria-pressed="false">TVSS switch box</button></div>
+      <h2 id="capH2">Which pole are you at?</h2>
       <div class="strip-head">
         <span id="stripCount" class="meta">Loading poles…</span>
         <div class="seg" role="group" aria-label="Filter poles">
@@ -775,7 +782,7 @@
         </div>
       </div>
       <div id="poleCarousel" class="carousel" aria-label="Poles" aria-busy="true"><div class="pcard skel" aria-hidden="true"><i class="sk sk-plate"></i><i class="sk sk-line"></i><i class="sk sk-line short"></i></div><div class="pcard skel" aria-hidden="true"><i class="sk sk-plate"></i><i class="sk sk-line"></i><i class="sk sk-line short"></i></div></div>
-      <label for="poleInput">Or type a Pole ID, ITB No or Camera ID</label>
+      <label id="poleInputLbl" for="poleInput">Or type a Pole ID, ITB No or Camera ID</label>
       <div class="row">
         <input id="poleInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ITB-11, P3 or PF154">
         <button id="lookupBtn" class="btn shrink" type="button" style="width:auto;padding:0 18px">Look up</button>
@@ -788,7 +795,7 @@
       <!-- 2. Location -->
       <section class="card step" data-step="2">
         <h2>Collect the location</h2>
-        <p class="meta" style="margin:0">Stand right at the base of the pole, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.</p>
+        <p id="collectHint" class="meta" style="margin:0">Stand right at the base of the pole, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.</p>
         <div id="locOnRecord" class="meta" style="margin-top:8px"></div>
         <div style="height:10px"></div>
         <button id="collectBtn" class="btn accent" type="button">Collect location</button>
@@ -821,9 +828,13 @@
 
       <!-- 4. Details -->
       <section class="card step" data-step="4">
-        <h2>Check the pole details</h2>
+        <h2 id="detailsH2">Check the pole details</h2>
         <label id="stickerWrap" class="check hidden"><input id="stickerPlaced" type="checkbox" checked><span>Sticker <b id="stickerId"></b> is on the pole</span></label>
-        <div class="row">
+        <div id="sbRow" class="hidden">
+          <label for="sbNo">MDDSB number</label>
+          <input id="sbNo" autocomplete="off" inputmode="numeric" placeholder="e.g. 117 (from the box label)">
+        </div>
+        <div id="itbRow" class="row">
           <div><label for="hasItb">Has ITB</label><select id="hasItb"><option value="">–</option><option>Yes</option><option>No</option></select></div>
           <div><label for="itbNo">ITB No</label><input id="itbNo" autocomplete="off" autocapitalize="characters"></div>
         </div>
@@ -928,7 +939,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-02.2';
+const APP_VERSION = '2026-11-02.3';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1345,9 +1356,48 @@ function goTab(t) {
 
 // ---------- capture wizard ----------
 const STEP_TITLES = ['Choose the pole', 'Collect the location', 'Take a photo', 'Check the pole details', 'Cameras on this pole'];
+// Capture mode: an ordinary pole, or a TVSS switch box (no cameras step, saved with Zone "TVSS on track" + "TVSS MDDSB<n> switch box")
+function capKind() { return lsGet('dcc.capKind') === 'sb' ? 'sb' : 'pole'; }
+function sbMode() { return capKind() === 'sb'; }
+function nSteps() { return sbMode() ? 4 : 5; }
+function sbDigits(v) { const m = /(\d+)/.exec(String(v || '')); return m ? String(Number(m[1])) : ''; }
+function sbNormalise(typed) {   // "117", "mddsb 117", "MDDSB-117" -> "MDDSB117"
+  const t = String(typed || '').trim();
+  if (/^\d+$/.test(t)) return 'MDDSB' + t;
+  const m = /^(?:TVSS\s*)?MDDSB[-\s]*(\d+)$/i.exec(t);
+  return m ? 'MDDSB' + m[1] : t;
+}
+function sbDesc(num, desc) {
+  const rest = String(desc || '').replace(/TVSS\s*MDDSB[-\s]*\d*(\s*switch box)?/ig, '').replace(/^[\s·,;-]+|[\s·,;-]+$/g, '');
+  const base = 'TVSS MDDSB' + (num || '') + ' switch box';
+  return rest ? base + ' · ' + rest : base;
+}
+function applyCapKind() {
+  const sb = sbMode();
+  document.querySelectorAll('#capKind button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === capKind())));
+  $('capH2').textContent = sb ? 'Which switch box are you at?' : 'Which pole are you at?';
+  $('poleInputLbl').textContent = sb ? 'Or type the MDDSB number or sticker ID' : 'Or type a Pole ID, ITB No or Camera ID';
+  $('poleInput').placeholder = sb ? 'e.g. 117, MDDSB117 or P90' : 'e.g. ITB-11, P3 or PF154';
+  $('lookupBtn').textContent = 'Look up';
+  $('newPoleBtn').textContent = sb ? 'No MDDSB label? Get the next Pole ID for a sticker' : 'Unnumbered pole? Get the next Pole ID';
+  $('sbRow').classList.toggle('hidden', !sb);
+  $('itbRow').classList.toggle('hidden', sb);
+  $('wizHead').classList.toggle('sb', sb);
+  $('detailsH2').textContent = sb ? 'Check the switch box details' : 'Check the pole details';
+  $('collectHint').textContent = sb ? 'Stand right beside the switch box, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.'
+    : 'Stand right at the base of the pole, away from parked trains and walls, and hold the phone up. Collection takes 15–30 seconds.';
+}
+function setCapKind(k, keepPole) {
+  if (k === capKind()) return;
+  lsSet('dcc.capKind', k);
+  applyCapKind();
+  if (!keepPole && state.pole) resetAll();
+  else setStep(state.step || 1, true);
+  if (MAP.polesLoaded) renderCarousel();
+}
 function setStep(n, quiet) {
   if (!state.pole) n = 1;
-  n = Math.max(1, Math.min(5, n));
+  n = Math.max(1, Math.min(nSteps(), n));
   state.step = n;
   document.querySelectorAll('#app .step').forEach((sec) => sec.classList.toggle('hidden', Number(sec.dataset.step) !== n));
   $('captureArea').classList.toggle('hidden', !state.pole || n === 1);
@@ -1355,7 +1405,8 @@ function setStep(n, quiet) {
   document.querySelectorAll('#wizHead .wiz-bar i').forEach((seg, i) => {
     seg.className = i + 1 < n ? 'done' : (i + 1 === n ? 'now' : '');
   });
-  $('wizTitle').textContent = 'Step ' + n + ' of 5: ' + STEP_TITLES[n - 1];
+  const sbTitles = ['Choose the switch box', 'Collect the location', 'Take a photo', 'Check the switch box details'];
+  $('wizTitle').textContent = 'Step ' + n + ' of ' + nSteps() + ': ' + (sbMode() ? sbTitles : STEP_TITLES)[n - 1];
   renderClaimNote();
   scheduleClaim();
   const plate = $('wizPlate');
@@ -1376,7 +1427,7 @@ function nextBlocker() {
 }
 function updateWizard() {
   const step = state.step || 1;
-  const last = step === 5;
+  const last = step === nSteps();
   $('wizBack').classList.toggle('invisible', step === 1);
   $('wizNext').classList.toggle('hidden', last);
   $('submitBtn').classList.toggle('hidden', !last);
@@ -1422,8 +1473,9 @@ async function saveSetup() {
 
 // ---------- step 1: pole lookup ----------
 async function lookup(blank) {
-  const typed = blank ? '' : $('poleInput').value.trim();
-  if (!blank && !typed) { toast('Type a Pole ID or ITB No, or tap "Get the next Pole ID".', true); return; }
+  let typed = blank ? '' : $('poleInput').value.trim();
+  if (!blank && !typed) { toast(sbMode() ? 'Type the MDDSB number, or tap "Get the next Pole ID".' : 'Type a Pole ID or ITB No, or tap "Get the next Pole ID".', true); return; }
+  if (sbMode() && typed) { typed = sbNormalise(typed); $('poleInput').value = typed; }
   const btn = blank ? $('newPoleBtn') : $('lookupBtn');
   busy(btn, true, blank ? 'Getting next ID…' : '…');
   try {
@@ -1468,6 +1520,8 @@ function onLookup(r, typed, opts) {
   banner.innerHTML = '';
   if (r.found) {
     const p = r.pole;
+    const wasSb = isSwitchBox({ poleId: p.poleId, locationDescription: p.locationDescription });
+    if (wasSb && !sbMode()) setCapKind('sb', true);   // opening a switch box always uses the switch-box form
     state.pole = { poleId: String(p.poleId), found: true,
       recLat: p.latitude ? Number(p.latitude) : null, recLng: p.longitude ? Number(p.longitude) : null,
       recAcc: p.gpsAccuracy || '' };
@@ -1478,9 +1532,14 @@ function onLookup(r, typed, opts) {
     $('locDesc').value = p.locationDescription || '';
     $('stickerWrap').classList.add('hidden');
     const camCount = (r.cameras || []).length;
+    if (sbMode()) {
+      $('sbNo').value = sbNumber({ poleId: p.poleId, locationDescription: p.locationDescription });
+      if (!$('zone').value) $('zone').value = 'TVSS on track';
+    }
     banner.appendChild(el('div', { class: 'banner info' }, [
       el('div', { class: 'big-id', text: state.pole.poleId }),
-      el('div', { text: [p.itbNo ? 'ITB ' + p.itbNo : 'No ITB', camCount + ' camera' + (camCount === 1 ? '' : 's') + ' on record'].join(' · ') }),
+      el('div', { text: sbMode() ? (wasSb ? 'TVSS switch box' : 'Will be saved as a TVSS switch box') + (camCount ? ' · ' + camCount + ' camera' + (camCount === 1 ? '' : 's') + ' on record (kept)' : '')
+        : [p.itbNo ? 'ITB ' + p.itbNo : 'No ITB', camCount + ' camera' + (camCount === 1 ? '' : 's') + ' on record'].join(' · ') }),
     ]));
     if (p.latitude && p.longitude) {
       $('locOnRecord').textContent = 'On record: ' + Number(p.latitude).toFixed(6) + ', ' + Number(p.longitude).toFixed(6) +
@@ -1502,19 +1561,28 @@ function onLookup(r, typed, opts) {
       ]));
     }
   } else {
-    const newId = String(r.suggestedPoleId);
+    const sbTyped = sbMode() && /^MDDSB\d+$/i.test(typed) && !r.cameraUnlinked;
+    const newId = sbTyped ? typed.toUpperCase() : String(r.suggestedPoleId);
     state.pole = { poleId: newId, found: false };
     $('hasItb').value = 'No';
+    if (sbMode()) { $('zone').value = 'TVSS on track'; $('sbNo').value = sbTyped ? sbDigits(newId) : ''; }
     $('stickerId').textContent = newId;
-    $('stickerPlaced').checked = true;
-    $('stickerWrap').classList.remove('hidden');
+    $('stickerPlaced').checked = !sbTyped;
+    $('stickerWrap').classList.toggle('hidden', sbTyped);   // an MDDSB box has its own label, no sticker
     const kids = [];
     if (r.cameraUnlinked) kids.push(el('div', { text: 'Camera ' + r.matchedCamera + ' is in the database but isn\'t linked to any pole yet.' }));
     else if (typed) kids.push(el('div', { text: '"' + typed + '" isn\'t in the database as a pole, ITB or camera.' }));
-    kids.push(el('div', { text: 'New pole. Its ID will be:' }));
-    kids.push(el('div', { class: 'big-id', text: newId }));
-    kids.push(el('div', { text: 'Put the ' + newId + ' sticker on the pole now, before collecting the location and photo.' }));
-    if (typed && !r.cameraUnlinked) {
+    if (sbTyped) {
+      kids.length = 0;
+      kids.push(el('div', { text: 'New TVSS switch box. Its ID will be:' }));
+      kids.push(el('div', { class: 'big-id', text: newId }));
+      kids.push(el('div', { text: 'Check the label on the box reads ' + newId + ', then collect the location and photo.' }));
+    } else {
+      kids.push(el('div', { text: sbMode() ? 'New TVSS switch box. Its ID will be:' : 'New pole. Its ID will be:' }));
+      kids.push(el('div', { class: 'big-id', text: newId }));
+      kids.push(el('div', { text: 'Put the ' + newId + ' sticker on the ' + (sbMode() ? 'switch box' : 'pole') + ' now, before collecting the location and photo.' + (sbMode() ? ' Add its MDDSB number in step 4 if it has one.' : '') }));
+    }
+    if (typed && !r.cameraUnlinked && !sbTyped) {
       const useTyped = el('button', { class: 'link', type: 'button', text: 'Use "' + typed.toUpperCase() + '" as the Pole ID instead' });
       useTyped.addEventListener('click', () => {
         state.pole.poleId = typed.toUpperCase();
@@ -1524,7 +1592,7 @@ function onLookup(r, typed, opts) {
       });
       kids.push(useTyped);
     }
-    if (typed && !r.cameraUnlinked) {
+    if (typed && !r.cameraUnlinked && !sbMode()) {
       const asCam = el('button', { class: 'link', type: 'button', text: 'It\'s a camera ID: add "' + typed.toUpperCase() + '" as a camera on this pole' });
       asCam.addEventListener('click', () => {
         const empty = state.cameras.find((c) => !c.cameraId.trim());
@@ -1560,7 +1628,7 @@ function resetCapture() {
   state.loc = null;
   state.photo = '';
   state.cameras = [];
-  ['itbNo', 'zone', 'phase', 'locDesc', 'notes'].forEach((id) => { $(id).value = ''; });
+  ['itbNo', 'zone', 'phase', 'locDesc', 'notes', 'sbNo'].forEach((id) => { $(id).value = ''; });
   $('hasItb').value = '';
   $('locOnRecord').textContent = '';
   $('gpsLive').classList.add('hidden');
@@ -1931,7 +1999,9 @@ function renderCarousel() {
   const camTotal = CAMS.length || all.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
   $('stripCount').textContent = done + ' of ' + all.length + ' poles mapped · ' + camTotal + ' cameras' +
     (groups.unassigned.length ? ' (' + groups.unassigned.length + ' without a pole)' : '') + cacheNote();
-  const shown = stripFilter === 'todo' ? all.filter((p) => poleStatus(p)[0] !== 'good') : all;
+  const pool = sbMode() ? all.filter(isSwitchBox) : all;
+  if (sbMode()) $('stripCount').textContent = pool.filter((p) => poleStatus(p)[0] === 'good').length + ' of ' + pool.length + ' switch boxes mapped' + cacheNote();
+  const shown = stripFilter === 'todo' ? pool.filter((p) => poleStatus(p)[0] !== 'good') : pool;
   const current = state.pole ? String(state.pole.poleId).toUpperCase() : '';
   const known = new Set(all.map((p) => String(p.poleId).toUpperCase()));
   CLAIMS.filter((c) => !known.has(String(c.poleId).toUpperCase())).forEach((c) => {
@@ -1960,7 +2030,7 @@ function renderCarousel() {
     ]));
   });
 
-  if (groups.unassigned.length) {
+  if (groups.unassigned.length && !sbMode()) {
     const un = groups.unassigned;
     const head = el('div', { class: 'phead' }, [
       el('span', { class: 'cid', text: 'No pole yet' }),
@@ -1973,7 +2043,7 @@ function renderCarousel() {
   }
 
   if (!box.children.length) {
-    box.appendChild(el('div', { class: 'strip-empty', text: stripFilter === 'todo' ? 'Nothing left to map.' : 'No poles in the Sheet yet.' }));
+    box.appendChild(el('div', { class: 'strip-empty', text: stripFilter === 'todo' ? 'Nothing left to map.' : (sbMode() ? 'No switch boxes yet. Type an MDDSB number below to add one.' : 'No poles in the Sheet yet.') }));
     return;
   }
   const sel = box.querySelector('.pcard.selected');
@@ -3354,6 +3424,16 @@ function currentWarnKey() {
 }
 
 function buildPayload() {
+  const p = buildPayloadBase();
+  if (sbMode()) {
+    const num = sbDigits($('sbNo').value) || sbNumber({ poleId: p.poleId });
+    p.zone = p.zone || 'TVSS on track';
+    p.hasItb = p.hasItb || 'No';
+    p.locationDescription = sbDesc(num, p.locationDescription);
+  }
+  return p;
+}
+function buildPayloadBase() {
   return {
     poleId: state.pole.poleId,
     hasItb: $('hasItb').value,
@@ -4188,6 +4268,8 @@ $('wizNext').addEventListener('click', () => { if (!$('wizNext').disabled) setSt
 $('lookupBtn').addEventListener('click', () => lookup(false));
 $('poleInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(false); });
 $('newPoleBtn').addEventListener('click', () => lookup(true));
+document.querySelectorAll('#capKind button').forEach((b) => b.addEventListener('click', () => setCapKind(b.dataset.k)));
+applyCapKind();
 $('collectBtn').addEventListener('click', () => { if (state.collecting) finishGps(); else startGps(); });
 $('weakOk').addEventListener('change', updateSubmit);
 $('photoInput').addEventListener('change', (e) => onPhoto(e.target.files && e.target.files[0]));
