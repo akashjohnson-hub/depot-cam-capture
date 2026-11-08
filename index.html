@@ -641,6 +641,18 @@
   #wizHead.sb .wiz-bar i:nth-child(5) { display: none; }
   #wizHead.sb .wiz-bar i.now { background: #6B2FA0; }
   .lg2.sb { border-radius: 2px; background: #6B2FA0; border: 1.5px solid #FFFFFF; box-shadow: 0 0 0 1px #6B2FA0; }
+  /* open faults: pulsing ring around the pole, colour by most urgent issue */
+  .mk2.flt { --fc: #6B7785; }
+  .mk2.flt.fp1 { --fc: #D7261E; } .mk2.flt.fp2 { --fc: #E8710A; } .mk2.flt.fp3 { --fc: #C99A00; }
+  .mk2 .flt-ring { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+    border: 3px solid var(--fc); box-sizing: border-box; pointer-events: none; animation: fltPulse 1.6s ease-out infinite; }
+  .mk2 .flt-n { position: absolute; right: -7px; top: -7px; min-width: 15px; height: 15px; padding: 0 3px; box-sizing: border-box; border-radius: 8px;
+    background: var(--fc); color: #FFFFFF; font: 800 10px/15px var(--font); text-align: center; box-shadow: 0 0 0 1.5px #FFFFFF; pointer-events: none; }
+  @keyframes fltPulse { 0% { transform: scale(.85); opacity: 1; } 70% { transform: scale(1.5); opacity: .15; } 100% { transform: scale(1.6); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .mk2 .flt-ring { animation: none; } }
+  .mk2.flt::after { content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2.5px solid var(--fc); box-sizing: border-box; pointer-events: none; }
+  .lg2.flt { background: #FFFFFF; border: 2.5px solid #D7261E; }
+  .ov-flt { color: #9E1B14; background: #FDECEA; border: 1px solid #F3B6B1; border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; font-size: 15px; }
   .mk2.mks.trk i, .mk2.mks.trk.s-weak i, .mk2.mks.trk.s-todo i { box-shadow: 0 0 0 3px #D7261E, 0 1px 3px rgba(0,0,0,.45); }
   .lg2.sb.trk { box-shadow: 0 0 0 2px #D7261E; }
   .sb-tag.trk { background: #D7261E; }
@@ -953,7 +965,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-08.2';
+const APP_VERSION = '2026-11-08.3';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -2263,6 +2275,7 @@ function ovLegend(view) {
   const item = (cls, text) => el('span', null, [el('i', { class: cls }), text]);
   if (view === 'itb') { box.appendChild(item('lg2 itb', 'ITB located')); box.appendChild(item('lg2 itb weak', 'Re-collect')); }
   else { box.appendChild(item('lg2 ok', 'Confirmed')); box.appendChild(item('lg2 approx', 'At ITB')); box.appendChild(item('lg2 pole', 'No cameras')); }
+  if (Object.keys(faultsByPole()).length) box.appendChild(item('lg2 flt', 'Open fault'));
   if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p))) {
     box.appendChild(item('lg2 sb', 'Switch box'));
     if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p) && needsTrackAccess(p))) box.appendChild(item('lg2 sb trk', 'Track access'));
@@ -2389,6 +2402,8 @@ function ovRender() {
   const groups = camerasByPole();
   const camTotal = CAMS.length || MAP.poles.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
   let camOk = 0, camApprox = 0, itbAll = 0, itbLocated = 0;
+  const fltMap = faultsByPole();
+  let fltOnMap = 0;
   MAP.poles.forEach((p) => {
     const itb = isItbPole(p);
     if (itb) { itbAll++; if (hasCoords(p)) itbLocated++; }
@@ -2412,6 +2427,12 @@ function ovRender() {
     } else {
       const cls = ok === cams.length ? 'ok' : (ok ? 'part' : 'approx');
       html = '<div class="mk2 mkc ' + cls + '"><b>' + cams.length + '</b>' + badge + '</div>';
+    }
+    const flt = fltMap[String(p.poleId).toUpperCase()];
+    if (flt) {   // pole with an open fault: coloured pulsing ring + count, colour = most urgent issue
+      fltOnMap++;
+      html = html.replace('<div class="mk2 ', '<div class="mk2 flt fp' + Math.min(flt.prio, 4) + ' ')
+        .replace(/<\/div>$/, '<span class="flt-ring"></span><span class="flt-n">' + flt.faults.length + '</span></div>');
     }
     const m = L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: html, iconSize: size, iconAnchor: [size[0] / 2, size[1] / 2] }), keyboard: false })
       .bindTooltip(String(p.poleId), { permanent: true, direction: 'top', offset: [0, sb ? -15 : -11], className: 'pole-label' })
@@ -2516,6 +2537,9 @@ function ovSelect(poleId, hit, quiet) {
   const close = el('button', { class: 'close', type: 'button', 'aria-label': 'Close', text: '×' });
   close.addEventListener('click', ovClosePanel);
   panel.appendChild(el('div', { class: 'ph' }, [el('div', { class: 'big-id', text: String(p.poleId) }), close]));
+  const pf = faultsByPole()[String(p.poleId).toUpperCase()];
+  if (pf) panel.appendChild(el('div', { class: 'ov-flt' }, [el('b', { text: pf.faults.length + ' open fault' + (pf.faults.length === 1 ? '' : 's') + ': ' }),
+    pf.faults.slice().sort((a, b) => prioOf(a) - prioOf(b)).map((f) => f.cameraId + ' (' + (f.issue || 'issue') + (f.status === 'Acknowledged' ? ', picked up' : '') + ')').join(', ')]));
   if (hasCoords(p)) panel.appendChild(el('div', { id: 'ovNear', class: 'near' }));
   const peek = [];
   if (hasCoords(p)) {
@@ -3900,6 +3924,8 @@ function setFaults(list) {
     }
   }
   renderFaultBadge();
+  const fk = (FAULTS || []).filter((f) => f.status !== 'Fixed').map((f) => f.id + f.status).join(',');
+  if (fk !== FAULT_POLES_KEY) { FAULT_POLES_KEY = fk; if (OV.open) ovRender(); }   // redraw the map's fault highlights
   if (currentTab === 'faults') renderFaults();
   if (currentTab === 'report') { rpRecent(); rpRenderList(); }
 }
@@ -4009,6 +4035,18 @@ function faultLoc(f) {
   const itb = find(cam.itbNo || f.itbNo);
   if (itb) return { lat: itb.lat, lng: itb.lng, key: String(itb.poleId).toUpperCase(), label: itb.poleId, itb: '', approx: true };
   return null;
+}
+// Open (not fixed) faults grouped by the pole they're on, for highlighting on the map.
+let FAULT_POLES_KEY = '';
+function faultsByPole() {
+  const out = {};
+  (FAULTS || []).filter((f) => f.status !== 'Fixed').forEach((f) => {
+    const loc = faultLoc(f);
+    if (!loc) return;
+    const o = out[loc.key] || (out[loc.key] = { prio: 9, faults: [] });
+    o.faults.push(f); o.prio = Math.min(o.prio, prioOf(f));
+  });
+  return out;
 }
 function planFaults(list, start) {
   const stops = new Map(), unlocated = [];
