@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js" defer></script>
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -652,6 +653,7 @@
   @media (prefers-reduced-motion: reduce) { .mk2 .flt-ring { animation: none; } }
   .mk2.flt::after { content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2.5px solid var(--fc); box-sizing: border-box; pointer-events: none; }
   .lg2.flt { background: #FFFFFF; border: 2.5px solid #D7261E; }
+  .map-turned #ovCompass .n { color: #D7261E; }
   .ov-flt { color: #9E1B14; background: #FDECEA; border: 1px solid #F3B6B1; border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; font-size: 15px; }
   .mk2.mks.trk i, .mk2.mks.trk.s-weak i, .mk2.mks.trk.s-todo i { box-shadow: 0 0 0 3px #00C2E0, 0 1px 3px rgba(0,0,0,.45); }
   .lg2.sb.trk { box-shadow: 0 0 0 2px #00C2E0; }
@@ -965,7 +967,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-08.4';
+const APP_VERSION = '2026-11-08.5';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -2297,12 +2299,15 @@ async function openOverview() {
   $('mapBtn').textContent = 'List';
   if (!window.L) { $('ovSummary').textContent = 'Map could not load (no connection?).'; return; }
   if (!OV.map) {
-    OV.map = L.map('ovMap', { maxZoom: 21, zoomControl: false }).setView([1.3521, 103.8198], 12);
+    const canRotate = typeof L.Map.prototype.setBearing === 'function';   // leaflet-rotate loaded
+    OV.map = L.map('ovMap', Object.assign({ maxZoom: 21, zoomControl: false },
+      canRotate ? { rotate: true, bearing: 0, touchRotate: false, shiftKeyRotate: false, rotateControl: false } : {})).setView([1.3521, 103.8198], 12);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
     }).addTo(OV.map);
     OV.layer = L.layerGroup().addTo(OV.map);
     OV.map.on('zoomend', ovLabels);
+    OV.map.on('moveend zoomend rotate resize', ovDeclutterSoon);
     OV.map.on('click', (e) => { if (wkMapClick(e)) return; ovClosePanel(); $('ovResults').classList.add('hidden'); });
     OV.fitted = false;
   }
@@ -2461,6 +2466,7 @@ function ovRender() {
     OV.fitted = true;
   }
   ovLabels();
+  ovDeclutterSoon();
   wkRender();
   if (WK.mode === 'edit') wkPanel();   // keep the walkway count/details current after a refresh
   if (WK.routeOn) wkUpdateRoute(true);
@@ -2470,8 +2476,52 @@ function ovRender() {
 function ovLabels() {
   if (!OV.map) return;
   const z = OV.map.getZoom(), c = OV.map.getContainer();
-  c.classList.toggle('ov-labels-off', z < 18);   // pole names only when zoomed in
+  c.classList.toggle('ov-labels-off', z < 16);   // pole names from street level in; overlapping ones are thinned out below
   c.classList.toggle('ov-near', z >= 19);         // camera counts only when close
+  ovDeclutterSoon();
+}
+// Keep pole names readable: where names would overlap, show the most useful one
+// (the pole you picked, then poles with faults, switch boxes, ITBs, then the rest).
+let ovDeclutterT = 0;
+function ovDeclutterSoon() { clearTimeout(ovDeclutterT); ovDeclutterT = setTimeout(ovDeclutter, 60); }
+function ovDeclutter() {
+  if (!OV.map || !OV.open) return;
+  const box = OV.map.getContainer();
+  if (box.classList.contains('ov-labels-off')) return;
+  const sel = OV.selected ? String(OV.selected.poleId).toUpperCase() : '';
+  const flt = faultsByPole();
+  const W = box.getBoundingClientRect();
+  const rank = (k, p) => k === sel ? 0 : flt[k] ? 1 : p && isSwitchBox(p) ? 2 : p && isItbPole(p) ? 3 : 4;
+  const items = Object.keys(OV.markers).map((k) => {
+    const m = OV.markers[k], t = m.getTooltip && m.getTooltip(), e = t && t.getElement && t.getElement();
+    if (!e) return null;
+    e.style.visibility = '';
+    const p = MAP.poles.find((x) => String(x.poleId).toUpperCase() === k);
+    return { e: e, r: e.getBoundingClientRect(), rank: rank(k, p) };
+  }).filter((x) => x && x.r.right > W.left && x.r.left < W.right && x.r.bottom > W.top && x.r.top < W.bottom);
+  const cx = W.left + W.width / 2, cy = W.top + W.height / 2;
+  items.sort((a, b) => a.rank - b.rank || (Math.hypot(a.r.left - cx, a.r.top - cy) - Math.hypot(b.r.left - cx, b.r.top - cy)));
+  const placed = [];
+  items.forEach((it) => {
+    const r = it.r, hit = placed.some((q) => r.left < q.right + 2 && r.right > q.left - 2 && r.top < q.bottom + 1 && r.bottom > q.top - 1);
+    if (hit && it.rank > 0) it.e.style.visibility = 'hidden'; else placed.push(r);
+  });
+}
+
+// ---------- map turns with you (heading-up) ----------
+// While the compass is on, the map rotates so the way you are facing is up.
+// Pole names and markers stay upright.
+const TURN = { on: false, bearing: 0, lastSet: 0 };
+function mapCanTurn() { return !!(OV.map && OV.map.setBearing); }
+function mapTurnTo(heading) {
+  if (!mapCanTurn()) return;
+  const now = Date.now();
+  const target = heading === null ? 0 : -heading;
+  const d = ((target - TURN.bearing) % 360 + 540) % 360 - 180;
+  if (heading !== null && (Math.abs(d) < 1.5 || now - TURN.lastSet < 90)) return;
+  TURN.bearing = TURN.bearing + d; TURN.lastSet = now;
+  OV.map.setBearing(((TURN.bearing % 360) + 360) % 360);
+  document.body.classList.toggle('map-turned', heading !== null);
 }
 
 // Search across Camera ID, ITB No and Pole ID.
@@ -3177,15 +3227,18 @@ function applyHeading() {
   const box = icon ? icon.querySelector('.me-icon') : null;
   if (box) {
     box.classList.toggle('has-heading', has);
-    if (has) { HEAD.beam = towards(HEAD.beam, HEAD.shown); box.querySelector('.beam').style.transform = 'rotate(' + HEAD.beam.toFixed(1) + 'deg)'; }
+    if (has) { HEAD.beam = towards(HEAD.beam, HEAD.shown + mapBearing()); box.querySelector('.beam').style.transform = 'rotate(' + HEAD.beam.toFixed(1) + 'deg)'; }
   }
+  if (TURN.on && has) mapTurnTo(HEAD.shown);   // no fresh reading: keep the map where it is
   const nd = document.querySelector('#ovCompass .needle');
-  if (nd) { HEAD.needle = towards(HEAD.needle, has ? -HEAD.shown : 0); nd.style.transform = 'rotate(' + HEAD.needle.toFixed(1) + 'deg)'; }
+  // the needle shows where north is on screen: with the map turned that is the map's rotation
+  if (nd) { HEAD.needle = towards(HEAD.needle, TURN.on && mapCanTurn() ? mapBearing() : (has ? -HEAD.shown : 0)); nd.style.transform = 'rotate(' + HEAD.needle.toFixed(1) + 'deg)'; }
   ovNearHeading();
   if (has && HEAD.raf === 0 && HEAD.shown !== null && Math.abs((((HEAD.deg - HEAD.shown) % 360) + 540) % 360 - 180) > 0.5) {
     HEAD.raf = requestAnimationFrame(() => { HEAD.raf = 0; applyHeading(); });   // keep easing toward the target
   }
 }
+function mapBearing() { return mapCanTurn() ? (OV.map.getBearing() || 0) : 0; }
 function relativeWords(rel) {
   const a = Math.abs(rel), side = rel > 0 ? 'right' : 'left';
   if (a <= 22.5) return 'Straight ahead';
@@ -3211,7 +3264,7 @@ function ovNearHeading() {
   } else {
     HEAD.arrow = towards(HEAD.arrow, b);
     arrow.style.transform = 'rotate(' + HEAD.arrow.toFixed(1) + 'deg)';
-    how.textContent = (/^follow/.test(dir) ? 'Follow the blue line' : dir + ' of you') + ' (map north is up)' + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
+    how.textContent = (/^follow/.test(dir) ? 'Follow the blue line' : dir + ' of you') + (TURN.on ? '' : ' (map north is up)') + acc + (HEAD.listening ? '' : ' · tap the compass to point the way');
   }
 }
 function startCompassListeners(byTap) {
@@ -3220,6 +3273,7 @@ function startCompassListeners(byTap) {
   if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrient);
   else window.addEventListener('deviceorientation', onOrient);
   $('ovCompass').classList.add('on'); $('ovCompass').classList.remove('ask'); $('ovCompass').setAttribute('aria-pressed', 'true');
+  TURN.on = mapCanTurn() && lsGet('dcc.turnMap') !== 'off';
   if (byTap) setTimeout(() => { if (HEAD.listening && !HEAD.compass) toast('No compass reading yet. Wave the phone in a figure-8 to calibrate, or start walking to use GPS direction.'); }, 4000);
   ovNearHeading();
 }
@@ -3227,12 +3281,13 @@ function stopCompass() {
   window.removeEventListener('deviceorientationabsolute', onOrient);
   window.removeEventListener('deviceorientation', onOrient);
   HEAD.listening = false; HEAD.compass = false; HEAD.deg = null; HEAD.shown = null;
+  if (TURN.on) { TURN.on = false; TURN.lastSet = 0; mapTurnTo(null); }
   const b = $('ovCompass'); if (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }
   applyHeading();
 }
 function compassNeedsTap() { return typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'; }
 async function compassTap() {
-  if (HEAD.listening) { stopCompass(); lsSet('dcc.compass', 'off'); toast('Compass off. The map arrow now shows direction with north up.'); return; }
+  if (HEAD.listening) { stopCompass(); lsSet('dcc.compass', 'off'); toast('Compass off. Map back to north up.'); return; }
   if (compassNeedsTap()) {
     try {
       const r = await DeviceOrientationEvent.requestPermission();
@@ -3241,6 +3296,7 @@ async function compassTap() {
   }
   lsSet('dcc.compass', 'on');
   startCompassListeners(true);
+  if (TURN.on) toast('Compass on: the map turns with you, so the way you face is up. Tap the compass again for north up.');
 }
 // On opening the map: Android starts the compass straight away; iPhone needs one tap per launch.
 function autoCompass() {
