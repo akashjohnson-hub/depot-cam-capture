@@ -653,11 +653,11 @@
   .mk2.flt::after { content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2.5px solid var(--fc); box-sizing: border-box; pointer-events: none; }
   .lg2.flt { background: #FFFFFF; border: 2.5px solid #D7261E; }
   .ov-flt { color: #9E1B14; background: #FDECEA; border: 1px solid #F3B6B1; border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; font-size: 15px; }
-  .mk2.mks.trk i, .mk2.mks.trk.s-weak i, .mk2.mks.trk.s-todo i { box-shadow: 0 0 0 3px #D7261E, 0 1px 3px rgba(0,0,0,.45); }
-  .lg2.sb.trk { box-shadow: 0 0 0 2px #D7261E; }
-  .sb-tag.trk { background: #D7261E; }
-  .trk-check { background: #FDECEA; border: 1px solid #F3B6B1; border-radius: 10px; padding: 10px 12px; margin-top: 12px; }
-  .trk-check input { width: 22px; height: 22px; accent-color: #D7261E; flex: none; margin-top: 2px; }
+  .mk2.mks.trk i, .mk2.mks.trk.s-weak i, .mk2.mks.trk.s-todo i { box-shadow: 0 0 0 3px #00C2E0, 0 1px 3px rgba(0,0,0,.45); }
+  .lg2.sb.trk { box-shadow: 0 0 0 2px #00C2E0; }
+  .sb-tag.trk { background: #007C91; }
+  .trk-check { background: #E3F8FB; border: 1px solid #8FD8E6; border-radius: 10px; padding: 10px 12px; margin-top: 12px; }
+  .trk-check input { width: 22px; height: 22px; accent-color: #007C91; flex: none; margin-top: 2px; }
   .sb-tag { display: inline-block; font: 700 10px/1 var(--font); color: #FFFFFF; background: #6B2FA0; border-radius: 4px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
 </style>
 </head>
@@ -858,7 +858,7 @@
         <div id="sbRow" class="hidden">
           <label for="sbNo">MDDSB number</label>
           <input id="sbNo" autocomplete="off" inputmode="numeric" placeholder="e.g. 117 (from the box label)">
-          <label class="check trk-check"><input id="sbTrack" type="checkbox"><span><b>Track access required</b><br><small class="meta">Tick if you need track access to reach this box. Its map marker gets a red outline.</small></span></label>
+          <label class="check trk-check"><input id="sbTrack" type="checkbox"><span><b>Track access required</b><br><small class="meta">Tick if you need track access to reach this box. Its map marker gets a cyan outline.</small></span></label>
         </div>
         <div id="itbRow" class="row">
           <div><label for="hasItb">Has ITB</label><select id="hasItb"><option value="">–</option><option>Yes</option><option>No</option></select></div>
@@ -965,7 +965,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-08.3';
+const APP_VERSION = '2026-11-08.4';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
