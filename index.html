@@ -231,6 +231,9 @@
     --font-id: 'Barlow Condensed', 'Barlow', 'Arial Narrow', Arial, sans-serif;
   }
   html, body { font-family: var(--font); font-size: 17px; }
+  /* iOS: no rubber-band bounce at the top/bottom of long pages (Settings), which dragged the floating tab bar up the screen */
+  html, body { overscroll-behavior-y: none; }
+  .tabs { transform: translateZ(0); -webkit-transform: translateZ(0); }
   input, select, textarea, button { font-family: var(--font); }
   .legacy, .ov-back, #cfgCancel { display: none !important; }
 
@@ -390,6 +393,7 @@
   .ft-acts button.armed { background: #FFF1C2; color: #6B4E00; border-color: #E5C04A; }
   .ft-empty { text-align: center; padding: 28px 12px; color: var(--muted); }
   .badge.occ { background: #FFF1C2; color: #6B4E00; }
+  .badge.guard { background: #E3F0FF; color: #123E73; }
   .member .email { font-size: 14px; margin-top: 2px; color: var(--slate); word-break: break-all; }
   .member .email.none { color: var(--muted); font-style: italic; }
   .member select.role-sel { width: auto; min-height: 38px; padding: 4px 8px; font-size: 15px; }
@@ -694,6 +698,10 @@
       <span><b>View as viewer</b><br><span class="meta">See and use the app exactly as a viewer does. The server treats you as a viewer too, so edits are refused. Switch off to go back to your own account.</span></span>
       <input id="viewAsToggle" type="checkbox" role="switch">
     </label>
+    <label class="switch-row" for="viewAsGuardToggle" style="margin-top:14px">
+      <span><b>View as Guard House</b><br><span class="meta">Map and pole list like a viewer, plus the Report tab. Reports you send in this mode are real.</span></span>
+      <input id="viewAsGuardToggle" type="checkbox" role="switch">
+    </label>
     <label class="switch-row" for="viewAsOccToggle" style="margin-top:14px">
       <span><b>View as OCC</b><br><span class="meta">See the OCC screen: photograph a fault list and send it. Reports you send in this mode are real.</span></span>
       <input id="viewAsOccToggle" type="checkbox" role="switch">
@@ -701,7 +709,7 @@
   </section>
   <section id="teamCard" class="card hidden" aria-label="Team">
     <h2>Team</h2>
-    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers look up poles and use the map. OCC accounts photograph the fault list and send it to the depot team. Everyone with <b>Fault alerts</b> on is the depot team: they see new faults in the app, and by email if an email is set.</p>
+    <p class="meta" style="margin:0 0 12px">Everyone signs in with their own PIN. Only you, the owner, can manage this list. Admins can capture and edit; viewers look up poles and use the map. OCC and Guard House accounts send faulty cameras to the depot team; Guard House can also use the map and pole list like a viewer. Everyone with <b>Fault alerts</b> on is the depot team: they see new faults in the app, and by email if an email is set.</p>
     <div id="teamList" class="team-list"><div class="meta">Loading…</div></div>
     <div id="pinReveal" class="pin-reveal hidden" role="status"></div>
     <h3 class="team-h3">Add a person</h3>
@@ -711,7 +719,7 @@
     <input id="newDepot" list="depotList" autocomplete="off" placeholder="e.g. Mandai Depot">
     <datalist id="depotList"></datalist>
     <label for="newRole">Access</label>
-    <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option><option value="OCC">OCC: report faulty cameras to the depot team</option></select>
+    <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option><option value="OCC">OCC: report faulty cameras to the depot team</option><option value="Guard">Guard House: view poles and the map, and report faulty cameras</option></select>
     <label for="newEmail">Email for fault alerts (optional)</label>
     <input id="newEmail" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@smrt.com.sg">
     <div style="height:12px"></div>
@@ -720,7 +728,7 @@
   <section id="report" class="hidden" aria-label="Report faulty cameras">
     <div class="card">
       <h2>Report faulty cameras</h2>
-      <p class="meta" style="margin:0 0 4px">Copy each tab of the OCC sheet and paste it in the matching box. Commas, spaces or new lines all work.</p>
+      <p class="meta" style="margin:0 0 4px">Type or paste the camera IDs in the matching box (OCC: copy each tab of the OCC sheet). Commas, spaces or new lines all work.</p>
       <div id="rpBoxes"></div>
       <button id="rpAddIssue" class="link" type="button">+ Another issue</button>
       <details id="rpPhotoBox" class="rp-photo-box">
@@ -945,7 +953,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-08.1';
+const APP_VERSION = '2026-11-08.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1030,18 +1038,21 @@ function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
   return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '',
-    viewAs: c.viewAs === 'Viewer' || c.viewAs === 'OCC' ? c.viewAs : '', alerts: c.alerts !== false };
+    viewAs: c.viewAs === 'Viewer' || c.viewAs === 'OCC' || c.viewAs === 'Guard' ? c.viewAs : '', alerts: c.alerts !== false };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
 function saveQueue() { return lsSet(LS_QUEUE, JSON.stringify(queue)); }
 
 // OCC accounts are read-only for pole data too, so they count as viewers here.
-function isViewer() { const c = getCfg(); return c.role === 'Viewer' || c.role === 'OCC' || !!c.viewAs; }
-function isOcc() { const c = getCfg(); return c.viewAs ? c.viewAs === 'OCC' : c.role === 'OCC'; }
+function isViewer() { const c = getCfg(); return c.role === 'Viewer' || c.role === 'OCC' || c.role === 'Guard' || !!c.viewAs; }
+// "Reporter" accounts (OCC and Guard House) send fault reports to the depot team: Report tab instead of Faults.
+function isReporterRole(r) { return r === 'OCC' || r === 'Guard'; }
+function isOcc() { const c = getCfg(); return isReporterRole(c.viewAs ? c.viewAs : c.role); }
+function roleName(r) { return r === 'Guard' ? 'Guard House' : r; }
 // Owner / master passcode only: may preview the app as a viewer (developer switch).
 function canPreview() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
 function canManageTeam() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
-function roleLabel(c) { if (c.viewAs) return c.viewAs + ' preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'OCC' ? 'OCC' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
+function roleLabel(c) { if (c.viewAs) return roleName(c.viewAs) + ' preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'OCC' ? 'OCC' : c.role === 'Guard' ? 'Guard House' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
 function setCfg(patch) {
   const c = Object.assign({}, getCfg(), patch);
   lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '', alerts: c.alerts !== false }));
@@ -1053,7 +1064,7 @@ function applyRole() {
   const c = getCfg();
   const chip = $('whoChip');
   $('previewPill').classList.toggle('hidden', !(c.viewAs && c.url && c.passcode));
-  $('previewText').textContent = (c.viewAs || 'Viewer') + ' preview';
+  $('previewText').textContent = roleName(c.viewAs || 'Viewer') + ' preview';
   renderFaultBadge();
   if (c.url && c.passcode) { chip.textContent = (c.name || 'Signed in') + ' · ' + roleLabel(c) + (c.depot ? ' · ' + c.depot : ''); chip.title = chip.textContent; chip.classList.remove('hidden'); }
   else chip.classList.add('hidden');
@@ -1141,6 +1152,7 @@ function fillSetup() {
   $('devCard').classList.toggle('hidden', !(cfg.url && cfg.passcode && canPreview()));
   $('viewAsToggle').checked = cfg.viewAs === 'Viewer';
   $('viewAsOccToggle').checked = cfg.viewAs === 'OCC';
+  $('viewAsGuardToggle').checked = cfg.viewAs === 'Guard';
   $('offWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   offRenderStatus();
   const who = $('cfgWho');
@@ -1194,18 +1206,18 @@ function renderTeam(users) {
   depots.forEach((d) => dl.appendChild(el('option', { value: d })));
   if (!$('newDepot').value) $('newDepot').value = getCfg().depot || (depots.length === 1 ? depots[0] : '');
   users.forEach((u) => {
-    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : u.role === 'OCC' ? 'occ' : 'admin'), text: u.role })];
+    const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : u.role === 'OCC' ? 'occ' : u.role === 'Guard' ? 'guard' : 'admin'), text: roleName(u.role) })];
     if (!u.active) badges.push(el('span', { class: 'badge off', text: 'Switched off' }));
     if (u.name.toUpperCase() === me) badges.push(el('span', { class: 'badge you', text: 'You' }));
     const acts = [];
     const isOwner = u.role === 'Owner';
     if (!isOwner) {
       const roleSel = el('select', { class: 'role-sel', 'aria-label': 'Access for ' + u.name });
-      [['Viewer', 'Viewer'], ['Admin', 'Admin'], ['OCC', 'OCC']].forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === u.role) o.selected = true; roleSel.appendChild(o); });
+      [['Viewer', 'Viewer'], ['Admin', 'Admin'], ['OCC', 'OCC'], ['Guard', 'Guard House']].forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === u.role) o.selected = true; roleSel.appendChild(o); });
       roleSel.addEventListener('change', () => changeUser(u, { role: roleSel.value }, roleSel));
       acts.push(roleSel);
     }
-    if (u.role !== 'OCC' && u.alerts !== undefined) {
+    if (!isReporterRole(u.role) && u.alerts !== undefined) {
       const alBtn = el('button', { type: 'button', class: u.alerts ? 'on' : '', text: u.alerts ? 'Fault alerts: on' : 'Fault alerts: off' });
       alBtn.addEventListener('click', () => changeUser(u, { alerts: !u.alerts }, alBtn));
       acts.push(alBtn);
@@ -1229,7 +1241,7 @@ function renderTeam(users) {
     box.appendChild(el('div', { class: 'member' + (u.active ? '' : ' off') }, [
       el('div', { class: 'top' }, badges),
       el('div', { class: 'depot' + (u.depot ? '' : ' none'), text: u.depot ? u.depot : 'No depot set' }),
-      u.role === 'OCC' || u.alerts === undefined ? el('span') : el('div', { class: 'email' + (u.email ? '' : ' none'),
+      isReporterRole(u.role) || u.alerts === undefined ? el('span') : el('div', { class: 'email' + (u.email ? '' : ' none'),
         text: !u.alerts ? 'No fault alerts' : (u.email ? 'Alerts in the app and to ' + u.email : 'Alerts in the app only (no email)') }),
       el('div', { class: 'seen', text: u.lastSeen ? 'Last signed in ' + u.lastSeen : 'Not signed in yet' }),
       el('div', { class: 'acts' }, acts),
@@ -3950,7 +3962,7 @@ function renderFaults(err) {
       g.appendChild(el('div', { class: 'ft-item' }, [
         el('div', { class: 'ft-top' }, [el('span', { class: 'plate small', text: f.cameraId }), issueChip(f.issue), faultStatusChip(f), el('span', { class: 'meta', text: f.id })]),
         el('div', { class: 'ft-where', text: where + (f.location ? ' · ' + f.location : '') }),
-        f.note ? el('div', { class: 'ft-note', text: 'OCC: ' + f.note }) : el('span'),
+        el('div', { class: 'ft-note', text: f.note ? (f.by || 'OCC') + ': ' + f.note : 'Reported by ' + (f.by || 'OCC') + (f.at ? ' · ' + f.at : '') }),
         f.status === 'Acknowledged' && f.ackAt ? el('div', { class: 'ft-note', text: 'Picked up ' + f.ackAt }) : el('span'),
         f.status === 'Fixed' ? el('div', { class: 'ft-note', text: 'Fixed ' + f.fixedAt + (f.fixNote ? ' · ' + f.fixNote : '') }) : el('span'),
         el('div', { class: 'ft-acts' }, acts),
@@ -4268,10 +4280,11 @@ function setViewAs(on, as) {
   fillSetup();
   showApp();
   if (!on) goTab('settings');
-  toast(on ? as + ' preview on. The server treats you as ' + (as === 'OCC' ? 'an OCC account' : 'a viewer') + ' until you switch back.' : 'Back to your own account (' + roleLabel(getCfg()) + ').');
+  toast(on ? roleName(as) + ' preview on. The server treats you as ' + (as === 'OCC' ? 'an OCC account' : as === 'Guard' ? 'a Guard House account' : 'a viewer') + ' until you switch back.' : 'Back to your own account (' + roleLabel(getCfg()) + ').');
 }
 $('viewAsToggle').addEventListener('change', (e) => setViewAs(e.target.checked, 'Viewer'));
 $('viewAsOccToggle').addEventListener('change', (e) => setViewAs(e.target.checked, 'OCC'));
+$('viewAsGuardToggle').addEventListener('change', (e) => setViewAs(e.target.checked, 'Guard'));
 $('previewExit').addEventListener('click', () => setViewAs(false));
 $('cfgCancel').addEventListener('click', () => goTab(homeTab()));
 $('settingsBtn').addEventListener('click', () => goTab('settings'));
