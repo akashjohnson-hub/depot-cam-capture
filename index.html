@@ -637,6 +637,11 @@
   #wizHead.sb .wiz-bar i:nth-child(5) { display: none; }
   #wizHead.sb .wiz-bar i.now { background: #6B2FA0; }
   .lg2.sb { border-radius: 2px; background: #6B2FA0; border: 1.5px solid #FFFFFF; box-shadow: 0 0 0 1px #6B2FA0; }
+  .mk2.mks.trk i, .mk2.mks.trk.s-weak i, .mk2.mks.trk.s-todo i { box-shadow: 0 0 0 3px #D7261E, 0 1px 3px rgba(0,0,0,.45); }
+  .lg2.sb.trk { box-shadow: 0 0 0 2px #D7261E; }
+  .sb-tag.trk { background: #D7261E; }
+  .trk-check { background: #FDECEA; border: 1px solid #F3B6B1; border-radius: 10px; padding: 10px 12px; margin-top: 12px; }
+  .trk-check input { width: 22px; height: 22px; accent-color: #D7261E; flex: none; margin-top: 2px; }
   .sb-tag { display: inline-block; font: 700 10px/1 var(--font); color: #FFFFFF; background: #6B2FA0; border-radius: 4px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
 </style>
 </head>
@@ -833,6 +838,7 @@
         <div id="sbRow" class="hidden">
           <label for="sbNo">MDDSB number</label>
           <input id="sbNo" autocomplete="off" inputmode="numeric" placeholder="e.g. 117 (from the box label)">
+          <label class="check trk-check"><input id="sbTrack" type="checkbox"><span><b>Track access required</b><br><small class="meta">Tick if you need track access to reach this box. Its map marker gets a red outline.</small></span></label>
         </div>
         <div id="itbRow" class="row">
           <div><label for="hasItb">Has ITB</label><select id="hasItb"><option value="">–</option><option>Yes</option><option>No</option></select></div>
@@ -939,7 +945,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-02.3';
+const APP_VERSION = '2026-11-08.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1367,11 +1373,17 @@ function sbNormalise(typed) {   // "117", "mddsb 117", "MDDSB-117" -> "MDDSB117"
   const m = /^(?:TVSS\s*)?MDDSB[-\s]*(\d+)$/i.exec(t);
   return m ? 'MDDSB' + m[1] : t;
 }
-function sbDesc(num, desc) {
-  const rest = String(desc || '').replace(/TVSS\s*MDDSB[-\s]*\d*(\s*switch box)?/ig, '').replace(/^[\s·,;-]+|[\s·,;-]+$/g, '');
-  const base = 'TVSS MDDSB' + (num || '') + ' switch box';
+// Location Description of a switch box: "TVSS MDDSB117 switch box · Track access required · <free text>"
+function sbRest(desc) {
+  return String(desc || '').replace(/TVSS\s*MDDSB[-\s]*\d*(\s*switch box)?/ig, '').replace(/(track access required|no track access)/ig, '')
+    .replace(/(\s*·\s*)+/g, ' · ').replace(/^[\s·,;-]+|[\s·,;-]+$/g, '');
+}
+function sbDesc(num, desc, track) {
+  const rest = sbRest(desc);
+  const base = 'TVSS MDDSB' + (num || '') + ' switch box · ' + (track ? 'Track access required' : 'No track access');
   return rest ? base + ' · ' + rest : base;
 }
+function needsTrackAccess(p) { return /track access required/i.test(String(p.locationDescription || '')); }
 function applyCapKind() {
   const sb = sbMode();
   document.querySelectorAll('#capKind button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === capKind())));
@@ -1534,6 +1546,8 @@ function onLookup(r, typed, opts) {
     const camCount = (r.cameras || []).length;
     if (sbMode()) {
       $('sbNo').value = sbNumber({ poleId: p.poleId, locationDescription: p.locationDescription });
+      $('sbTrack').checked = /track access required/i.test(p.locationDescription || '') || (!/no track access/i.test(p.locationDescription || '') && /on track/i.test(p.zone || ''));
+      $('locDesc').value = sbRest(p.locationDescription);
       if (!$('zone').value) $('zone').value = 'TVSS on track';
     }
     banner.appendChild(el('div', { class: 'banner info' }, [
@@ -1565,7 +1579,7 @@ function onLookup(r, typed, opts) {
     const newId = sbTyped ? typed.toUpperCase() : String(r.suggestedPoleId);
     state.pole = { poleId: newId, found: false };
     $('hasItb').value = 'No';
-    if (sbMode()) { $('zone').value = 'TVSS on track'; $('sbNo').value = sbTyped ? sbDigits(newId) : ''; }
+    if (sbMode()) { $('zone').value = 'TVSS on track'; $('sbNo').value = sbTyped ? sbDigits(newId) : ''; $('sbTrack').checked = false; }
     $('stickerId').textContent = newId;
     $('stickerPlaced').checked = !sbTyped;
     $('stickerWrap').classList.toggle('hidden', sbTyped);   // an MDDSB box has its own label, no sticker
@@ -1629,6 +1643,7 @@ function resetCapture() {
   state.photo = '';
   state.cameras = [];
   ['itbNo', 'zone', 'phase', 'locDesc', 'notes', 'sbNo'].forEach((id) => { $(id).value = ''; });
+  $('sbTrack').checked = false;
   $('hasItb').value = '';
   $('locOnRecord').textContent = '';
   $('gpsLive').classList.add('hidden');
@@ -2020,7 +2035,7 @@ function renderCarousel() {
     const cams = groups.byPole[key] || [];
     const wip = claimOnPole(p.poleId);
     const head = el('button', { type: 'button', class: 'phead', 'aria-label': p.poleId + ', ' + st[1] + ', ' + cams.length + ' cameras' + (wip ? ', ' + wip.by + ' is working on it' : '') }, [
-      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '']),
+      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '', isSwitchBox(p) && needsTrackAccess(p) ? el('span', { class: 'sb-tag trk', text: 'Track access' }) : '']),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') }),
     ].concat(wip ? [el('span', { class: 'cwip', text: 'In progress · ' + wip.by })] : []));
     head.addEventListener('click', () => openPoleFromCarousel(p.poleId));
@@ -2082,7 +2097,7 @@ function renderViewerList() {
     const st = poleStatus(p);
     const t = typeof distTo === 'function' ? distTo(p) : null;
     const head = el('button', { type: 'button', class: 'phead' }, [
-      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '']),
+      el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '', isSwitchBox(p) && needsTrackAccess(p) ? el('span', { class: 'sb-tag trk', text: 'Track access' }) : '']),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') + (p.locationDescription ? ' · ' + p.locationDescription : '') }),
       t ? el('span', { class: 'dist', text: t.d < 8 ? 'You are at this pole' : fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
     ]);
@@ -2236,7 +2251,10 @@ function ovLegend(view) {
   const item = (cls, text) => el('span', null, [el('i', { class: cls }), text]);
   if (view === 'itb') { box.appendChild(item('lg2 itb', 'ITB located')); box.appendChild(item('lg2 itb weak', 'Re-collect')); }
   else { box.appendChild(item('lg2 ok', 'Confirmed')); box.appendChild(item('lg2 approx', 'At ITB')); box.appendChild(item('lg2 pole', 'No cameras')); }
-  if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p))) box.appendChild(item('lg2 sb', 'Switch box'));
+  if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p))) {
+    box.appendChild(item('lg2 sb', 'Switch box'));
+    if (MAP.poles.some((p) => isSwitchBox(p) && hasCoords(p) && needsTrackAccess(p))) box.appendChild(item('lg2 sb trk', 'Track access'));
+  }
   box.appendChild(item('dot d-me', 'You'));
   box.appendChild(walk);
 }
@@ -2374,7 +2392,7 @@ function ovRender() {
     const num = itbNumber(p);   // e.g. "12" for ITB-12
     const badge = itb && num ? '<i class="mk-num">' + num + '</i>' : '';
     if (sb) {
-      html = '<div class="mk2 mks s-' + st + '"><i>' + (sbNumber(p) || 'SB') + '</i></div>';
+      html = '<div class="mk2 mks s-' + st + (needsTrackAccess(p) ? ' trk' : '') + '"><i>' + (sbNumber(p) || 'SB') + '</i></div>';
     } else if (view === 'itb') {
       html = '<div class="mk2 mki s-' + st + '"><i>' + (num || 'ITB') + '</i></div>';
     } else if (!cams.length) {
@@ -3427,9 +3445,10 @@ function buildPayload() {
   const p = buildPayloadBase();
   if (sbMode()) {
     const num = sbDigits($('sbNo').value) || sbNumber({ poleId: p.poleId });
-    p.zone = p.zone || 'TVSS on track';
+    const track = $('sbTrack').checked;
+    if (!p.zone || /^TVSS\s*(on|not)\s*track$/i.test(p.zone)) p.zone = track ? 'TVSS on track' : 'TVSS not track';
     p.hasItb = p.hasItb || 'No';
-    p.locationDescription = sbDesc(num, p.locationDescription);
+    p.locationDescription = sbDesc(num, p.locationDescription, track);
   }
   return p;
 }
