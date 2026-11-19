@@ -636,6 +636,7 @@
     min-width: 18px; height: 18px; padding: 0 3px; flex: none; white-space: nowrap; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px;
     box-shadow: 0 0 0 1.5px #6B2FA0, 0 1px 3px rgba(0,0,0,.45); }
   .mk2.mks.s-weak i, .mk2.mks.s-todo i { background: #FFFFFF; color: #6B2FA0; border: 2px dashed #6B2FA0; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+  .depot-seg button { flex: 1; }
   .cap-kind { margin: -2px 0 12px; }
   .cap-kind button { flex: 1; }
   .cap-kind button[data-k="sb"][aria-pressed="true"] { background: #6B2FA0; }
@@ -691,6 +692,10 @@
     <input id="cfgName" autocomplete="name" placeholder="e.g. Akash">
     <div style="height:12px"></div>
     <button id="cfgSave" class="btn" type="button">Save and test connection</button>
+    <div id="depotWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px"><b>Depot</b><br><span id="depotNote">Which depot you are working on. Everyone else only sees their own depot.</span></p>
+      <div id="depotSeg" class="seg depot-seg" role="group" aria-label="Depot"></div>
+    </div>
     <div id="shareWrap" class="hidden viewer-hide" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
       <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them under Team below first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
@@ -730,8 +735,7 @@
     <label for="newName">Name</label>
     <input id="newName" autocomplete="off" placeholder="e.g. Ravi">
     <label for="newDepot">Depot</label>
-    <input id="newDepot" list="depotList" autocomplete="off" placeholder="e.g. Mandai Depot">
-    <datalist id="depotList"></datalist>
+    <select id="newDepot"></select>
     <label for="newRole">Access</label>
     <select id="newRole"><option value="Viewer">Viewer: look up poles and use the map</option><option value="Admin">Admin: also capture and edit</option><option value="OCC">OCC: report faulty cameras to the depot team</option><option value="Guard">Guard House: view poles and the map, and report faulty cameras</option></select>
     <label for="newEmail">Email for fault alerts (optional)</label>
@@ -967,7 +971,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-08.5';
+const APP_VERSION = '2026-11-19.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1052,6 +1056,7 @@ function getCfg() {
   let c = {};
   try { c = JSON.parse(lsGet(LS_CFG) || '{}') || {}; } catch (e) { c = {}; }
   return { url: c.url || DEFAULT_API_URL, passcode: c.passcode || '', name: c.name || '', role: c.role || 'Admin', viaMaster: !!c.viaMaster, depot: c.depot || '',
+    work: c.work || '', homeDepot: c.homeDepot || '', depots: Array.isArray(c.depots) ? c.depots : [],
     viewAs: c.viewAs === 'Viewer' || c.viewAs === 'OCC' || c.viewAs === 'Guard' ? c.viewAs : '', alerts: c.alerts !== false };
 }
 function loadQueue() { try { return JSON.parse(lsGet(LS_QUEUE) || '[]') || []; } catch (e) { return []; } }
@@ -1067,9 +1072,16 @@ function roleName(r) { return r === 'Guard' ? 'Guard House' : r; }
 function canPreview() { const c = getCfg(); return c.role === 'Owner' || c.viaMaster; }
 function canManageTeam() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
 function roleLabel(c) { if (c.viewAs) return roleName(c.viewAs) + ' preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'OCC' ? 'OCC' : c.role === 'Guard' ? 'Guard House' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
+// Depots: each account belongs to one depot; the Owner can switch the depot they work on.
+function canSwitchDepot() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
+function curDepot() { return getCfg().depot || 'Mandai'; }
+function depotKey(base) { const d = curDepot(); return d === 'Mandai' ? base : base + '.' + d; }   // per-depot phone storage
+function depotsKnown() { const d = getCfg().depots; return d && d.length ? d : ['Mandai', 'ECID']; }
+function pingPatch(r) { return { depot: r.depot || '', homeDepot: r.homeDepot || '', depots: r.depots || [] }; }
 function setCfg(patch) {
   const c = Object.assign({}, getCfg(), patch);
-  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '', alerts: c.alerts !== false }));
+  lsSet(LS_CFG, JSON.stringify({ url: c.url, passcode: c.passcode, name: c.name, role: c.role, viaMaster: !!c.viaMaster, depot: c.depot || '', viewAs: c.viewAs || '', alerts: c.alerts !== false,
+    work: c.work || '', homeDepot: c.homeDepot || '', depots: c.depots || [] }));
 }
 function applyRole() {
   const viewer = isViewer();
@@ -1128,7 +1140,8 @@ async function apiCall(action, body) {
     res = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // keeps it a "simple" request (no CORS preflight)
-      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode, submittedBy: cfg.name || '' }, cfg.viewAs ? { viewAs: cfg.viewAs } : {}, body || {})),
+      body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode, submittedBy: cfg.name || '' }, cfg.viewAs ? { viewAs: cfg.viewAs } : {},
+        cfg.work && (cfg.role === 'Owner' || cfg.viaMaster) ? { depot: cfg.work } : {}, body || {})),
       redirect: 'follow',
     });
   } catch (e) {
@@ -1169,6 +1182,7 @@ function fillSetup() {
   $('viewAsGuardToggle').checked = cfg.viewAs === 'Guard';
   $('offWrap').classList.toggle('hidden', !(cfg.url && cfg.passcode));
   offRenderStatus();
+  renderDepotSwitch();
   const who = $('cfgWho');
   if (cfg.url && cfg.passcode) {
     who.textContent = 'Signed in as ' + (cfg.name || '?') + ' · ' + (cfg.role === 'Viewer' && !cfg.viewAs ? 'Viewer (read-only)' : roleLabel(cfg)) + (cfg.depot ? ' · ' + cfg.depot : '') +
@@ -1187,6 +1201,31 @@ function showApp() {
 function homeTab() { return isOcc() ? 'report' : (isViewer() ? 'poles' : 'capture'); }
 
 // ---------- team (admins) ----------
+function renderDepotSwitch() {
+  const cfg = getCfg(), wrap = $('depotWrap'), seg = $('depotSeg');
+  const show = !!(cfg.url && cfg.passcode) && canSwitchDepot() && depotsKnown().length > 1;
+  wrap.classList.toggle('hidden', !show);
+  if (!show) return;
+  seg.innerHTML = '';
+  depotsKnown().forEach((d) => {
+    const b = el('button', { type: 'button', text: d, 'aria-pressed': String(d === curDepot()) });
+    b.addEventListener('click', () => switchDepot(d));
+    seg.appendChild(b);
+  });
+  $('depotNote').textContent = 'You are working on ' + curDepot() + '. Everyone else only sees their own depot.';
+}
+function switchDepot(d) {
+  if (d === curDepot()) return;
+  if (queue.length || (typeof wkQueue !== 'undefined' && wkQueue.length)) { toast('Some records are still waiting to upload. Switch depot once they have gone.', true); return; }
+  setCfg({ work: d, depot: d });
+  try { localStorage.removeItem(LS_POLES); } catch (e) { /* ignore */ }
+  toast('Switching to ' + d + '…');
+  setTimeout(() => location.reload(), 400);
+}
+function fillDepotSelect(sel, value) {
+  sel.innerHTML = '';
+  depotsKnown().forEach((d) => { const o = el('option', { value: d, text: d }); if (d === value) o.selected = true; sel.appendChild(o); });
+}
 async function loadTeam() {
   const box = $('teamList');
   try {
@@ -1199,6 +1238,7 @@ async function loadTeam() {
   }
 }
 function renderTeam(users) {
+  fillDepotSelect($('newDepot'), $('newDepot').value || curDepot());
   const box = $('teamList');
   box.innerHTML = '';
   const hasOwner = users.some((u) => u.role === 'Owner' && u.active);
@@ -1214,11 +1254,6 @@ function renderTeam(users) {
     return;
   }
   const me = String(getCfg().name || '').toUpperCase();
-  // Depot suggestions: every depot already on the list, so names stay spelled the same.
-  const depots = [...new Set(users.map((u) => u.depot).filter(Boolean))].sort();
-  const dl = $('depotList'); dl.innerHTML = '';
-  depots.forEach((d) => dl.appendChild(el('option', { value: d })));
-  if (!$('newDepot').value) $('newDepot').value = getCfg().depot || (depots.length === 1 ? depots[0] : '');
   users.forEach((u) => {
     const badges = [el('span', { class: 'nm', text: u.name }), el('span', { class: 'badge ' + (u.role === 'Viewer' ? 'viewer' : u.role === 'OCC' ? 'occ' : u.role === 'Guard' ? 'guard' : 'admin'), text: roleName(u.role) })];
     if (!u.active) badges.push(el('span', { class: 'badge off', text: 'Switched off' }));
@@ -1262,11 +1297,20 @@ function renderTeam(users) {
     ]));
   });
 }
-function editDepot(u, btn) { editField(u, btn, 'depot', 'Depot name', 'text'); }
+function editDepot(u, btn) {
+  const acts = btn.parentNode;
+  const sel = el('select', { 'aria-label': 'Depot for ' + u.name });
+  fillDepotSelect(sel, u.depot || 'Mandai');
+  const save = el('button', { type: 'button', text: 'Save depot' });
+  const cancel = el('button', { type: 'button', text: 'Cancel' });
+  const row = el('div', { class: 'depot-edit' }, [sel, el('div', { class: 'acts' }, [save, cancel])]);
+  acts.replaceWith(row);
+  cancel.addEventListener('click', () => row.replaceWith(acts));
+  save.addEventListener('click', () => changeUser(u, { depot: sel.value }, save));
+}
 function editField(u, btn, key, placeholder, type) {
   const acts = btn.parentNode;
   const input = el('input', { type: type || 'text', value: u[key] || '', placeholder: placeholder });
-  if (key === 'depot') input.setAttribute('list', 'depotList');
   if (key === 'email') { input.setAttribute('autocapitalize', 'off'); input.setAttribute('spellcheck', 'false'); }
   const save = el('button', { type: 'button', text: key === 'email' ? 'Save email' : 'Save depot' });
   const cancel = el('button', { type: 'button', text: 'Cancel' });
@@ -1292,7 +1336,7 @@ async function changeUser(u, patch, btn) {
   busy(btn, true, '…');
   try {
     const r = await api('updateUser', { user: Object.assign({ name: u.name }, patch) });
-    if (r.user && r.user.name.toUpperCase() === String(getCfg().name || '').toUpperCase() && !getCfg().viaMaster) { setCfg({ depot: r.user.depot || '', alerts: r.user.alerts !== false }); applyRole(); }
+    if (r.user && r.user.name.toUpperCase() === String(getCfg().name || '').toUpperCase() && !getCfg().viaMaster) { setCfg({ alerts: r.user.alerts !== false }); applyRole(); }
     if (r.pin) showPin(u.name, r.pin, true);
     else toast(u.name + ': ' + (r.changed && r.changed.length ? r.changed.join(', ') : 'no change') + '.');
     loadTeam();
@@ -1301,8 +1345,8 @@ async function changeUser(u, patch, btn) {
 async function addPerson() {
   const name = $('newName').value.trim();
   if (!name) { toast('Enter the person\'s name.', true); return; }
-  const depot = $('newDepot').value.trim();
-  if (!depot) { toast('Enter the person\'s depot.', true); $('newDepot').focus(); return; }
+  const depot = $('newDepot').value;
+  if (!depot) { toast('Choose the person\'s depot.', true); $('newDepot').focus(); return; }
   const btn = $('addPersonBtn');
   busy(btn, true, 'Adding…');
   try {
@@ -1332,7 +1376,7 @@ function showPin(name, pin, isReset) {
     use.addEventListener('click', async () => {
       const prev = getCfg();
       setCfg({ passcode: pin });
-      try { const r = await api('ping'); setCfg({ name: r.name, role: r.realRole || r.role, viaMaster: !!r.viaMaster, depot: r.depot || '', alerts: r.alerts !== false }); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
+      try { const r = await api('ping'); setCfg(Object.assign({ name: r.name, role: r.realRole || r.role, viaMaster: !!r.viaMaster, alerts: r.alerts !== false }, pingPatch(r))); applyRole(); fillSetup(); toast('Signed in with your own PIN as ' + roleLabel(getCfg()) + '.'); box.classList.add('hidden'); }
       catch (e) { setCfg({ passcode: prev.passcode }); toast(e.message, true); }
     });
     btns.push(use);
@@ -1498,7 +1542,7 @@ async function saveSetup() {
       toast('That is the shared master passcode: enter your name too, so the log shows who made changes.', true);
       return;
     }
-    setCfg({ role: r.realRole || r.role || 'Admin', viewAs: '', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || ''), alerts: r.alerts !== false });
+    setCfg(Object.assign({ role: r.realRole || r.role || 'Admin', viewAs: '', name: r.viaMaster ? name : (r.name || name), viaMaster: !!r.viaMaster, alerts: r.alerts !== false }, pingPatch(r)));
     FAULTS_OK = !!r.faults;
     toast('Signed in as ' + getCfg().name + ' (' + roleLabel(getCfg()).toLowerCase() + ').');
     showApp();
@@ -1885,13 +1929,13 @@ function loadCachedPoles() {
   if (MAP.polesLoaded) return false;
   let c = null;
   try { c = JSON.parse(lsGet(LS_POLES) || 'null'); } catch (e) { c = null; }
-  if (!c || !c.data || c.url !== getCfg().url) return false;
+  if (!c || !c.data || c.url !== getCfg().url || (c.depot || 'Mandai') !== curDepot()) return false;
   MAP.fromCache = true;
   applyPoles(c.data, c.at);
   return true;
 }
 function savePolesCache(r) {
-  try { lsSet(LS_POLES, JSON.stringify({ url: getCfg().url, at: Date.now(), data: { poles: r.poles, cameras: r.cameras, area: r.area, walkways: r.walkways } })); } catch (e) { /* full: skip */ }
+  try { lsSet(LS_POLES, JSON.stringify({ url: getCfg().url, depot: curDepot(), at: Date.now(), data: { poles: r.poles, cameras: r.cameras, area: r.area, walkways: r.walkways } })); } catch (e) { /* full: skip */ }
 }
 async function loadPoles() {
   if (!MAP.polesLoaded) loadCachedPoles();
@@ -3965,9 +4009,9 @@ function setFaults(list) {
   const first = FAULTS === null;
   FAULTS = list;
   const newest = list.reduce((m, f) => Math.max(m, faultNum(f.id)), 0);
-  const seenRaw = lsGet(LS_FAULT_SEEN), seen = Number(seenRaw || 0);
+  const seenRaw = lsGet(depotKey(LS_FAULT_SEEN)), seen = Number(seenRaw || 0);
   if (!isOcc()) {
-    if (seenRaw === null || currentTab === 'faults') lsSet(LS_FAULT_SEEN, String(newest));   // first time on this phone: don't alert old faults
+    if (seenRaw === null || currentTab === 'faults') lsSet(depotKey(LS_FAULT_SEEN), String(newest));   // first time on this phone: don't alert old faults
     else if (getCfg().alerts && newest > Math.max(seen, faultToastAt)) {
       const fresh = list.filter((f) => f.status === 'Open' && faultNum(f.id) > seen);
       if (fresh.length) {
@@ -4264,7 +4308,7 @@ function offRenderStatus() {
   const st = $('offStatus'), btn = $('offSaveBtn');
   if (!st || btn.classList.contains('is-busy')) return;
   let m = null;
-  try { m = JSON.parse(lsGet(LS_OFFMAP) || 'null'); } catch (e) { m = null; }
+  try { m = JSON.parse(lsGet(depotKey(LS_OFFMAP)) || 'null'); } catch (e) { m = null; }
   if (!('caches' in window) || !('serviceWorker' in navigator)) { st.textContent = 'This browser can\'t keep the map offline. Add Cam Capture to the home screen and open it from there.'; btn.disabled = true; return; }
   if (m && m.n) {
     st.textContent = 'Depot map saved on this phone: ' + m.n + ' map pieces (' + (m.bytes / 1048576).toFixed(1) + ' MB), ' + new Date(m.at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short' }) + '. The Map tab, walkways and directions work without signal.';
@@ -4300,7 +4344,7 @@ async function offSaveMap() {
       }
     };
     await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
-    lsSet(LS_OFFMAP, JSON.stringify({ at: Date.now(), n: done, bytes: bytes, bounds: b }));
+    lsSet(depotKey(LS_OFFMAP), JSON.stringify({ at: Date.now(), n: done, bytes: bytes, bounds: b }));
     if (navigator.storage && navigator.storage.persist) { try { await navigator.storage.persist(); } catch (e) { /* optional */ } }
     toast(failed ? 'Saved ' + done + ' of ' + urls.length + ' map pieces (' + failed + ' failed: weak signal?). Tap again to fill the gaps.' : 'Depot map saved. The Map tab now works without signal.', !!failed);
   } catch (e) { toast('Could not save the map: ' + e.message, true); }
@@ -4388,7 +4432,7 @@ document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('cli
 }));
 $('addPersonBtn').addEventListener('click', addPerson);
 $('newName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addPerson(); });
-$('newDepot').addEventListener('keydown', (e) => { if (e.key === 'Enter') addPerson(); });
+
 $('wizBack').addEventListener('click', () => setStep((state.step || 1) - 1));
 $('wizNext').addEventListener('click', () => { if (!$('wizNext').disabled) setStep((state.step || 1) + 1); });
 $('lookupBtn').addEventListener('click', () => lookup(false));
@@ -4553,8 +4597,9 @@ if (linkedUrl && !(getCfg().url && getCfg().passcode)) {
 async function refreshRole() {
   try {
     const r = await api('ping', { submittedBy: getCfg().name });
-    const before = getCfg().role;
-    setCfg({ role: r.realRole || r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, depot: r.viaMaster ? '' : (r.depot || ''), alerts: r.alerts !== false });
+    const before = getCfg().role, beforeDepot = curDepot();
+    setCfg(Object.assign({ role: r.realRole || r.role || 'Admin', name: r.viaMaster ? (getCfg().name || '') : (r.name || getCfg().name), viaMaster: !!r.viaMaster, alerts: r.alerts !== false }, pingPatch(r)));
+    if (curDepot() !== beforeDepot) { toast('Your depot is now ' + curDepot() + '.'); setTimeout(() => location.reload(), 1200); return; }
     FAULTS_OK = !!r.faults;
     applyRole();
     if (r.viaMaster && !getCfg().name) { showSetup(true); toast('Add your name, so your changes show who made them.'); return; }
