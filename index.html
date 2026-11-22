@@ -884,14 +884,15 @@
   /* ================= Earth tab bar: round bubbles, label on the open tab ================= */
   body.th-earth .tabs { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
     padding: 0; gap: 5px; justify-content: space-between; align-items: center; height: var(--tabs-h); }
-  body.th-earth .tabs button { flex: 0 0 46px; width: 46px; height: 46px; border-radius: 23px; padding: 0; gap: 0;
+  body.th-earth .tabs button { flex: 0 0 46px; width: 46px; height: 46px; border-radius: 23px; padding: 0; gap: 0; flex-direction: row; align-items: center; justify-content: center;
     background: rgba(255,255,255,.96); color: #444746; box-shadow: 0 2px 8px rgba(60,64,67,.24), 0 1px 2px rgba(60,64,67,.18); }
   body.th-earth .tabs button span { display: inline-block; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-size: 14px; font-weight: 500;
-    transition: max-width .26s cubic-bezier(.2,.8,.2,1), opacity .18s ease; }
-  body.th-earth .tabs button { transition: background-color .22s ease, color .22s ease, padding .26s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, transform .12s ease; }
+    transition: max-width .42s cubic-bezier(.2,.8,.2,1), opacity .3s ease; }
+  body.th-earth .tabs button { transition: background-color .35s ease, color .35s ease, padding .42s cubic-bezier(.2,.8,.2,1), gap .42s ease, box-shadow .35s ease, transform .12s ease; }
+  body.th-earth .tabs svg { flex: none; display: block; }
   body.th-earth .tabs button.active { flex: 0 0 auto; width: auto; padding: 0 14px 0 11px; flex-direction: row; gap: 6px;
     background: var(--e-blue); color: #FFFFFF; box-shadow: 0 4px 12px rgba(11,87,208,.35); }
-  body.th-earth .tabs button.active span { max-width: 90px; opacity: 1; transition-delay: 0s, .06s; }
+  body.th-earth .tabs button.active span { max-width: 90px; opacity: 1; transition-delay: 0s, .1s; }
   body.th-earth .tabs button:active { transform: scale(.94); }
   body.th-earth .tabs svg { width: 22px; height: 22px; }
   body.th-earth .tab-badge { top: -2px; left: auto; right: -3px; margin: 0; }
@@ -907,9 +908,9 @@
   @keyframes tab-in-r { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
   @keyframes tab-in-l { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
   @keyframes tab-in-f { from { opacity: 0; } to { opacity: 1; } }
-  .tab-in-r { animation: tab-in-r .24s cubic-bezier(.2,.8,.2,1) both; }
-  .tab-in-l { animation: tab-in-l .24s cubic-bezier(.2,.8,.2,1) both; }
-  .tab-in-f { animation: tab-in-f .2s ease both; }
+  .tab-in-r { animation: tab-in-r .4s cubic-bezier(.2,.8,.2,1) both; }
+  .tab-in-l { animation: tab-in-l .4s cubic-bezier(.2,.8,.2,1) both; }
+  .tab-in-f { animation: tab-in-f .35s ease both; }
   @media (prefers-reduced-motion: reduce) {
     .tab-in-r, .tab-in-l, .tab-in-f { animation: none; }
     body.th-earth .tabs button, body.th-earth .tabs button span { transition: none; }
@@ -1268,7 +1269,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.7';
+const APP_VERSION = '2026-11-22.8';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1717,7 +1718,7 @@ function tabAnim(from, to) {
   n.classList.add(cls);
   const done = (e) => { if (e.target !== n) return; n.classList.remove(cls); n.removeEventListener('animationend', done); };
   n.addEventListener('animationend', done);
-  setTimeout(() => n.classList.remove(cls), 600);
+  setTimeout(() => n.classList.remove(cls), 900);
 }
 function goTab(t) {
   const fromTab = currentTab;
