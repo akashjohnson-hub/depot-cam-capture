@@ -966,6 +966,44 @@
   .home-dlabel { display: inline-block; font-size: 14px; font-weight: 600; color: var(--muted); background: #EEF1F4; border-radius: 999px; padding: 3px 11px; }
   body.th-earth .home-dlabel { background: #F0F4F9; font-weight: 500; }
   body.th-earth.th-dark .home-dlabel { background: var(--e-surface2); }
+  /* ================= walking to a pole ================= */
+  .sheet-handle { display: flex; justify-content: center; padding: 0 0 6px; margin-top: -4px; cursor: grab; touch-action: none; }
+  .sheet-handle i { width: 38px; height: 5px; border-radius: 3px; background: rgba(60,64,67,.28); }
+  #ovPanel .ph { touch-action: none; }
+  .ph-dist { display: none; font-weight: 600; font-size: 16px; color: var(--muted); margin-right: auto; }
+  #ovPanel.mini .ph-dist { display: inline; }
+  #ovPanel.mini > :not(.sheet-handle):not(.ph) { display: none !important; }
+  #ovPanel.mini .ph { gap: 12px; } #ovPanel.mini .ph .big-id { font-size: 22px !important; }
+  #ovPanel .ov-flt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #ovPanel .ov-data ~ .ov-flt, #overview.nav-details #ovPanel .ov-flt { -webkit-line-clamp: unset; }
+  #ovPanel { transition: transform .28s cubic-bezier(.22,1,.36,1); }
+  /* navigation view: map first */
+  #overview.nav-on .ov-top, #overview.nav-on .ov-legend, #overview.nav-on .ov-fabs .fab-group + .fab-group { display: none !important; }
+  #overview.nav-on:not(.nav-details) #ovPanel { display: none !important; }
+  #overview.nav-on.nav-details #navBar, #overview.nav-on.nav-details #navRecentre { display: none !important; }
+  #overview.nav-on .ov-fabs { top: 112px; }
+  #overview.nav-on .leaflet-bottom { bottom: calc(var(--dock) + 86px) !important; }
+  .nav-top { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1004; display: flex; align-items: center; gap: 14px;
+    background: #0B57D0; color: #FFFFFF; border-radius: 22px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(11,40,90,.35); }
+  .nav-arrow { flex: none; width: 52px; height: 52px; border-radius: 26px; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center;
+    font: 700 30px/1 var(--font); transition: transform .35s cubic-bezier(.22,1,.36,1); }
+  .nav-txt { min-width: 0; }
+  .nav-dist { font-size: 28px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .nav-how { font-size: 15px; opacity: .92; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #overview.nav-arrived .nav-top { background: #146C2E; }
+  .nav-bar { position: absolute; left: 8px; right: 8px; bottom: calc(var(--dock) + 8px); z-index: 1004; display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+    background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid rgba(255,255,255,.7); border-radius: 22px; padding: 10px 10px 10px 14px; box-shadow: 0 10px 28px rgba(27,38,49,.25); }
+  .nav-to { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .nav-to .plate { align-self: flex-start; font-size: 18px; }
+  .nav-eta { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-bar .btn { width: auto; min-height: 46px; padding: 0 16px; font-size: 16px; }
+  .nav-recentre { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--dock) + 96px); z-index: 1004; border: 0; border-radius: 999px;
+    background: #FFFFFF; color: #0B57D0; font: 600 15px/1 var(--font); padding: 11px 18px; box-shadow: 0 4px 14px rgba(27,38,49,.3); }
+  body.th-earth.th-dark .nav-bar { background: rgba(30,31,32,.9); border-color: rgba(255,255,255,.1); color: var(--e-ink); }
+  body.th-earth.th-dark .nav-top { background: #0B3A6E; }
+  body.th-earth.th-dark .nav-recentre { background: var(--e-surface2); color: var(--e-blue); }
+  body.th-earth.th-dark .sheet-handle i { background: rgba(255,255,255,.3); }
 </style>
 </head>
 <body>
@@ -1281,6 +1319,16 @@
   <div class="ov-legend"><span><i class="dot d-good"></i>Mapped</span><span><i class="dot d-weak"></i>Weak / re-collect</span><span><i class="dot d-me"></i>You</span><span id="ovLegendWalk" class="hidden"><i class="wk-key"></i>Walkway</span></div>
   <div id="wkPanel" class="wk-panel hidden" role="region" aria-label="Walkways"></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
+  <div id="navTop" class="nav-top hidden" aria-live="polite">
+    <div id="navArrow" class="nav-arrow" aria-hidden="true">↑</div>
+    <div class="nav-txt"><div id="navDist" class="nav-dist"></div><div id="navHow" class="nav-how"></div></div>
+  </div>
+  <button id="navRecentre" class="nav-recentre hidden" type="button">Re-centre</button>
+  <div id="navBar" class="nav-bar hidden">
+    <div class="nav-to"><span id="navPlate" class="plate small"></span><span id="navEta" class="nav-eta"></span></div>
+    <button id="navMore" class="btn secondary" type="button">Details</button>
+    <button id="navEnd" class="btn" type="button">End</button>
+  </div>
 </section>
 <div id="tour" class="tour hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
   <div class="tour-card">
@@ -1322,7 +1370,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.15';
+const APP_VERSION = '2026-11-22.16';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -3003,6 +3051,7 @@ async function openOverview() {
     baseLayer(OV.map);
     OV.layer = L.layerGroup().addTo(OV.map);
     OV.map.on('zoomend', ovLabels);
+    OV.map.on('dragstart', () => { if (NAV.on && !$('overview').classList.contains('nav-details')) { NAV.userPanned = true; $('navRecentre').classList.remove('hidden'); } });
     OV.map.on('moveend zoomend rotate resize', ovDeclutterSoon);
     OV.map.on('click', (e) => { if (wkMapClick(e)) return; ovClosePanel(); $('ovResults').classList.add('hidden'); });
     OV.fitted = false;
@@ -3272,6 +3321,8 @@ function ovShowResults() {
 function ovSelect(poleId, hit, quiet) {
   const p = MAP.poles.find((x) => String(x.poleId).toUpperCase() === String(poleId).toUpperCase());
   if (!p) return;
+  if (NAV.on && NAV.poleId.toUpperCase() !== String(p.poleId).toUpperCase()) navEnd(true);
+  if (!quiet) OV.sheet = 'peek';
   const samePole = OV.selected && String(OV.selected.poleId).toUpperCase() === String(p.poleId).toUpperCase();
   if (!samePole) OV.showData = !hasCoords(p);   // unmapped poles have nothing to show on the map
   OV.selected = { poleId: p.poleId, hit: hit || '' };
@@ -3282,22 +3333,18 @@ function ovSelect(poleId, hit, quiet) {
   // --- peek: plate, how far, the two main actions ---
   const close = el('button', { class: 'close', type: 'button', 'aria-label': 'Close', text: '×' });
   close.addEventListener('click', ovClosePanel);
-  panel.appendChild(el('div', { class: 'ph' }, [el('div', { class: 'big-id', text: String(p.poleId) }), close]));
+  panel.appendChild(el('div', { class: 'sheet-handle', 'aria-hidden': 'true' }, [el('i')]));
+  panel.appendChild(el('div', { class: 'ph' }, [el('div', { class: 'big-id', text: String(p.poleId) }), el('span', { id: 'ovPhDist', class: 'ph-dist' }), close]));
   const pf = faultsByPole()[String(p.poleId).toUpperCase()];
   if (pf) panel.appendChild(el('div', { class: 'ov-flt' }, [el('b', { text: pf.faults.length + ' open fault' + (pf.faults.length === 1 ? '' : 's') + ': ' }),
     pf.faults.slice().sort((a, b) => prioOf(a) - prioOf(b)).map((f) => f.cameraId + ' (' + (f.issue || 'issue') + (f.status === 'Acknowledged' ? ', picked up' : '') + ')').join(', ')]));
   if (hasCoords(p)) panel.appendChild(el('div', { id: 'ovNear', class: 'near' }));
   const peek = [];
   if (hasCoords(p)) {
-    if (WALKS.length) {
-      const on = WK.routeOn && WK.routeFor === String(p.poleId);
-      const dir = el('button', { class: 'btn' + (on ? ' accent' : ''), type: 'button', text: on ? 'End route' : 'Directions' });
-      dir.addEventListener('click', () => wkToggleRoute(p));
-      peek.push(dir);
-    } else {
-      peek.push(el('a', { class: 'btn', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
-        target: '_blank', rel: 'noopener', text: 'Directions', style: 'display:flex;align-items:center;justify-content:center;text-decoration:none' }));
-    }
+    const on = NAV.on && NAV.poleId === String(p.poleId);
+    const dir = el('button', { class: 'btn' + (on ? ' accent' : ''), type: 'button', text: on ? 'End route' : 'Directions' });
+    dir.addEventListener('click', () => (on ? navEnd() : navStart(p)));
+    peek.push(dir);
   }
   const toggle = el('button', { class: 'btn secondary', type: 'button', 'aria-expanded': String(!!OV.showData), text: OV.showData ? 'Hide data' : 'Show data' });
   toggle.addEventListener('click', () => {
@@ -3326,7 +3373,7 @@ function ovSelect(poleId, hit, quiet) {
     const nApprox = (camerasByPole().byPole[String(p.poleId).toUpperCase()] || []).filter((c) => c.confirmed === false).length;
     if (nApprox) data.appendChild(el('p', { class: 'approx-note', text: nApprox + ' dashed camera' + (nApprox > 1 ? 's are' : ' is') + ' only listed under this ' + (isItbPole(p) ? 'ITB' : 'pole') +
       ' from the switch data, not yet confirmed on it. They may be on a nearby pole; confirm them in Capture.' }));
-    if (hasCoords(p) && WALKS.length) data.appendChild(el('a', { class: 'gmaps-link', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
+    if (hasCoords(p)) data.appendChild(el('a', { class: 'gmaps-link', href: 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking',
       target: '_blank', rel: 'noopener', text: 'Google Maps directions (for getting to the depot from outside)' }));
     if (!isViewer()) {
       const cap = el('button', { class: 'btn secondary', type: 'button', text: hasCoords(p) ? 'Open in Capture' : 'Map it now' });
@@ -3358,6 +3405,8 @@ function ovSelect(poleId, hit, quiet) {
     panel.appendChild(data);
   }
 
+  if (OV.showData) OV.sheet = 'full'; else if (OV.sheet === 'full') OV.sheet = 'peek';
+  panel.classList.toggle('mini', OV.sheet === 'mini');
   panel.classList.remove('hidden');
   $('overview').classList.add('has-panel');
   if (!quiet) { OV.nearFor = null; OV.lastTrend = ''; OV.lastCls = ''; }
@@ -3436,6 +3485,9 @@ function ovUpdateNear() {
     el('div', { class: 'how', text: here ? 'Within ' + Math.round(Math.max(8, acc)) + ' m' : (ri ? 'Follow the blue line' : t.dir + ' of you') }),
     trend ? el('div', { class: 'trend ' + cls, text: trend }) : el('span'),
   ]));
+  const phd = $('ovPhDist');
+  if (phd) phd.textContent = here ? 'You\'re here' : (ri ? fmtDist(ri.total) : fmtDist(t.d));
+  if (NAV.on && NAV.poleId === String(p.poleId)) navRender(p, t, ri, here, routing && WK.info && WK.info.none);
   // dashed line from you to the pole
   ovNearHeading();
   if (ri) { ovClearLine(); return; }
@@ -3445,6 +3497,123 @@ function ovUpdateNear() {
 }
 function ovClearLine() { if (OV.line) { OV.line.remove(); OV.line = null; } }
 
+
+
+// =====================================================================
+// Walking to a pole: compact navigation view, draggable card, map follows you
+// =====================================================================
+const NAV = { on: false, poleId: '', userPanned: false, lastFit: 0, arrived: false };
+function navPole() { return NAV.on ? MAP.poles.find((x) => String(x.poleId) === NAV.poleId) : null; }
+function navStart(p) {
+  NAV.on = true; NAV.poleId = String(p.poleId); NAV.userPanned = false; NAV.lastFit = 0; NAV.arrived = false;
+  if (WALKS.length) { WK.routeOn = true; WK.routeFor = String(p.poleId); WK.lastRoutePos = null; }
+  OV.showData = false;
+  ovStartMe();
+  if (!OV.myPos) toast('Finding your location… the way to ' + p.poleId + ' appears once the blue dot shows.');
+  $('overview').classList.add('nav-on');
+  ['navTop', 'navBar'].forEach((id) => $(id).classList.remove('hidden'));
+  $('navPlate').textContent = String(p.poleId);
+  $('navDist').textContent = 'Finding you…'; $('navHow').textContent = 'Walk to ' + p.poleId; $('navEta').textContent = '';
+  if (WALKS.length) wkUpdateRoute(true);
+  ovSelect(p.poleId, OV.selected ? OV.selected.hit : '', true);
+  navFit(true);
+}
+function navEnd(silent) {
+  if (!NAV.on) return;
+  const id = NAV.poleId;
+  NAV.on = false; NAV.poleId = '';
+  WK.routeOn = false; wkClearRoute();
+  $('overview').classList.remove('nav-on', 'nav-details', 'nav-arrived');
+  ['navTop', 'navBar', 'navRecentre'].forEach((x) => $(x).classList.add('hidden'));
+  if (!silent && OV.selected) { ovSelect(id, OV.selected.hit, true); const p = MAP.poles.find((x) => String(x.poleId) === id); if (p) ovFrameSelected(p); }
+}
+function navDetails(on) {
+  $('overview').classList.toggle('nav-details', on);
+  if (on) { OV.showData = true; OV.sheet = 'full'; } else { OV.showData = false; OV.sheet = 'peek'; }
+  if (OV.selected) ovSelect(OV.selected.poleId, OV.selected.hit, true);
+  if (!on) navFit(true);
+}
+function navRecentre() { NAV.userPanned = false; $('navRecentre').classList.add('hidden'); navFit(true); }
+// keep you and where you're heading in view, between the top strip and the bottom bar
+function navFit(force) {
+  const p = navPole();
+  if (!p || !OV.map || NAV.userPanned || $('overview').classList.contains('nav-details')) return;
+  const now = Date.now();
+  if (!force && now - NAV.lastFit < 2500) return;
+  NAV.lastFit = now;
+  const ovr = $('overview').getBoundingClientRect(), top = $('navTop').getBoundingClientRect(), bar = $('navBar').getBoundingClientRect();
+  const padTop = Math.max(90, top.bottom - ovr.top + 24), padBot = Math.max(90, ovr.bottom - bar.top + 24);
+  let pts = [[p.lat, p.lng]];
+  if (OV.myPos) {
+    pts.push([OV.myPos.lat, OV.myPos.lng]);
+    if (WK.info && WK.info.pts && !WK.info.none) pts = pts.concat(WK.info.pts);
+  }
+  if (pts.length === 1) { OV.map.setView(pts[0], 19, { animate: true }); return; }
+  OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [36, padTop], paddingBottomRight: [76, padBot], maxZoom: 19, animate: true });
+}
+function navRender(p, t, ri, here, noWalk) {
+  const ovr = $('overview');
+  ovr.classList.toggle('nav-arrived', !!here);
+  $('navArrow').textContent = here ? '✓' : '↑';
+  if (here) {
+    $('navDist').textContent = 'You\'re at ' + p.poleId;
+    $('navHow').textContent = 'Within ' + Math.round(Math.max(8, (OV.myPos && OV.myPos.acc) || 0)) + ' m · tap Details for its cameras';
+    $('navArrow').style.transform = '';
+    if (!NAV.arrived) { NAV.arrived = true; if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30]); } catch (e) { /* not supported */ } } }
+  } else {
+    NAV.arrived = false;
+    $('navDist').textContent = ri ? fmtDist(ri.total) : fmtDist(t.d);
+    NAV.howBase = ri ? 'Follow the blue line to ' + p.poleId : (noWalk ? 'No walkway here yet: straight line to ' + p.poleId : t.dir + ' of you, to ' + p.poleId);
+    $('navHow').textContent = NAV.howBase;
+  }
+  const m = ri ? ri.total : (t ? t.d : 0);
+  $('navEta').textContent = here ? 'Arrived' : (m ? 'About ' + Math.max(1, Math.round(m / WALK_SPEED / 60)) + ' min' + (ri && ri.gates ? ' · ' + ri.gates + ' gate' + (ri.gates > 1 ? 's' : '') : '') + (ri && ri.crossings ? ' · ' + ri.crossings + ' crossing' + (ri.crossings > 1 ? 's' : '') : '') : '');
+  navFit(false);
+}
+function navSyncArrow() {
+  const a = document.querySelector('#ovNear .arrow'), how = document.querySelector('#ovNear .how .rel');
+  if (!a || a.dataset.here === '1') return;
+  $('navArrow').style.transform = a.style.transform;
+  $('navHow').textContent = (how && how.textContent ? how.textContent + ' · ' : '') + (NAV.howBase || '');
+}
+$('navEnd').addEventListener('click', () => navEnd());
+$('navMore').addEventListener('click', () => navDetails(true));
+$('navRecentre').addEventListener('click', navRecentre);
+
+// draggable pole card: drag the top of the card up for details, down to shrink it to one line
+(() => {
+  const panel = $('ovPanel');
+  let y0 = null, dy = 0;
+  panel.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.sheet-handle, .ph') || e.target.closest('button, a, input')) return;
+    y0 = e.clientY; dy = 0; panel.style.transition = 'none';
+    try { panel.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+  panel.addEventListener('pointermove', (e) => {
+    if (y0 === null) return;
+    dy = e.clientY - y0;
+    panel.style.transform = 'translateY(' + (dy > 0 ? dy : dy / 3).toFixed(0) + 'px)';
+  });
+  const end = () => {
+    if (y0 === null) return;
+    y0 = null; panel.style.transition = ''; panel.style.transform = '';
+    if (!OV.selected) return;
+    const st = OV.sheet || 'peek';
+    let next = st;
+    if (dy < -40) next = st === 'mini' ? 'peek' : 'full';
+    else if (dy > 40) next = st === 'full' ? 'peek' : 'mini';
+    else if (Math.abs(dy) < 6 && st === 'mini') next = 'peek';   // a tap on the one-line card opens it
+    if (next === st) return;
+    if (NAV.on && next === 'full') { navDetails(true); return; }
+    if (NAV.on && $('overview').classList.contains('nav-details') && next !== 'full') { navDetails(false); return; }
+    OV.sheet = next; OV.showData = next === 'full';
+    ovSelect(OV.selected.poleId, OV.selected.hit, true);
+    const p = MAP.poles.find((x) => String(x.poleId) === String(OV.selected.poleId));
+    if (p) setTimeout(() => ovFrameSelected(p), 260);
+  };
+  panel.addEventListener('pointerup', end);
+  panel.addEventListener('pointercancel', end);
+})();
 
 // =====================================================================
 // Walkways: approved walking routes inside the depot, and Directions along them.
@@ -3850,7 +4019,12 @@ function wkPanel() {
   }
 }
 
-function ovClosePanel() { WK.routeOn = false; wkClearRoute(); OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); $('overview').classList.remove('has-panel'); }
+function ovClosePanel() {
+  if (NAV.on && $('overview').classList.contains('nav-details')) { navDetails(false); return; }
+  if (NAV.on) navEnd(true);
+  ovClosePanel2();
+}
+function ovClosePanel2() { WK.routeOn = false; wkClearRoute(); OV.selected = null; OV.nearFor = null; ovClearLine(); $('ovPanel').classList.add('hidden'); $('overview').classList.remove('has-panel'); }
 
 function ovStartMe() {
   if (OV.watch !== null || !navigator.geolocation) return;
@@ -3945,6 +4119,10 @@ function relativeWords(rel) {
 }
 // Turns the card's arrow to point where to walk, relative to the way the phone faces.
 function ovNearHeading() {
+  ovNearHeading2();
+  if (NAV.on) navSyncArrow();
+}
+function ovNearHeading2() {
   const arrow = document.querySelector('#ovNear .arrow'), how = document.querySelector('#ovNear .how');
   if (!arrow || !how || arrow.dataset.here === '1') return;
   const b = Number(arrow.dataset.bearing), dir = arrow.dataset.dir || '';
@@ -5208,6 +5386,7 @@ $('ovHome').addEventListener('click', ovFitHome);
 // "Me": centre the map on the blue dot (zooms in if far out).
 function ovCentreMe() {
   if (!OV.map) return;
+  if (NAV.on) { navRecentre(); return; }
   if (!OV.myPos) { ovStartMe(); toast('Finding your location… make sure location access is allowed.'); return; }
   OV.map.setView([OV.myPos.lat, OV.myPos.lng], Math.max(OV.map.getZoom(), 18), { animate: true });
 }
