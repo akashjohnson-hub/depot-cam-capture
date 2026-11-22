@@ -832,6 +832,55 @@
   body.th-earth.th-dark .ov-top .seg button[aria-pressed="true"] { background: var(--e-blue-tint); color: var(--e-blue-ink); }
   body.th-earth.th-dark .badge { background: #3C4043; color: #E3E3E3; }
   body.th-earth.th-dark .badge.viewer, body.th-earth.th-dark .badge.guard { background: #0B3A6E; color: #D3E3FD; } body.th-earth.th-dark .badge.occ, body.th-earth.th-dark .badge.you { background: #4A3800; color: #FFDF99; } body.th-earth.th-dark .badge.off { background: #601410; color: #F9DEDC; }
+  /* ================= Home ================= */
+  .home-top h2 { margin-bottom: 10px; }
+  .home-hero { display: flex; gap: 14px; align-items: center; background: #EEF1F4; border-radius: 14px; padding: 12px 14px; margin: 0 0 12px; }
+  .home-search { position: relative; }
+  .home-search input { padding-left: 44px; border-radius: 999px; }
+  .home-search .ov-s-icon { z-index: 1; }
+  .home-res { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .home-hit { display: grid; grid-template-columns: 36px 1fr; column-gap: 10px; align-items: center; text-align: left; width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 14px; padding: 8px 10px; }
+  .home-hit .h-ic, .home-act .h-ic { grid-row: 1 / span 2; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #E8F0FE; color: #1967D2; }
+  .h-ic svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .home-hit .h-t, .home-act .h-t { font-weight: 600; font-size: 16px; }
+  .home-hit .h-s, .home-act .h-s { font-size: 13px; color: var(--muted); }
+  .home-h { font-size: 15px; font-weight: 600; color: var(--muted); margin: 18px 4px 8px; }
+  .home-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .home-act { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-height: 112px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 18px; padding: 12px; }
+  .home-act .h-ic { margin-bottom: 6px; width: 40px; height: 40px; border-radius: 12px; }
+  .home-act.warn .h-ic { background: #FEF7E0; color: #B06000; }
+  .home-act.warn { box-shadow: inset 0 0 0 2px #FBBC04; }
+  .home-act .h-n { position: absolute; top: 10px; right: 10px; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; background: #C62828; color: #FFFFFF; font: 700 13px/24px var(--font); font-style: normal; text-align: center; }
+  .home-act:active, .home-hit:active { transform: scale(.98); }
+  .help-item { border-top: 1px solid var(--line); padding: 2px 0; }
+  .help-item:first-child { border-top: 0; }
+  .help-item summary { cursor: pointer; padding: 11px 2px; font-weight: 600; font-size: 16px; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+  .help-item summary::-webkit-details-marker { display: none; }
+  .help-item summary::after { content: "+"; color: var(--primary); font-weight: 700; }
+  .help-item[open] summary::after { content: "\2212"; }
+  .help-item ol { margin: 0 0 10px; padding-left: 22px; font-size: 15px; color: var(--ink); }
+  .help-item li { margin: 4px 0; }
+  .home-res .help-item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; }
+  .tour { position: fixed; inset: 0; z-index: 3000; background: rgba(10,16,24,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px 12px calc(env(safe-area-inset-bottom) + 16px); }
+  .tour-card { width: 100%; max-width: 440px; background: var(--card); color: var(--ink); border-radius: 24px; padding: 22px 20px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+  .tour-ic { width: 52px; height: 52px; border-radius: 16px; background: #E8F0FE; color: #1967D2; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .tour-ic svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .tour-card h2 { margin: 0 0 6px; font-size: 22px; }
+  .tour-card p { margin: 0 0 14px; font-size: 16px; line-height: 1.45; color: var(--muted); }
+  .tour-dots { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tour-dots i { width: 7px; height: 7px; border-radius: 4px; background: #C4C7C5; } .tour-dots i.on { width: 20px; background: var(--primary); }
+  .tour-btns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+  .tour-btns .invisible { visibility: hidden; }
+  .tabs button span { font-size: 12px; }
+  body.th-earth .home-hero { background: #F0F4F9; }
+  body.th-earth .home-act, body.th-earth .home-hit { border: 0; box-shadow: var(--e-shadow); }
+  body.th-earth .home-act.warn { box-shadow: inset 0 0 0 2px #FBBC04, var(--e-shadow); }
+  body.th-earth .tour-ic, body.th-earth .home-act .h-ic, body.th-earth .home-hit .h-ic { background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth .home-act.warn .h-ic { background: #FEF7E0; color: #B06000; }
+  body.th-earth.th-dark .home-hero { background: var(--e-surface2); }
+  body.th-earth.th-dark .home-act.warn .h-ic { background: #3D2F00; color: #FDD663; }
+  body.th-earth.th-dark .tour-card { background: var(--e-surface); }
+  body.th-earth.th-dark .home-res .help-item { background: var(--e-surface); }
 </style>
 </head>
 <body>
@@ -975,6 +1024,26 @@
         <button type="button" data-k="all" aria-pressed="true">All</button><button type="button" data-k="itb" aria-pressed="false">ITBs</button><button type="button" data-k="sb" aria-pressed="false">Switch boxes</button><button type="button" data-k="pole" aria-pressed="false">Other poles</button></div>
     </div>
     <div id="vwList" class="vw-list"></div>
+  </section>
+
+  <section id="home" class="hidden" aria-label="Home">
+    <div class="card home-top">
+      <h2 id="homeHi">Hi</h2>
+      <div id="homeHero" class="vw-hero home-hero"></div>
+      <div class="home-search">
+        <svg class="ov-s-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+        <input id="homeQ" type="search" placeholder="Find a camera, pole or help topic" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Find a camera, pole or help topic">
+      </div>
+      <div id="homeRes" class="home-res hidden" aria-live="polite"></div>
+    </div>
+    <h3 class="home-h">What do you want to do?</h3>
+    <div id="homeActs" class="home-acts"></div>
+    <div class="card home-help">
+      <h2>Help</h2>
+      <p class="meta" style="margin:-6px 0 8px">Works without signal. Tap a question.</p>
+      <div id="homeHelp"></div>
+      <button id="tourBtn" class="btn secondary" type="button" style="margin-top:12px">Take the 1-minute tour</button>
+    </div>
   </section>
 
   <div id="app" class="hidden">
@@ -1127,7 +1196,19 @@
   <div id="wkPanel" class="wk-panel hidden" role="region" aria-label="Walkways"></div>
   <div id="ovPanel" class="ov-panel hidden"></div>
 </section>
+<div id="tour" class="tour hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="tour-card">
+    <div id="tourIc" class="tour-ic" aria-hidden="true"></div>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div id="tourDots" class="tour-dots" aria-hidden="true"></div>
+    <div class="tour-btns"><button id="tourSkip" class="btn secondary" type="button">Skip</button><button id="tourNext" class="btn" type="button">Next</button></div>
+  </div>
+</div>
 <nav id="tabs" class="tabs hidden" aria-label="Sections">
+  <button type="button" data-tab="home">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg>
+    <span>Home</span></button>
   <button type="button" data-tab="report" class="occ-only">
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M12 9v4.5"/><circle cx="12" cy="16.6" r=".4"/></svg>
     <span>Report</span></button>
@@ -1154,7 +1235,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.4';
+const APP_VERSION = '2026-11-22.5';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1381,7 +1462,7 @@ function showApp() {
   loadPoles();
   loadFaults(true);
 }
-function homeTab() { return isOcc() ? 'report' : (isViewer() ? 'poles' : 'capture'); }
+function homeTab() { return 'home'; }
 
 // ---------- team (admins) ----------
 function renderDepotSwitch() {
@@ -1601,6 +1682,8 @@ function goTab(t) {
   $('viewer').classList.toggle('hidden', t !== 'poles');
   $('report').classList.toggle('hidden', t !== 'report');
   $('faults').classList.toggle('hidden', t !== 'faults');
+  $('home').classList.toggle('hidden', t !== 'home');
+  if (t === 'home') { renderHome(); maybeTour(); }
   if (t === 'report') { rpRender(); rpRecent(); loadFaults(true); }
   if (t === 'faults') { renderFaults(); loadFaults(); }
   setActiveTab(t);
@@ -2210,6 +2293,7 @@ function applyPoles(r, at) {
     renderClaimNote();
     renderCarousel();
     renderViewerList();
+    if (currentTab === 'home') renderHome();
     if (OV.open) ovRender();
   }
 }
@@ -2384,8 +2468,8 @@ function kindIcon(p) {
   d.innerHTML = '<svg viewBox="0 0 24 24">' + KIND_SVG[k] + '</svg>';
   return d;
 }
-function renderVwHero(all, groups) {
-  const box = $('vwHero');
+function renderVwHero(all, groups, boxId) {
+  const box = $(boxId || 'vwHero');
   if (!box) return;
   const camTotal = CAMS.length;
   const camsOn = all.filter(hasCoords).reduce((n, p) => n + (groups.byPole[String(p.poleId).toUpperCase()] || []).length, 0);
@@ -2426,6 +2510,160 @@ function setHeaderSat() {
   const z = 16, xy = tileXY(c[0], c[1], z);
   document.body.style.setProperty('--e-sat', 'url("' + imgUrl(imgKey(), z, xy[0], xy[1]) + '")');
 }
+
+
+// ---------- Home: what do you want to do? + offline help + first-time tour ----------
+const ICONS = {
+  find: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/>',
+  map: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  fault: '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r=".4"/>',
+  report: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M9 10h6M9 14h4"/>',
+  pin: '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/>',
+  sb: '<path d="M13 2 5 13h6l-1 9 8-11h-6z"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/>',
+  offline: '<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/>',
+  upload: '<path d="M12 20V9"/><path d="m7.5 13.5 4.5-4.5 4.5 4.5"/><path d="M5 4h14"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.7"/><circle cx="12" cy="17" r=".4"/>',
+};
+function svgIc(k) { const d = el('span', { class: 'h-ic', 'aria-hidden': 'true' }); d.innerHTML = '<svg viewBox="0 0 24 24">' + (ICONS[k] || '') + '</svg>'; return d; }
+function isAdminUser() { return !isViewer(); }
+
+// Help topics. who: 'all' | 'admin' (can capture) | 'depot' (fixes faults) | 'occ' (OCC / Guard House)
+const HELP = [
+  { id: 'find', who: 'all', q: 'How do I find a camera?', k: 'find search camera where locate pf directions walk',
+    a: ['Type the camera ID (for example PF154) in the search box on Home or the Map tab.', 'Tap the result: the map zooms to its pole and opens the pole card.', 'Tap Directions to see how far it is and which way to walk. Tap Paths on the map to show the approved walkways.'] },
+  { id: 'markers', who: 'all', q: 'What do the map markers mean?', k: 'marker colour color ring legend purple cyan red symbol icon',
+    a: ['Filled dot: the pole and its cameras are confirmed. Ring: an ITB pole. Grey dot: a pole with no cameras listed yet.', 'Purple marker: a TVSS switch box (MDDSB). A cyan outline means track access is needed to reach it.', 'Red ring with a number: open camera faults on that pole.', 'Blue dot: you. The light blue circle around it is how accurate your GPS is right now.'] },
+  { id: 'gps', who: 'all', q: 'Why is my GPS showing ±15 m or more?', k: 'gps accuracy weak poor metres signal location wrong far',
+    a: ['Phone GPS is best in the open. Tall walls, parked trains, roofs and the inside of buildings make it worse.', 'Step a few metres away from walls and trains, hold the phone up, and wait 15–30 seconds.', 'Under ±5 m is good. If it stays weak, you can still save it and drag the pin to the right spot on the satellite map.'] },
+  { id: 'nosignal', who: 'all', q: 'What happens when there is no signal?', k: 'offline no signal internet network upload waiting queue save map',
+    a: ['Anything you save is kept on the phone and uploads by itself when signal comes back. A bar at the top shows what is waiting; tap Upload now to send it.', 'To see the map with no signal, save it first: Settings → Offline map → Save depot map for offline use (once, on wifi).'] },
+  { id: 'compass', who: 'all', q: 'How do I make the map turn with me?', k: 'compass rotate turn heading direction north',
+    a: ['On the Map tab tap Compass. The map turns so the way you are facing is always up. Tap it again to go back to north-up.', 'If the arrow points the wrong way, move the phone in a figure 8 a few times to calibrate it.'] },
+  { id: 'capture', who: 'admin', q: 'How do I map a pole?', k: 'map pole capture collect location add new photo steps',
+    a: ['Go to Capture and pick the pole from the cards, or type its Pole ID, ITB number or one of its camera IDs.', 'Stand at the base of the pole and tap Collect location (15–30 seconds).', 'Take a photo, check the details, then add the camera IDs on that pole and tap Save.'] },
+  { id: 'sb', who: 'admin', q: 'How do I map a TVSS switch box?', k: 'switch box mddsb tvss track access capture',
+    a: ['On Capture, switch the top button from Pole to TVSS switch box.', 'Type the MDDSB number (for example 117) and tap Look up.', 'Tick Track access required if you need track access to reach it, collect the location and save.'] },
+  { id: 'newid', who: 'admin', q: 'The pole has no number. What do I do?', k: 'unnumbered no number sticker new pole id label',
+    a: ['On Capture tap "Unnumbered pole? Get the next Pole ID". The app gives the next free number (for example P106).', 'Write it on a sticker, put it on the pole, then carry on mapping it as normal.'] },
+  { id: 'fix', who: 'depot', q: 'How do I deal with a camera fault?', k: 'fault fix repair job blackout dirty fov alert faults tab',
+    a: ['Open Faults. Jobs are listed in a suggested order: blackouts first, then field-of-view fixes, then cleaning, nearest next.', 'Tap I\'m on it so the team knows you have it, and Show on map to walk there.', 'When it is done, tap Mark fixed. OCC sees it straight away.'] },
+  { id: 'report', who: 'occ', q: 'How do I send faults to the depot team?', k: 'report send fault occ list paste photo blackout dirty',
+    a: ['Go to Report. Paste the camera IDs into the right box (Blackout, FOV fix, Dirty), or read them from a photo of the list.', 'Check the list the app shows, add a note if needed, and tap Send to depot team.', 'The team gets an alert on their phones. Recent reports shows when each camera is being fixed.'] },
+  { id: 'wrong', who: 'all', q: 'Something looks wrong in the data', k: 'wrong error mistake incorrect missing camera pole data',
+    a: ['Note the camera or pole ID and what looks wrong, and tell your admin or team lead.', 'Admins can fix it from Capture by looking the pole up again and saving the right details.'] },
+  { id: 'look', who: 'all', q: 'How do I change how the app looks?', k: 'dark mode theme look colour satellite onemap esri',
+    a: ['Settings → Look: Earth, Dark, Auto (follows the phone) or Classic.', 'Settings → Satellite view: OneMap is sharper; Esri is the backup.'] },
+];
+function helpFor() {
+  const occ = isOcc(), admin = isAdminUser();
+  return HELP.filter((h) => h.who === 'all' || (h.who === 'admin' && admin) || (h.who === 'depot' && !occ) || (h.who === 'occ' && occ));
+}
+function helpItem(h, open) {
+  const d = el('details', { class: 'help-item', id: 'help-' + h.id });
+  if (open) d.setAttribute('open', '');
+  d.appendChild(el('summary', { text: h.q }));
+  d.appendChild(el('ol', {}, h.a.map((t) => el('li', { text: t }))));
+  return d;
+}
+function renderHelp() {
+  const box = $('homeHelp');
+  box.innerHTML = '';
+  helpFor().forEach((h) => box.appendChild(helpItem(h)));
+}
+
+function homeActions() {
+  const occ = isOcc(), admin = isAdminUser();
+  const open = (FAULTS || []).filter((f) => f.status === 'Open').length;
+  const acts = [];
+  acts.push({ ic: 'find', t: 'Find a camera', s: 'Search and walk to it', go: () => goTab('map').then(() => { const i = $('ovSearch'); if (i) i.focus(); }) });
+  if (occ) acts.push({ ic: 'report', t: 'Report camera faults', s: 'Send the OCC list to the depot team', go: () => goTab('report') });
+  else acts.push({ ic: 'fault', t: 'Fix camera faults', s: open ? open + ' open, suggested order ready' : 'No open faults', n: open, go: () => goTab('faults') });
+  if (admin) {
+    acts.push({ ic: 'pin', t: 'Map a pole', s: 'GPS, photo and cameras', go: () => { setCapKind('pole'); goTab('capture'); } });
+    acts.push({ ic: 'sb', t: 'Map a switch box', s: 'TVSS MDDSB, with track access', go: () => { setCapKind('sb'); goTab('capture'); } });
+  }
+  acts.push({ ic: 'list', t: 'Browse poles', s: 'Every pole, ITB and switch box', go: () => goTab('poles') });
+  let saved = null;
+  try { saved = JSON.parse(lsGet(depotKey(LS_OFFMAP)) || 'null'); } catch (e) { saved = null; }
+  if (!saved || !saved.n) acts.push({ ic: 'offline', t: 'Save the map offline', s: 'Once on wifi, then it works with no signal', go: () => { goTab('settings'); setTimeout(() => { const w = $('offWrap'); if (w) w.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 150); } });
+  let waiting = 0;
+  try { waiting = queue.length + wkQueue.length; } catch (e) { try { waiting = queue.length; } catch (e2) { waiting = 0; } }
+  if (waiting) acts.unshift({ ic: 'upload', t: 'Upload ' + waiting + ' waiting', s: 'Saved on this phone while offline', warn: true, go: () => flushQueue() });
+  return acts;
+}
+function renderHome() {
+  const c = getCfg();
+  const hr = new Date().getHours();
+  $('homeHi').textContent = (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (c.name ? ', ' + String(c.name).split(' ')[0] : '');
+  if (MAP.polesLoaded) { renderVwHero(sortedPoles(), camerasByPole(), 'homeHero'); setHeaderSat(); }
+  else $('homeHero').innerHTML = '<div class="meta">Loading ' + curDepot() + '…</div>';
+  const box = $('homeActs');
+  box.innerHTML = '';
+  homeActions().forEach((a) => {
+    const b = el('button', { type: 'button', class: 'home-act' + (a.warn ? ' warn' : '') + (a.n ? ' has-n' : '') }, [
+      svgIc(a.ic), el('span', { class: 'h-t', text: a.t }), el('span', { class: 'h-s', text: a.s }),
+    ].concat(a.n ? [el('i', { class: 'h-n', text: String(a.n) })] : []));
+    b.addEventListener('click', a.go);
+    box.appendChild(b);
+  });
+  if (!$('homeHelp').children.length || $('homeHelp').dataset.role !== (isOcc() ? 'o' : isAdminUser() ? 'a' : 'v')) {
+    renderHelp(); $('homeHelp').dataset.role = isOcc() ? 'o' : isAdminUser() ? 'a' : 'v';
+  }
+}
+// one search box for assets and help
+function homeSearch() {
+  const raw = $('homeQ').value.trim(), box = $('homeRes');
+  box.innerHTML = '';
+  if (!raw) { box.classList.add('hidden'); return; }
+  const q = compactId(raw), words = raw.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+  const out = [];
+  if (q.length >= 2) {
+    CAMS.filter((c) => compactId(c.cameraId).indexOf(q) >= 0).slice(0, 4).forEach((c) => out.push({ ic: 'find', t: String(c.cameraId), s: c.poleId ? 'Camera on ' + c.poleId : 'Camera, not on a pole yet', go: () => { if (c.poleId) goTab('map').then(() => ovSelect(c.poleId, c.cameraId)); else toast(c.cameraId + ' has not been placed on a pole yet.', true); } }));
+    MAP.poles.filter((p) => compactId(p.poleId).indexOf(q) >= 0 || compactId(p.itbNo).indexOf(q) >= 0).slice(0, 3).forEach((p) => out.push({ ic: isSwitchBox(p) ? 'sb' : 'pin', t: String(p.poleId), s: (isSwitchBox(p) ? 'Switch box' : isItbPole(p) ? 'ITB pole' : 'Pole') + (hasCoords(p) ? '' : ' · not on the map yet'), go: () => goTab('map').then(() => ovSelect(p.poleId, '')) }));
+  }
+  helpFor().map((h) => ({ h: h, score: words.reduce((n, w) => n + ((h.q + ' ' + h.k).toLowerCase().indexOf(w) >= 0 ? 1 : 0), 0) }))
+    .filter((x) => x.score).sort((a, b) => b.score - a.score).slice(0, 3)
+    .forEach((x) => out.push({ ic: 'help', t: x.h.q, s: 'Help', help: x.h }));
+  if (!out.length) { box.appendChild(el('div', { class: 'meta', style: 'padding:8px 4px', text: 'Nothing found for "' + raw + '". Try a camera ID like PF154, or a word like GPS or offline.' })); }
+  out.forEach((r) => {
+    if (r.help) { box.appendChild(helpItem(r.help, true)); return; }
+    const b = el('button', { type: 'button', class: 'home-hit' }, [svgIc(r.ic), el('span', { class: 'h-t', text: r.t }), el('span', { class: 'h-s', text: r.s })]);
+    b.addEventListener('click', r.go);
+    box.appendChild(b);
+  });
+  box.classList.remove('hidden');
+}
+$('homeQ').addEventListener('input', homeSearch);
+$('homeQ').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = $('homeRes').querySelector('.home-hit'); if (b) b.click(); } });
+
+// first-time tour (once per phone, per role group)
+const LS_TOUR = 'dcc.tour.v1';
+function tourSteps() {
+  const occ = isOcc(), admin = isAdminUser();
+  const st = [{ ic: 'pin', t: 'Welcome to Cam Capture', x: 'Every depot camera, ITB and switch box on one map, on your phone. Home is where you start: pick what you want to do, or search.' },
+    { ic: 'map', t: 'Map', x: 'Search a camera ID, tap Directions and follow the walkways. Compass turns the map with you. Save the map offline once and it works with no signal.' }];
+  if (occ) st.push({ ic: 'report', t: 'Report', x: 'Paste or photograph the OCC list of faulty cameras and send it. The depot team is alerted at once, and you see when each one is fixed.' });
+  else st.push({ ic: 'fault', t: 'Faults', x: 'Faults from OCC arrive here with a suggested job order. Tap I\'m on it, walk there with Show on map, then Mark fixed.' });
+  if (admin) st.push({ ic: 'sb', t: 'Capture', x: 'Map a pole or a TVSS switch box: stand at it, collect the GPS, take a photo and add its cameras. It is shared with the team straight away.' });
+  st.push({ ic: 'help', t: 'Stuck?', x: 'Type a question or a word like "GPS" or "offline" in the Home search box. The help works without signal. You can replay this tour from Home.' });
+  return st;
+}
+let TOUR = { i: 0, steps: [] };
+function tourShow() {
+  const s = TOUR.steps[TOUR.i];
+  $('tourIc').innerHTML = '<svg viewBox="0 0 24 24">' + ICONS[s.ic] + '</svg>';
+  $('tourTitle').textContent = s.t; $('tourText').textContent = s.x;
+  $('tourDots').innerHTML = TOUR.steps.map((_, i) => '<i class="' + (i === TOUR.i ? 'on' : '') + '"></i>').join('');
+  $('tourNext').textContent = TOUR.i === TOUR.steps.length - 1 ? 'Done' : 'Next';
+  $('tourSkip').classList.toggle('invisible', TOUR.i === TOUR.steps.length - 1);
+}
+function startTour() { TOUR = { i: 0, steps: tourSteps() }; tourShow(); $('tour').classList.remove('hidden'); $('tourNext').focus(); }
+function endTour() { $('tour').classList.add('hidden'); lsSet(LS_TOUR, isOcc() ? 'o' : isAdminUser() ? 'a' : 'v'); }
+function maybeTour() { const c = getCfg(); if (c.url && c.passcode && !c.viewAs && !lsGet(LS_TOUR)) setTimeout(startTour, 400); }
+$('tourNext').addEventListener('click', () => { if (TOUR.i < TOUR.steps.length - 1) { TOUR.i++; tourShow(); } else endTour(); });
+$('tourSkip').addEventListener('click', endTour);
+$('tourBtn').addEventListener('click', startTour);
 
 // ---------- viewer: read-only list ----------
 let VW_KIND = 'all';
@@ -4329,6 +4567,7 @@ function renderFaultBadge() {
   const n = (FAULTS || []).filter((f) => f.status === 'Open').length;
   b.textContent = n > 99 ? '99+' : String(n);
   b.classList.toggle('hidden', !n || isOcc());
+  if (typeof currentTab !== 'undefined' && currentTab === 'home' && typeof renderHome === 'function') renderHome();
 }
 function renderFaults(err) {
   const box = $('ftList');
