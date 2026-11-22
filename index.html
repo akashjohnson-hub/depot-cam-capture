@@ -948,17 +948,18 @@
     border: 1.5px solid rgba(255,255,255,.85);
     box-shadow: inset 0 2px 2px rgba(255,255,255,.9), inset 0 -3px 8px rgba(255,255,255,.35), inset 0 0 14px rgba(120,170,255,.25), 0 10px 28px rgba(20,40,80,.28), 0 2px 6px rgba(20,40,80,.18);
     transition: opacity .22s ease, transform .5s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
-  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .18s ease, transform .09s linear; }
-  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .32s ease .28s, transform .5s cubic-bezier(.34,1.56,.64,1); }
+  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .22s ease, transform .2s cubic-bezier(.22,1,.36,1); }
+  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .4s ease .32s, transform .55s cubic-bezier(.22,1.15,.36,1); }
   body.th-earth.th-dark .tab-lens { border-color: rgba(255,255,255,.45); box-shadow: inset 0 2px 2px rgba(255,255,255,.45), inset 0 -3px 8px rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.55); }
   body.th-earth .tabs.dragging button { transition: color .15s ease, opacity .2s ease; }
-  body.th-earth .tabs button svg { transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
-  body.th-earth .tabs.dragging button.peek svg { transform: scale(1.4); }
+  body.th-earth .tabs button svg { transition: transform .4s cubic-bezier(.22,1,.36,1); }
+  body.th-earth .tabs.dragging button.peek svg { transform: scale(1.3); }
   @media (prefers-reduced-motion: reduce) { body.th-earth .tab-lens { transition: opacity .15s ease; } }
   /* bubbles pop up under the finger, neighbours lift a little */
-  body.th-earth .tabs.dragging button { transition: transform .32s cubic-bezier(.34,1.56,.64,1), color .15s ease, opacity .2s ease; }
-  body.th-earth .tabs.dragging button.peek { transform: translateY(-8px) scale(1.1); }
-  body.th-earth .tabs.dragging button.near { transform: translateY(-3px); }
+  body.th-earth .tabs.dragging button { transition: transform .45s cubic-bezier(.22,1,.36,1), color .25s ease, opacity .25s ease; }
+  body.th-earth .tabs button { will-change: transform; }
+  body.th-earth .tabs.dragging button.peek { transform: translateY(-7px) scale(1.08); }
+  body.th-earth .tabs.dragging button.near { transform: translateY(-2.5px); }
   @media (prefers-reduced-motion: reduce) { body.th-earth .tabs.dragging button.peek, body.th-earth .tabs.dragging button.near { transform: none; } }
 </style>
 </head>
@@ -1315,7 +1316,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.11';
+const APP_VERSION = '2026-11-22.12';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -5086,12 +5087,12 @@ function tabPeek(b) {
 function lensAt(x, sx, sy) {
   const nav = $('tabs'), r = nav.getBoundingClientRect(), L = $('tabLens');
   const cx = Math.max(r.left + 26, Math.min(r.right - 26, x)) - r.left - 33;
-  const up = $('tabs').classList.contains('dragging') ? -8 : 0;
+  const up = $('tabs').classList.contains('dragging') ? -7 : 0;
   L.style.transform = 'translate(' + cx.toFixed(1) + 'px,' + up + 'px) scale(' + (sx || 1).toFixed(3) + ',' + (sy || 1).toFixed(3) + ')';
 }
 $('tabs').addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
-  TABDRAG.on = true; TABDRAG.x0 = e.clientX; TABDRAG.lastX = e.clientX; TABDRAG.lastT = performance.now(); TABDRAG.moved = false; TABDRAG.over = null;
+  TABDRAG.on = true; TABDRAG.v = 0; TABDRAG.x0 = e.clientX; TABDRAG.lastX = e.clientX; TABDRAG.lastT = performance.now(); TABDRAG.moved = false; TABDRAG.over = null;
   $('tabs').classList.remove('lens-snap');
 });
 window.addEventListener('pointermove', (e) => {
@@ -5102,8 +5103,9 @@ window.addEventListener('pointermove', (e) => {
   $('tabs').classList.add('dragging');
   const now = performance.now(), v = (e.clientX - TABDRAG.lastX) / Math.max(8, now - TABDRAG.lastT);   // px per ms
   TABDRAG.lastX = e.clientX; TABDRAG.lastT = now;
-  const st = Math.min(Math.abs(v) * 0.22, 0.32);   // stretch like a drop of liquid when moving fast
-  lensAt(e.clientX, 1.12 + st, 1.12 - st * 0.6);
+  TABDRAG.v = (TABDRAG.v || 0) * 0.75 + v * 0.25;   // smoothed speed, so the stretch eases in and out
+  const st = Math.min(Math.abs(TABDRAG.v) * 0.16, 0.22);   // stretch like a drop of liquid when moving fast
+  lensAt(e.clientX, 1.1 + st, 1.1 - st * 0.5);
   tabPeek(tabAtX(e.clientX));
 });
 function tabDragEnd(e, cancel) {
