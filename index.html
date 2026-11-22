@@ -915,6 +915,11 @@
     .tab-in-r, .tab-in-l, .tab-in-f { animation: none; }
     body.th-earth .tabs button, body.th-earth .tabs button span { transition: none; }
   }
+  /* sliding along the tab bar */
+  .tabs { touch-action: none; -webkit-user-select: none; user-select: none; }
+  body.th-earth .tabs button.peek:not(.active) { transform: scale(1.14) translateY(-4px); background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth .tabs.dragging button.active:not(.peek) { opacity: .75; }
+  .tabs button.peek:not(.active) { background: rgba(255,255,255,.7); }
 </style>
 </head>
 <body>
@@ -1269,7 +1274,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.8';
+const APP_VERSION = '2026-11-22.9';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -5015,10 +5020,76 @@ $('viewAsGuardToggle').addEventListener('change', (e) => setViewAs(e.target.chec
 $('previewExit').addEventListener('click', () => setViewAs(false));
 $('cfgCancel').addEventListener('click', () => goTab(homeTab()));
 $('settingsBtn').addEventListener('click', () => goTab('settings'));
-document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', (e) => {
+  if (TABDRAG.justDragged) { e.preventDefault(); return; }
   if (b.dataset.tab === currentTab && b.dataset.tab === 'capture' && state.step > 1) { setStep(state.step); return; }
   goTab(b.dataset.tab);
 }));
+
+// ---------- slide a finger along the tab bar, or swipe a screen sideways, to change tabs ----------
+const TABDRAG = { on: false, x0: 0, moved: false, over: null, justDragged: false };
+function visTabs() { return [...document.querySelectorAll('#tabs button')].filter((b) => b.offsetParent); }
+function tabAtX(x) {
+  let best = null, bd = 1e9;
+  visTabs().forEach((b) => { const r = b.getBoundingClientRect(), d = Math.abs(x - (r.left + r.width / 2)); if (d < bd) { bd = d; best = b; } });
+  return best;
+}
+function tabPeek(b) {
+  if (TABDRAG.over === b) return;
+  if (TABDRAG.over) TABDRAG.over.classList.remove('peek');
+  TABDRAG.over = b;
+  if (b) { b.classList.add('peek'); if (navigator.vibrate) { try { navigator.vibrate(6); } catch (e) { /* not supported */ } } }
+}
+$('tabs').addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  TABDRAG.on = true; TABDRAG.x0 = e.clientX; TABDRAG.moved = false; TABDRAG.over = null;
+});
+window.addEventListener('pointermove', (e) => {
+  if (!TABDRAG.on) return;
+  if (!TABDRAG.moved && Math.abs(e.clientX - TABDRAG.x0) < 12) return;
+  TABDRAG.moved = true;
+  $('tabs').classList.add('dragging');
+  tabPeek(tabAtX(e.clientX));
+});
+function tabDragEnd(e, cancel) {
+  if (!TABDRAG.on) return;
+  TABDRAG.on = false;
+  $('tabs').classList.remove('dragging');
+  const target = TABDRAG.over;
+  if (target) target.classList.remove('peek');
+  TABDRAG.over = null;
+  if (!TABDRAG.moved) return;
+  TABDRAG.justDragged = true; setTimeout(() => { TABDRAG.justDragged = false; }, 350);
+  if (!cancel && target && target.dataset.tab !== currentTab) goTab(target.dataset.tab);
+}
+window.addEventListener('pointerup', (e) => tabDragEnd(e, false));
+window.addEventListener('pointercancel', (e) => tabDragEnd(e, true));
+
+// swipe left/right on a screen (not the map, not on things that scroll sideways or take typing)
+const SWIPE = { x: 0, y: 0, t: 0, ok: false };
+function swipeBlocked(n) {
+  for (; n && n !== document.body; n = n.parentElement) {
+    if (n.matches && n.matches('input, textarea, select, .leaflet-container, .carousel, .tour, #tabs, [data-noswipe]')) return true;
+    if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+  }
+  return false;
+}
+document.addEventListener('touchstart', (e) => {
+  SWIPE.ok = false;
+  if (e.touches.length !== 1 || currentTab === 'map' || !$('tour').classList.contains('hidden')) return;
+  if (swipeBlocked(e.target)) return;
+  const t = e.touches[0]; SWIPE.x = t.clientX; SWIPE.y = t.clientY; SWIPE.t = Date.now(); SWIPE.ok = true;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!SWIPE.ok) return;
+  SWIPE.ok = false;
+  const t = e.changedTouches[0], dx = t.clientX - SWIPE.x, dy = t.clientY - SWIPE.y;
+  if (Date.now() - SWIPE.t > 600 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+  const tabs = visTabs().map((b) => b.dataset.tab), i = tabs.indexOf(currentTab);
+  const next = tabs[i + (dx < 0 ? 1 : -1)];
+  if (i >= 0 && next && next !== 'map') goTab(next);
+  else if (next === 'map') goTab('map');
+}, { passive: true });
 $('addPersonBtn').addEventListener('click', addPerson);
 $('newName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addPerson(); });
 
