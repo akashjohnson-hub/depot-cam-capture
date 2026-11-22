@@ -881,6 +881,26 @@
   body.th-earth.th-dark .home-act.warn .h-ic { background: #3D2F00; color: #FDD663; }
   body.th-earth.th-dark .tour-card { background: var(--e-surface); }
   body.th-earth.th-dark .home-res .help-item { background: var(--e-surface); }
+  /* ================= Earth tab bar: round bubbles, label on the open tab ================= */
+  body.th-earth .tabs { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+    padding: 0; gap: 5px; justify-content: space-between; align-items: center; height: var(--tabs-h); }
+  body.th-earth .tabs button { flex: 0 0 46px; width: 46px; height: 46px; border-radius: 23px; padding: 0; gap: 0;
+    background: rgba(255,255,255,.96); color: #444746; box-shadow: 0 2px 8px rgba(60,64,67,.24), 0 1px 2px rgba(60,64,67,.18); }
+  body.th-earth .tabs button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.th-earth .tabs button.active { flex: 0 0 auto; width: auto; padding: 0 14px 0 11px; flex-direction: row; gap: 6px;
+    background: var(--e-blue); color: #FFFFFF; box-shadow: 0 4px 12px rgba(11,87,208,.35); }
+  body.th-earth .tabs button.active span { position: static; width: auto; height: auto; clip: auto; font-size: 14px; font-weight: 500; }
+  body.th-earth .tabs button:active { transform: scale(.94); }
+  body.th-earth .tabs svg { width: 22px; height: 22px; }
+  body.th-earth .tab-badge { top: -2px; left: auto; right: -3px; margin: 0; }
+  body.th-earth.th-dark .tabs { background: none; box-shadow: none; }
+  body.th-earth.th-dark .tabs button { background: rgba(40,42,44,.96); color: #E3E3E3; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+  body.th-earth.th-dark .tabs button.active { background: var(--e-blue); color: var(--e-on-blue); box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+  /* soft fade behind the bubbles so scrolling cards don't show through the gaps (not on the map) */
+  body.th-earth.has-tabs:not(.on-map)::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dock) + 18px); z-index: 1099; pointer-events: none;
+    background: linear-gradient(rgba(240,244,249,0), #F0F4F9 38%); }
+  body.th-earth.th-dark.has-tabs:not(.on-map)::after { background: linear-gradient(rgba(19,19,20,0), #131314 38%); }
+  @media (max-width: 379px) { body.th-earth .tabs button { flex-basis: 42px; width: 42px; height: 42px; } body.th-earth .tabs button.active { padding: 0 11px 0 9px; } body.th-earth .tabs button.active span { font-size: 13px; } body.th-earth .tabs { gap: 3px; } }
 </style>
 </head>
 <body>
@@ -1235,7 +1255,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.5';
+const APP_VERSION = '2026-11-22.6';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1687,6 +1707,7 @@ function goTab(t) {
   if (t === 'report') { rpRender(); rpRecent(); loadFaults(true); }
   if (t === 'faults') { renderFaults(); loadFaults(); }
   setActiveTab(t);
+  document.body.classList.toggle('on-map', t === 'map');
   if (t === 'settings') fillSetup();
   showTeamCard(t === 'settings');
   if (t !== 'settings') $('devCard').classList.add('hidden');
