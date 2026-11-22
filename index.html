@@ -977,7 +977,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.1';
+const APP_VERSION = '2026-11-22.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1922,7 +1922,7 @@ const IMAGERY = {
 };
 function imgKey() { const k = lsGet(LS_IMG); return IMAGERY[k] ? k : 'onemap'; }
 function imgUrl(key, z, x, y) { return IMAGERY[key].url.replace('{z}', z).replace('{x}', x).replace('{y}', y); }
-const BASES = [];   // [{ map, layer }]
+const BASES = [];   // [{ map, layer, under }]
 function baseLayer(map, key) {
   key = key || imgKey();
   const layer = L.tileLayer(IMAGERY[key].url, { maxNativeZoom: 19, maxZoom: 21, attribution: IMAGERY[key].attribution });
@@ -1936,9 +1936,15 @@ function baseLayer(map, key) {
       toast('OneMap satellite isn\'t loading, switched to Esri for now. Change it in Settings.', true);
     }
   });
+  // Esri underneath OneMap: phones already hold Esri pieces, so the map shows at
+  // once and the sharper OneMap fills in on top as it arrives (no grey squares).
+  let under = null;
+  if (key === 'onemap') {
+    under = L.tileLayer(IMAGERY.esri.url, { maxNativeZoom: 19, maxZoom: 21, zIndex: 0 }).addTo(map);
+    layer.setZIndex(1);
+  }
   layer.addTo(map);
-  layer.bringToBack();
-  BASES.push({ map: map, layer: layer });
+  BASES.push({ map: map, layer: layer, under: under });
   return layer;
 }
 function setImagery(key, temporary) {
@@ -1947,6 +1953,7 @@ function setImagery(key, temporary) {
   BASES.slice().forEach((b) => {
     if (b.layer._imgKey === key) return;
     b.map.removeLayer(b.layer);
+    if (b.under) b.map.removeLayer(b.under);
     BASES.splice(BASES.indexOf(b), 1);
     baseLayer(b.map, key);
   });
