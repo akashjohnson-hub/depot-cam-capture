@@ -961,6 +961,11 @@
   body.th-earth .tabs.dragging button.peek { transform: translateY(-16px) scale(1.2); }
   body.th-earth .tabs.dragging button.near { transform: translateY(-6px) scale(1.04); }
   @media (prefers-reduced-motion: reduce) { body.th-earth .tabs.dragging button.peek, body.th-earth .tabs.dragging button.near { transform: none; } }
+  .home-depot { margin: -4px 0 12px; }
+  .home-depot .seg { display: inline-flex; }
+  .home-dlabel { display: inline-block; font-size: 14px; font-weight: 600; color: var(--muted); background: #EEF1F4; border-radius: 999px; padding: 3px 11px; }
+  body.th-earth .home-dlabel { background: #F0F4F9; font-weight: 500; }
+  body.th-earth.th-dark .home-dlabel { background: var(--e-surface2); }
 </style>
 </head>
 <body>
@@ -1109,6 +1114,7 @@
   <section id="home" class="hidden" aria-label="Home">
     <div class="card home-top">
       <h2 id="homeHi">Hi</h2>
+      <div id="homeDepot" class="home-depot"></div>
       <div id="homeHero" class="vw-hero home-hero"></div>
       <div class="home-search">
         <svg class="ov-s-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
@@ -1316,7 +1322,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.13';
+const APP_VERSION = '2026-11-22.14';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1418,7 +1424,7 @@ function canPreview() { const c = getCfg(); return c.role === 'Owner' || c.viaMa
 function canManageTeam() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
 function roleLabel(c) { if (c.viewAs) return roleName(c.viewAs) + ' preview'; return (c.role === 'Viewer' ? 'Viewer' : c.role === 'OCC' ? 'OCC' : c.role === 'Guard' ? 'Guard House' : c.role === 'Owner' ? 'Owner' : 'Admin') + (c.viaMaster ? ' (master passcode)' : ''); }
 // Depots: each account belongs to one depot; the Owner can switch the depot they work on.
-function canSwitchDepot() { const c = getCfg(); return (c.role === 'Owner' || c.viaMaster) && !c.viewAs; }
+function canSwitchDepot() { const c = getCfg(); return (c.role === 'Owner' || c.role === 'Admin' || c.viaMaster) && !c.viewAs; }
 function curDepot() { return getCfg().depot || 'Mandai'; }
 function depotKey(base) { const d = curDepot(); return d === 'Mandai' ? base : base + '.' + d; }   // per-depot phone storage
 function depotsKnown() { const d = getCfg().depots; return d && d.length ? d : ['Mandai', 'ECID']; }
@@ -1486,7 +1492,7 @@ async function apiCall(action, body) {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // keeps it a "simple" request (no CORS preflight)
       body: JSON.stringify(Object.assign({ action: action, passcode: cfg.passcode, submittedBy: cfg.name || '' }, cfg.viewAs ? { viewAs: cfg.viewAs } : {},
-        cfg.work && (cfg.role === 'Owner' || cfg.viaMaster) ? { depot: cfg.work } : {}, body || {})),
+        cfg.work && canSwitchDepot() ? { depot: cfg.work } : {}, body || {})),
       redirect: 'follow',
     });
   } catch (e) {
@@ -1557,7 +1563,7 @@ function renderDepotSwitch() {
     b.addEventListener('click', () => switchDepot(d));
     seg.appendChild(b);
   });
-  $('depotNote').textContent = 'You are working on ' + curDepot() + '. Everyone else only sees their own depot.';
+  $('depotNote').textContent = 'You are working on ' + curDepot() + '. Viewers, OCC and Guard House only see their own depot.';
 }
 function switchDepot(d) {
   if (d === curDepot()) return;
@@ -2690,8 +2696,24 @@ function homeActions() {
   if (waiting) acts.unshift({ ic: 'upload', t: 'Upload ' + waiting + ' waiting', s: 'Saved on this phone while offline', warn: true, go: () => flushQueue() });
   return acts;
 }
+function renderHomeDepot() {
+  const box = $('homeDepot');
+  box.innerHTML = '';
+  if (canSwitchDepot() && depotsKnown().length > 1) {
+    const seg = el('div', { class: 'seg home-dseg', role: 'group', 'aria-label': 'Depot' });
+    depotsKnown().forEach((d) => {
+      const b = el('button', { type: 'button', text: d, 'aria-pressed': String(d === curDepot()) });
+      b.addEventListener('click', () => switchDepot(d));
+      seg.appendChild(b);
+    });
+    box.appendChild(seg);
+  } else {
+    box.appendChild(el('span', { class: 'home-dlabel', text: curDepot() + ' depot' }));
+  }
+}
 function renderHome() {
   const c = getCfg();
+  renderHomeDepot();
   const hr = new Date().getHours();
   $('homeHi').textContent = (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (c.name ? ', ' + String(c.name).split(' ')[0] : '');
   if (MAP.polesLoaded) { renderVwHero(sortedPoles(), camerasByPole(), 'homeHero'); setHeaderSat(); }
