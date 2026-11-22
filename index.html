@@ -955,6 +955,11 @@
   body.th-earth .tabs button svg { transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
   body.th-earth .tabs.dragging button.peek svg { transform: scale(1.4); }
   @media (prefers-reduced-motion: reduce) { body.th-earth .tab-lens { transition: opacity .15s ease; } }
+  /* bubbles pop up under the finger, neighbours lift a little */
+  body.th-earth .tabs.dragging button { transition: transform .32s cubic-bezier(.34,1.56,.64,1), color .15s ease, opacity .2s ease; }
+  body.th-earth .tabs.dragging button.peek { transform: translateY(-8px) scale(1.1); }
+  body.th-earth .tabs.dragging button.near { transform: translateY(-3px); }
+  @media (prefers-reduced-motion: reduce) { body.th-earth .tabs.dragging button.peek, body.th-earth .tabs.dragging button.near { transform: none; } }
 </style>
 </head>
 <body>
@@ -1310,7 +1315,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.10';
+const APP_VERSION = '2026-11-22.11';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -5074,12 +5079,15 @@ function tabPeek(b) {
   if (TABDRAG.over === b) return;
   if (TABDRAG.over) TABDRAG.over.classList.remove('peek');
   TABDRAG.over = b;
+  visTabs().forEach((x) => x.classList.remove('near'));
+  if (b) { const vs = visTabs(), i = vs.indexOf(b); [vs[i - 1], vs[i + 1]].forEach((x) => { if (x) x.classList.add('near'); }); }
   if (b) { b.classList.add('peek'); if (navigator.vibrate) { try { navigator.vibrate(6); } catch (e) { /* not supported */ } } }
 }
 function lensAt(x, sx, sy) {
   const nav = $('tabs'), r = nav.getBoundingClientRect(), L = $('tabLens');
   const cx = Math.max(r.left + 26, Math.min(r.right - 26, x)) - r.left - 33;
-  L.style.transform = 'translateX(' + cx.toFixed(1) + 'px) scale(' + (sx || 1).toFixed(3) + ',' + (sy || 1).toFixed(3) + ')';
+  const up = $('tabs').classList.contains('dragging') ? -8 : 0;
+  L.style.transform = 'translate(' + cx.toFixed(1) + 'px,' + up + 'px) scale(' + (sx || 1).toFixed(3) + ',' + (sy || 1).toFixed(3) + ')';
 }
 $('tabs').addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -5104,6 +5112,7 @@ function tabDragEnd(e, cancel) {
   $('tabs').classList.remove('dragging');
   const target = TABDRAG.over;
   if (target) target.classList.remove('peek');
+  visTabs().forEach((x) => x.classList.remove('near'));
   TABDRAG.over = null;
   if (!TABDRAG.moved) return;
   const nav = $('tabs');
