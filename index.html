@@ -886,10 +886,12 @@
     padding: 0; gap: 5px; justify-content: space-between; align-items: center; height: var(--tabs-h); }
   body.th-earth .tabs button { flex: 0 0 46px; width: 46px; height: 46px; border-radius: 23px; padding: 0; gap: 0;
     background: rgba(255,255,255,.96); color: #444746; box-shadow: 0 2px 8px rgba(60,64,67,.24), 0 1px 2px rgba(60,64,67,.18); }
-  body.th-earth .tabs button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.th-earth .tabs button span { display: inline-block; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-size: 14px; font-weight: 500;
+    transition: max-width .26s cubic-bezier(.2,.8,.2,1), opacity .18s ease; }
+  body.th-earth .tabs button { transition: background-color .22s ease, color .22s ease, padding .26s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, transform .12s ease; }
   body.th-earth .tabs button.active { flex: 0 0 auto; width: auto; padding: 0 14px 0 11px; flex-direction: row; gap: 6px;
     background: var(--e-blue); color: #FFFFFF; box-shadow: 0 4px 12px rgba(11,87,208,.35); }
-  body.th-earth .tabs button.active span { position: static; width: auto; height: auto; clip: auto; font-size: 14px; font-weight: 500; }
+  body.th-earth .tabs button.active span { max-width: 90px; opacity: 1; transition-delay: 0s, .06s; }
   body.th-earth .tabs button:active { transform: scale(.94); }
   body.th-earth .tabs svg { width: 22px; height: 22px; }
   body.th-earth .tab-badge { top: -2px; left: auto; right: -3px; margin: 0; }
@@ -900,7 +902,18 @@
   body.th-earth.has-tabs:not(.on-map)::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dock) + 18px); z-index: 1099; pointer-events: none;
     background: linear-gradient(rgba(240,244,249,0), #F0F4F9 38%); }
   body.th-earth.th-dark.has-tabs:not(.on-map)::after { background: linear-gradient(rgba(19,19,20,0), #131314 38%); }
-  @media (max-width: 379px) { body.th-earth .tabs button { flex-basis: 42px; width: 42px; height: 42px; } body.th-earth .tabs button.active { padding: 0 11px 0 9px; } body.th-earth .tabs button.active span { font-size: 13px; } body.th-earth .tabs { gap: 3px; } }
+  @media (max-width: 379px) { body.th-earth .tabs button { flex-basis: 42px; width: 42px; height: 42px; } body.th-earth .tabs button.active { padding: 0 11px 0 9px; } body.th-earth .tabs button.active span { font-size: 13px; } body.th-earth .tabs button span { font-size: 13px; } body.th-earth .tabs { gap: 3px; } }
+  /* tab switch: new screen slides in from the side of the tab you tapped */
+  @keyframes tab-in-r { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+  @keyframes tab-in-l { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+  @keyframes tab-in-f { from { opacity: 0; } to { opacity: 1; } }
+  .tab-in-r { animation: tab-in-r .24s cubic-bezier(.2,.8,.2,1) both; }
+  .tab-in-l { animation: tab-in-l .24s cubic-bezier(.2,.8,.2,1) both; }
+  .tab-in-f { animation: tab-in-f .2s ease both; }
+  @media (prefers-reduced-motion: reduce) {
+    .tab-in-r, .tab-in-l, .tab-in-f { animation: none; }
+    body.th-earth .tabs button, body.th-earth .tabs button span { transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -1255,7 +1268,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.6';
+const APP_VERSION = '2026-11-22.7';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1692,7 +1705,22 @@ function setActiveTab(t) {
     if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
 }
+const TAB_ORDER = ['home', 'report', 'capture', 'map', 'poles', 'faults', 'settings'];
+const TAB_EL = { home: 'home', report: 'report', capture: 'app', map: 'overview', poles: 'viewer', faults: 'faults', settings: 'setup' };
+function tabAnim(from, to) {
+  if (!from || from === to) return;
+  const n = $(TAB_EL[to]);
+  if (!n || n.classList.contains('hidden') || !n.offsetParent && getComputedStyle(n).position !== 'fixed') return;
+  const cls = to === 'map' || from === 'map' ? 'tab-in-f' : (TAB_ORDER.indexOf(to) > TAB_ORDER.indexOf(from) ? 'tab-in-r' : 'tab-in-l');
+  n.classList.remove('tab-in-r', 'tab-in-l', 'tab-in-f');
+  void n.offsetWidth;   // restart the animation
+  n.classList.add(cls);
+  const done = (e) => { if (e.target !== n) return; n.classList.remove(cls); n.removeEventListener('animationend', done); };
+  n.addEventListener('animationend', done);
+  setTimeout(() => n.classList.remove(cls), 600);
+}
 function goTab(t) {
+  const fromTab = currentTab;
   if (t === 'capture' && isViewer()) t = homeTab();
   if (t === 'faults' && isOcc()) t = 'report';
   if (t === 'report' && !isOcc()) t = 'faults';
@@ -1707,6 +1735,7 @@ function goTab(t) {
   if (t === 'report') { rpRender(); rpRecent(); loadFaults(true); }
   if (t === 'faults') { renderFaults(); loadFaults(); }
   setActiveTab(t);
+  requestAnimationFrame(() => tabAnim(fromTab, t));
   document.body.classList.toggle('on-map', t === 'map');
   if (t === 'settings') fillSetup();
   showTeamCard(t === 'settings');
