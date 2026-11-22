@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Depot Camera Capture</title>
+<title>iCapture</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Cam Capture">
+<meta name="apple-mobile-web-app-title" content="iCapture">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#14202E">
 <style>
@@ -971,14 +971,14 @@
 <body>
 <header>
   <div id="netBar" class="net-bar" aria-hidden="true"><i></i></div>
-  <h1>Cam Capture</h1>
+  <h1>iCapture</h1>
   <span id="whoChip" class="who hidden"></span>
   <!-- legacy controls kept for script hooks; navigation is the tab bar -->
   <button id="overviewBtn" type="button" class="legacy">Overview</button>
   <button id="mapBtn" type="button" class="legacy">Map</button>
   <button id="settingsBtn" type="button" class="legacy">Settings</button>
 </header>
-<div id="updateBar" class="hidden"><span>A new version of Cam Capture is ready.</span><button id="updateBtn" type="button">Update now</button></div>
+<div id="updateBar" class="hidden"><span>A new version of iCapture is ready.</span><button id="updateBtn" type="button">Update now</button></div>
 <div id="pending" class="hidden"><span id="pendingText"></span><button id="flushBtn" type="button">Upload now</button></div>
 
 <main>
@@ -1322,7 +1322,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.14';
+const APP_VERSION = '2026-11-22.15';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1522,7 +1522,7 @@ function showSetup() {
 }
 function fillSetup() {
   const cfg = getCfg();
-  $('cfgTitle').textContent = cfg.url && cfg.passcode ? 'Settings' : 'Sign in to Cam Capture';
+  $('cfgTitle').textContent = cfg.url && cfg.passcode ? 'Settings' : 'Sign in to iCapture';
   $('cfgUrl').value = cfg.url;
   $('cfgPass').value = cfg.passcode;
   $('cfgName').value = cfg.name;
@@ -2761,7 +2761,7 @@ $('homeQ').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b
 const LS_TOUR = 'dcc.tour.v1';
 function tourSteps() {
   const occ = isOcc(), admin = isAdminUser();
-  const st = [{ ic: 'pin', t: 'Welcome to Cam Capture', x: 'Every depot camera, ITB and switch box on one map, on your phone. Home is where you start: pick what you want to do, or search.' },
+  const st = [{ ic: 'pin', t: 'Welcome to iCapture', x: 'Every depot camera, ITB and switch box on one map, on your phone. Home is where you start: pick what you want to do, or search.' },
     { ic: 'map', t: 'Map', x: 'Search a camera ID, tap Directions and follow the walkways. Compass turns the map with you. Save the map offline once and it works with no signal.' }];
   if (occ) st.push({ ic: 'report', t: 'Report', x: 'Paste or photograph the OCC list of faulty cameras and send it. The depot team is alerted at once, and you see when each one is fixed.' });
   else st.push({ ic: 'fault', t: 'Faults', x: 'Faults from OCC arrive here with a suggested job order. Tap I\'m on it, walk there with Show on map, then Mark fixed.' });
@@ -4961,7 +4961,7 @@ function offRenderStatus() {
   if (!st || btn.classList.contains('is-busy')) return;
   let m = null;
   try { m = JSON.parse(lsGet(depotKey(LS_OFFMAP)) || 'null'); } catch (e) { m = null; }
-  if (!('caches' in window) || !('serviceWorker' in navigator)) { st.textContent = 'This browser can\'t keep the map offline. Add Cam Capture to the home screen and open it from there.'; btn.disabled = true; return; }
+  if (!('caches' in window) || !('serviceWorker' in navigator)) { st.textContent = 'This browser can\'t keep the map offline. Add iCapture to the home screen and open it from there.'; btn.disabled = true; return; }
   if (m && m.n) {
     const cur = (BASES[0] && BASES[0].layer._imgKey) || imgKey();
     if ((m.img || 'esri') !== cur) {
@@ -5255,9 +5255,9 @@ function setupLinkFor(url) {
 }
 async function shareSetupLink() {
   const link = setupLinkFor(getCfg().url);
-  const text = 'Cam Capture setup: open this link in Safari, tap Share → Add to Home Screen, then open the app and enter your PIN (I\'ll send that separately).';
+  const text = 'iCapture setup: open this link in Safari, tap Share → Add to Home Screen, then open the app and enter your PIN (I\'ll send that separately).';
   try {
-    if (navigator.share) { await navigator.share({ title: 'Cam Capture setup', text: text, url: link }); return; }
+    if (navigator.share) { await navigator.share({ title: 'iCapture setup', text: text, url: link }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(link); toast('Setup link copied. Paste it into a message to your teammate.'); }
   catch (e) { prompt('Copy this setup link:', link); }

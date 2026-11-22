@@ -1,4 +1,4 @@
-// Cam Capture offline helper.
+// iCapture offline helper.
 // - The app page: always fetched fresh when there is signal (so updates arrive
 //   as before); the last good copy is used when there is no signal.
 // - Leaflet (the map library) and the app icons: kept after the first load.
