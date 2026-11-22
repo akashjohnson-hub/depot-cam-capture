@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Google+Sans:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js" defer></script>
@@ -662,6 +662,176 @@
   .trk-check { background: #E3F8FB; border: 1px solid #8FD8E6; border-radius: 10px; padding: 10px 12px; margin-top: 12px; }
   .trk-check input { width: 22px; height: 22px; accent-color: #007C91; flex: none; margin-top: 2px; }
   .sb-tag { display: inline-block; font: 700 10px/1 var(--font); color: #FFFFFF; background: #6B2FA0; border-radius: 4px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
+  /* ================= Earth look: satellite header, floating white cards, blue chips ================= */
+  body.th-earth {
+    --e-page: #F0F4F9; --e-surface: #FFFFFF; --e-ink: #1F1F1F; --e-muted: #5E6368; --e-line: #E1E3E1; --e-outline: #747775;
+    --e-blue: #0B57D0; --e-blue-tint: #D3E3FD; --e-blue-ink: #041E49; --e-yellow: #FBBC04;
+    --bg: var(--e-page); --ballast: var(--e-page); --card: var(--e-surface); --surface: var(--e-surface); --ink: var(--e-ink); --slate: var(--e-ink);
+    --muted: var(--e-muted); --line: var(--e-line); --rule: var(--e-line); --primary: var(--e-blue); --line-blue: var(--e-blue); --signal: var(--e-yellow);
+    --good: #146C2E; --fair: #8A5A00; --poor: #B3261E;
+    --font: 'Google Sans', 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    --font-id: 'Google Sans', 'Barlow Condensed', Arial, sans-serif;
+    --e-shadow: 0 1px 2px rgba(60,64,67,.24), 0 2px 6px 2px rgba(60,64,67,.10);
+  }
+  body.th-earth, body.th-earth input, body.th-earth select, body.th-earth textarea, body.th-earth button { font-family: var(--font); }
+  body.th-earth header { background: #202124 var(--e-sat, none) center 40% / cover; position: sticky; padding-top: calc(env(safe-area-inset-top) + 16px); padding-bottom: 16px; }
+  body.th-earth header::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(16,24,32,.18), rgba(16,24,32,.62)); pointer-events: none; }
+  body.th-earth header > * { position: relative; z-index: 1; }
+  body.th-earth header h1 { font-size: 21px; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  body.th-earth header h1::before { background: var(--e-yellow); border-radius: 50%; box-shadow: 0 0 0 3px rgba(251,188,4,.30); }
+  body.th-earth .who { background: rgba(255,255,255,.16); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #FFFFFF;
+    border-radius: 999px; padding: 4px 11px; font-weight: 500; font-size: 13px; }
+  body.th-earth .card { border: 0; border-radius: 20px; box-shadow: var(--e-shadow); }
+  body.th-earth main > section > .card:first-child, body.th-earth main > .card:first-child { margin-top: 2px; }
+  body.th-earth .card h2 { font-size: 22px; font-weight: 500; color: var(--e-ink); }
+  body.th-earth label { font-weight: 500; }
+  body.th-earth input, body.th-earth select, body.th-earth textarea { border: 1px solid var(--e-outline); border-radius: 12px; background: #FFFFFF; }
+  body.th-earth input:focus, body.th-earth select:focus, body.th-earth textarea:focus { outline: 0; border-color: var(--e-blue); box-shadow: 0 0 0 1px var(--e-blue); }
+  body.th-earth .btn { border-radius: 999px; font-weight: 500; font-size: 17px; }
+  body.th-earth .btn.secondary { background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth .btn.accent, body.th-earth button.btn.accent { background: var(--e-blue); color: #FFFFFF; }
+  body.th-earth .btn.go { background: #146C2E; }
+  body.th-earth button.link { color: var(--e-blue); }
+  body.th-earth .banner.info, body.th-earth .cfg-who, body.th-earth .pl-sum { background: #F0F4F9; border: 0; border-radius: 14px; }
+  /* segmented controls become Material filter chips */
+  body.th-earth .seg { border: 0; border-radius: 0; overflow: visible; gap: 8px; flex-wrap: wrap; background: none; }
+  body.th-earth .seg button { border: 1px solid #C4C7C5; border-radius: 10px; background: #FFFFFF; color: #444746; font-weight: 500; font-size: 14px; padding: 6px 12px; }
+  body.th-earth .seg button, body.th-earth #vwKind button { flex: 0 0 auto; }
+  body.th-earth .ov-search input, body.th-earth .ov-search input:focus { border: 0; box-shadow: none; background: none; }
+  body.th-earth .vw-list .pcard .phead .cid { justify-self: start; }
+  body.th-earth .seg button[aria-pressed="true"] { background: var(--e-blue-tint); color: var(--e-blue-ink); border-color: var(--e-blue-tint); }
+  body.th-earth .seg button[aria-pressed="true"]::before { content: "\2713"; margin-right: 6px; font-weight: 700; }
+  /* asset tags: rounded yellow */
+  body.th-earth .plate, body.th-earth .big-id, body.th-earth .pcard .cid, body.th-earth .ov-panel .big-id { border: 0; border-radius: 8px; background: var(--e-yellow); color: #202124; font-weight: 700; letter-spacing: .2px; padding: 1px 9px; }
+  body.th-earth .pcard .phead .cid { font-size: 18px; }
+  body.th-earth .sb-tag { border-radius: 999px; padding: 3px 7px; font-weight: 500; }
+  /* pole cards: white, soft shadow, kind icon, status as a coloured edge */
+  body.th-earth .pcard { border: 0; border-radius: 18px; box-shadow: var(--e-shadow); background: #FFFFFF; }
+  body.th-earth .pcard.s-good { box-shadow: inset 4px 0 0 #146C2E, var(--e-shadow); }
+  body.th-earth .pcard.s-weak { box-shadow: inset 4px 0 0 #E8A200, var(--e-shadow); }
+  body.th-earth .pcard.s-todo { box-shadow: inset 4px 0 0 #C4C7C5, var(--e-shadow); }
+  body.th-earth .pcard.s-none { box-shadow: inset 4px 0 0 #B06000, var(--e-shadow); }
+  body.th-earth .pcard.selected { box-shadow: 0 0 0 2px var(--e-blue), var(--e-shadow); }
+  body.th-earth .pcard .cst { font-weight: 500; }
+  body.th-earth .pcams button { background: #F0F4F9; border-radius: 8px; font-weight: 500; color: #1F1F1F; }
+  body.th-earth .pcams button.bad { background: #FCE8E6; color: #B3261E; }
+  body.th-earth .pcams button.more { color: var(--e-blue); }
+  .kind-ic { display: none; }
+  body.th-earth .vw-list .pcard .phead { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; align-items: center; }
+  body.th-earth .vw-list .pcard .phead > :not(.kind-ic) { grid-column: 2; }
+  body.th-earth .vw-list .pcard { padding-left: 2px; }
+  body.th-earth .kind-ic { display: flex; grid-row: 1 / span 3; grid-column: 1; width: 40px; height: 40px; border-radius: 12px; align-items: center; justify-content: center; }
+  body.th-earth .kind-ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .kind-ic.k-itb { background: #FEF7E0; color: #B06000; } .kind-ic.k-sb { background: #F3E8FD; color: #8430CE; } .kind-ic.k-pole { background: #E8F0FE; color: #1967D2; }
+  body.th-earth .vw-list .pcams { padding-left: 66px; }
+  /* progress hero on the Poles tab */
+  .vw-hero { display: none; }
+  body.th-earth .vw-hero { display: flex; gap: 14px; align-items: center; background: #F0F4F9; border-radius: 16px; padding: 12px 14px; margin: 2px 0 12px; }
+  .vw-ring { --p: 0; flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(#0B57D0 calc(var(--p) * 1%), #D3E3FD 0); }
+  .vw-ring b { width: 44px; height: 44px; border-radius: 50%; background: #F0F4F9; display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #041E49; }
+  .vw-hero .t1 { font-size: 17px; font-weight: 500; color: #1F1F1F; }
+  .vw-hero .t2 { font-size: 14px; color: var(--e-muted); margin-top: 2px; }
+  body.th-earth #vwCount { display: none; }
+  /* floating Material-style tab bar */
+  body.th-earth .tabs { background: rgba(255,255,255,.92); border: 0; border-radius: 28px; box-shadow: 0 4px 16px rgba(60,64,67,.22), 0 1px 3px rgba(60,64,67,.2); }
+  body.th-earth .tabs button { color: #444746; font-weight: 500; border-radius: 22px; }
+  body.th-earth .tabs button.active { background: var(--e-blue-tint); color: var(--e-blue-ink); box-shadow: none; }
+  body.th-earth .tabs button.active::before { display: none; }
+  /* wizard, toast, lists */
+  body.th-earth .wiz-head { background: var(--e-page); border-bottom: 0; }
+  body.th-earth .wiz-bar i { background: #D3E3FD; } body.th-earth .wiz-bar i.done { background: var(--e-blue); } body.th-earth .wiz-bar i.now { background: var(--e-yellow); }
+  body.th-earth .submit-wrap { background: linear-gradient(rgba(240,244,249,0), var(--e-page) 22%); }
+  body.th-earth #toast { background: #303030; border-radius: 14px; }
+  body.th-earth #toast.err { background: #B3261E; }
+  body.th-earth .ft-group, body.th-earth .pl-stop { border: 0; border-radius: 18px; box-shadow: var(--e-shadow); }
+  body.th-earth .ft-acts button, body.th-earth .pl-cam .acts button { border-radius: 999px; border-color: #C4C7C5; color: var(--e-blue); font-weight: 500; }
+  body.th-earth .ft-acts button.go { background: var(--e-blue); border-color: var(--e-blue); color: #FFFFFF; }
+  body.th-earth .ov-search { border-radius: 28px; box-shadow: 0 2px 6px rgba(60,64,67,.3), 0 1px 2px rgba(60,64,67,.2); }
+  /* ================= Earth dark ================= */
+  body.th-earth.th-dark {
+    color-scheme: dark;
+    --e-page: #131314; --e-surface: #1E1F20; --e-surface2: #282A2C; --e-ink: #E3E3E3; --e-muted: #A9ACB0; --e-line: #3C4043; --e-outline: #8E918F;
+    --e-blue: #A8C7FA; --e-blue-tint: #0B3A6E; --e-blue-ink: #D3E3FD; --e-on-blue: #062E6F;
+    --good: #6DD58C; --fair: #FDD663; --poor: #F2B8B5; --disabled: #5F6368;
+    --e-shadow: 0 1px 3px rgba(0,0,0,.5), 0 4px 8px 3px rgba(0,0,0,.25);
+  }
+  body.th-earth.th-dark, body.th-earth.th-dark main { background: var(--e-page); color: var(--e-ink); }
+  body.th-earth.th-dark input, body.th-earth.th-dark select, body.th-earth.th-dark textarea { background: var(--e-surface2); color: var(--e-ink); border-color: var(--e-outline); }
+  body.th-earth.th-dark input::placeholder, body.th-earth.th-dark textarea::placeholder { color: #8E918F; }
+  body.th-earth.th-dark .btn { background: var(--e-blue); color: var(--e-on-blue); }
+  body.th-earth.th-dark .btn.secondary { background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth.th-dark .btn.accent, body.th-earth.th-dark button.btn.accent { background: var(--e-blue); color: var(--e-on-blue); }
+  body.th-earth.th-dark .btn.go { background: #6DD58C; color: #0A3818; }
+  body.th-earth.th-dark .btn:disabled, body.th-earth.th-dark button.btn:disabled { background: #303134; color: #74777A; }
+  body.th-earth.th-dark .btn.danger { background: transparent; color: #F2B8B5; border-color: #F2B8B5; }
+  body.th-earth.th-dark .seg button { background: transparent; color: #C4C7C5; border-color: #5F6368; }
+  body.th-earth.th-dark .seg button[aria-pressed="true"] { background: var(--e-blue-tint); color: var(--e-blue-ink); border-color: var(--e-blue-tint); }
+  body.th-earth.th-dark .pcard, body.th-earth.th-dark .cam, body.th-earth.th-dark .rp-box, body.th-earth.th-dark .rp-item, body.th-earth.th-dark .member, body.th-earth.th-dark .ov-results, body.th-earth.th-dark .cam-drop, body.th-earth.th-dark .pl-stop, body.th-earth.th-dark .ft-group { background: var(--e-surface); color: var(--e-ink); border-color: var(--e-line); }
+  body.th-earth.th-dark .rp-item.off, body.th-earth.th-dark .member.off { background: #18191A; }
+  body.th-earth.th-dark .pcams button, body.th-earth.th-dark .cam-chips span, body.th-earth.th-dark .wk-type, body.th-earth.th-dark .iss { background: var(--e-surface2); color: var(--e-ink); }
+  body.th-earth.th-dark .pcams button.bad, body.th-earth.th-dark .cam-chips span.bad { background: #601410; color: #F9DEDC; }
+  body.th-earth.th-dark .pcams button.held, body.th-earth.th-dark .pcams .chip-held { background: #4A3800; color: #FFDF99; box-shadow: none; }
+  body.th-earth.th-dark .banner.info, body.th-earth.th-dark .cfg-who, body.th-earth.th-dark .pl-sum, body.th-earth.th-dark .vw-hero, body.th-earth.th-dark .wiz-head, body.th-earth.th-dark .near { background: var(--e-surface2); border-color: transparent; color: var(--e-ink); }
+  body.th-earth.th-dark .vw-ring { background: conic-gradient(#A8C7FA calc(var(--p) * 1%), #0B3A6E 0); }
+  body.th-earth.th-dark .vw-ring b { background: var(--e-surface2); color: #D3E3FD; }
+  body.th-earth.th-dark .vw-hero .t1, body.th-earth.th-dark .card h2, body.th-earth.th-dark .wiz-line, body.th-earth.th-dark .ft-ghead b, body.th-earth.th-dark .pl-head b, body.th-earth.th-dark .rp-box-head b, body.th-earth.th-dark .ft-where, body.th-earth.th-dark .cfg-who, body.th-earth.th-dark .member .email { color: var(--e-ink); }
+  body.th-earth.th-dark .banner.new, body.th-earth.th-dark .ov-area-edit, body.th-earth.th-dark #pending, body.th-earth.th-dark .claim-note, body.th-earth.th-dark .pin-reveal { background: #3D2F00; border-color: #6B5300; color: #FFE08A; }
+  body.th-earth.th-dark .claim-note b { color: #FFF3C4; }
+  body.th-earth.th-dark .banner.warn, body.th-earth.th-dark .warnbox, body.th-earth.th-dark .result.weak { background: #3B1210; border-color: #8C1D18; color: #F9DEDC; }
+  body.th-earth.th-dark .result.ok, body.th-earth.th-dark .rp-done, body.th-earth.th-dark #updateBar { background: #0F2E1A; border-color: #1E5B3A; color: #C4EED0; }
+  body.th-earth.th-dark .ft-st.open, body.th-earth.th-dark .ov-status.gps, body.th-earth.th-dark .badge.off { background: #601410; color: #F9DEDC; }
+  body.th-earth.th-dark .ft-st.ack, body.th-earth.th-dark .ov-status.off, body.th-earth.th-dark .badge.occ, body.th-earth.th-dark .badge.you, body.th-earth.th-dark .ft-acts button.armed, body.th-earth.th-dark .pl-cam .acts button.armed { background: #4A3800; color: #FFDF99; border-color: #6B5300; }
+  body.th-earth.th-dark .ft-st.fixed, body.th-earth.th-dark .member .acts button.on { background: #0F2E1A; color: #C4EED0; border-color: #1E5B3A; }
+  body.th-earth.th-dark .badge.viewer, body.th-earth.th-dark .badge.guard, body.th-earth.th-dark .iss.i-fov { background: #0B3A6E; color: #D3E3FD; }
+  body.th-earth.th-dark .iss.i-dirty { background: #4A3800; color: #FFDF99; }
+  body.th-earth.th-dark .ft-acts button, body.th-earth.th-dark .pl-cam .acts button, body.th-earth.th-dark .member .acts button, body.th-earth.th-dark .map-tools button, body.th-earth.th-dark .ov-tools button, body.th-earth.th-dark .ov-area-edit button, body.th-earth.th-dark .ov-search button:not(.go) { background: transparent; color: var(--e-blue); border-color: #5F6368; }
+  body.th-earth.th-dark .ft-acts button.go, body.th-earth.th-dark .ov-search button.go { background: var(--e-blue); color: var(--e-on-blue); border-color: var(--e-blue); }
+  body.th-earth.th-dark .ft-acts button.ok, body.th-earth.th-dark .pl-cam .acts button.ok { background: #6DD58C; color: #0A3818; border-color: #6DD58C; }
+  body.th-earth.th-dark .sug-chip { background: transparent; color: var(--e-blue); border-color: var(--e-blue); }
+  body.th-earth.th-dark .cam.matched { background: #33240F; }
+  body.th-earth.th-dark .cam .x { background: #601410; color: #F9DEDC; }
+  body.th-earth.th-dark .bar, body.th-earth.th-dark .thumb { background: var(--e-surface2); }
+  body.th-earth.th-dark .ov-results button { border-bottom-color: var(--e-line); color: var(--e-ink); }
+  body.th-earth.th-dark label, body.th-earth.th-dark .meta, body.th-earth.th-dark .strip-empty, body.th-earth.th-dark .ov-summary, body.th-earth.th-dark .why, body.th-earth.th-dark .ft-note, body.th-earth.th-dark .pl-leg, body.th-earth.th-dark .rp-box-sum, body.th-earth.th-dark .cam-info { color: var(--e-muted); }
+  body.th-earth.th-dark .ov-summary b { color: var(--e-ink); }
+  body.th-earth.th-dark .pcard .phead { color: var(--e-ink); }
+  body.th-earth.th-dark .pcard.s-none .cst { color: #FFB870; }
+  body.th-earth.th-dark .kind-ic.k-itb { background: #3D2F00; color: #FDD663; } body.th-earth.th-dark .kind-ic.k-sb { background: #3A1E52; color: #D7AEFB; } body.th-earth.th-dark .kind-ic.k-pole { background: #0B3A6E; color: #A8C7FA; }
+  /* floating things over the map */
+  body.th-earth.th-dark .tabs { background: rgba(30,31,32,.92); box-shadow: 0 4px 16px rgba(0,0,0,.55); }
+  body.th-earth.th-dark .tabs button { color: #C4C7C5; }
+  body.th-earth.th-dark .tabs button.active { background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth.th-dark .ov-search { background: var(--e-surface2); }
+  body.th-earth.th-dark .ov-search input { color: var(--e-ink); }
+  body.th-earth.th-dark .ov-summary, body.th-earth.th-dark .ov-legend { background: rgba(30,31,32,.92); color: var(--e-ink); }
+  body.th-earth.th-dark .fab-group { background: rgba(30,31,32,.86); border-color: rgba(255,255,255,.08); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+  body.th-earth.th-dark .fab-group .fab { color: var(--e-ink); }
+  body.th-earth.th-dark .fab-group .fab + .fab { border-top-color: rgba(255,255,255,.08); }
+  body.th-earth.th-dark .fab-group .fab .lbl { color: #C4C7C5; }
+  body.th-earth.th-dark .fab-group .fab.on, body.th-earth.th-dark .fab-group .fab.compass.on { background: rgba(168,199,250,.18); color: var(--e-blue); }
+  body.th-earth.th-dark .fab-group .fab.on .lbl { color: var(--e-blue); }
+  body.th-earth.th-dark .fab-group #ovArea.on { background: rgba(253,214,99,.22); color: #FDD663; } body.th-earth.th-dark .fab-group #ovArea.on .lbl { color: #FDD663; }
+  body.th-earth.th-dark .fab { background: var(--e-surface2); color: var(--e-ink); }
+  body.th-earth.th-dark #overview .ov-panel { background: rgba(30,31,32,.90); border-color: rgba(255,255,255,.08); box-shadow: 0 12px 32px rgba(0,0,0,.6); color: var(--e-ink); }
+  body.th-earth.th-dark #overview .ov-panel .near, body.th-earth.th-dark #overview .ov-panel .close, body.th-earth.th-dark #overview .ov-panel .btn.secondary { background: rgba(255,255,255,.08); color: var(--e-ink); }
+  body.th-earth.th-dark .ov-panel .facts, body.th-earth.th-dark .ov-panel .facts b { color: var(--e-ink); }
+  body.th-earth.th-dark .leaflet-bar a { background: var(--e-surface2); color: var(--e-ink); border-color: var(--e-line); }
+  body.th-earth.th-dark .leaflet-control-attribution { background: rgba(30,31,32,.8) !important; color: #C4C7C5; }
+  body.th-earth.th-dark .leaflet-control-attribution a { color: var(--e-blue); }
+  body.th-earth.th-dark #toast { background: #E3E3E3; color: #1F1F1F; }
+  body.th-earth.th-dark #toast.err { background: #F2B8B5; color: #601410; }
+  body.th-earth.th-dark .submit-wrap { background: linear-gradient(rgba(19,19,20,0), var(--e-page) 22%); }
+  body.th-earth.th-dark .wiz-bar i { background: #303134; }
+  body.th-earth.th-dark .switch-row input[type=checkbox] { background: #5F6368; }
+  body.th-earth.th-dark .wiz-bar i.done { background: var(--e-blue); } body.th-earth.th-dark .wiz-bar i.now { background: var(--e-yellow); }
+  html.look-dark { background: #131314; } html.look-earth { background: #F0F4F9; }
+  body.th-earth .ov-top .seg button { background: #FFFFFF; border-color: transparent; box-shadow: 0 1px 3px rgba(60,64,67,.3); }
+  body.th-earth .ov-top .seg button[aria-pressed="true"] { background: var(--e-blue-tint); }
+  body.th-earth.th-dark .ov-top .seg button { background: var(--e-surface2); color: var(--e-ink); box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  body.th-earth.th-dark .ov-top .seg button[aria-pressed="true"] { background: var(--e-blue-tint); color: var(--e-blue-ink); }
+  body.th-earth.th-dark .badge { background: #3C4043; color: #E3E3E3; }
+  body.th-earth.th-dark .badge.viewer, body.th-earth.th-dark .badge.guard { background: #0B3A6E; color: #D3E3FD; } body.th-earth.th-dark .badge.occ, body.th-earth.th-dark .badge.you { background: #4A3800; color: #FFDF99; } body.th-earth.th-dark .badge.off { background: #601410; color: #F9DEDC; }
 </style>
 </head>
 <body>
@@ -704,6 +874,12 @@
       <p class="meta" style="margin:0 0 8px"><b>Satellite view</b><br><span id="imgNote">OneMap (Singapore Land Authority) is the sharpest for our depots. Esri is the backup if OneMap is down.</span></p>
       <div id="imgSeg" class="seg" style="display:inline-flex" role="group" aria-label="Satellite view">
         <button type="button" data-img="onemap">OneMap (sharper)</button><button type="button" data-img="esri">Esri</button>
+      </div>
+    </div>
+    <div id="lookWrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px"><b>Look</b><br>How the app looks on this phone. Auto follows the phone's dark mode. Nothing else changes.</p>
+      <div id="lookSeg" class="seg" style="display:inline-flex" role="group" aria-label="Look">
+        <button type="button" data-look="earth">Earth</button><button type="button" data-look="dark">Dark</button><button type="button" data-look="auto">Auto</button><button type="button" data-look="classic">Classic</button>
       </div>
     </div>
     <div id="offWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
@@ -792,6 +968,7 @@
   <section id="viewer" class="hidden" aria-label="Poles and cameras">
     <div class="card">
       <h2>Poles and cameras</h2>
+      <div id="vwHero" class="vw-hero" aria-live="polite"></div>
       <div id="vwCount" class="meta">Loading…</div>
       <input id="vwSearch" type="search" placeholder="Filter by camera, ITB or pole" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:10px">
       <div id="vwKind" class="seg" role="group" aria-label="Show" style="margin-top:10px">
@@ -977,7 +1154,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-22.2';
+const APP_VERSION = '2026-11-22.4';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1958,6 +2135,7 @@ function setImagery(key, temporary) {
     baseLayer(b.map, key);
   });
   imgRender(key);
+  if (typeof setHeaderSat === 'function') setHeaderSat();
   if (typeof offRenderStatus === 'function') offRenderStatus();
 }
 function imgRender(key) {
@@ -2129,6 +2307,7 @@ function camButtons(list, onPick, onMore, max) {
 }
 
 function renderCarousel() {
+  if (MAP.polesLoaded && typeof setHeaderSat === 'function') setHeaderSat();
   const box = $('poleCarousel');
   box.innerHTML = '';
   if (!MAP.polesLoaded) {
@@ -2193,6 +2372,61 @@ function renderCarousel() {
   const sel = box.querySelector('.pcard.selected');
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
+// ---------- Earth look: kind icons, progress, satellite header ----------
+const KIND_SVG = {
+  itb: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M12 15v2"/>',
+  sb: '<path d="M13 2 5 13h6l-1 9 8-11h-6z"/>',
+  pole: '<path d="M4 8h11l3-2v8l-3-2H4z"/><path d="M8 12v8M5 20h6"/>',
+};
+function kindOf(p) { return isSwitchBox(p) ? 'sb' : isItbPole(p) ? 'itb' : 'pole'; }
+function kindIcon(p) {
+  const k = kindOf(p), d = el('span', { class: 'kind-ic k-' + k, 'aria-hidden': 'true' });
+  d.innerHTML = '<svg viewBox="0 0 24 24">' + KIND_SVG[k] + '</svg>';
+  return d;
+}
+function renderVwHero(all, groups) {
+  const box = $('vwHero');
+  if (!box) return;
+  const camTotal = CAMS.length;
+  const camsOn = all.filter(hasCoords).reduce((n, p) => n + (groups.byPole[String(p.poleId).toUpperCase()] || []).length, 0);
+  const itbs = all.filter(isItbPole), sbs = all.filter(isSwitchBox);
+  const open = (FAULTS || []).filter((f) => String(f.status || '').toLowerCase() !== 'fixed').length;
+  const pct = camTotal ? Math.round(camsOn / camTotal * 100) : 0;
+  const bits = [itbs.filter(hasCoords).length + ' of ' + itbs.length + ' ITBs'];
+  if (sbs.length) bits.push(sbs.filter(hasCoords).length + ' of ' + sbs.length + ' switch boxes');
+  if (FAULTS) bits.push(open + ' open fault' + (open === 1 ? '' : 's'));
+  box.innerHTML = '';
+  const ring = el('div', { class: 'vw-ring', style: '--p:' + pct }, [el('b', { text: pct + '%' })]);
+  box.appendChild(ring);
+  box.appendChild(el('div', {}, [el('div', { class: 't1', text: camsOn + ' of ' + camTotal + ' cameras located' }), el('div', { class: 't2', text: bits.join(' · ') })]));
+}
+const LS_LOOK = 'dcc.look.v1';
+function lookKey() { const k = lsGet(LS_LOOK); return ['earth', 'dark', 'auto', 'classic'].indexOf(k) >= 0 ? k : 'earth'; }
+const DARK_MQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function applyLook() {
+  const k = lookKey();
+  const dark = k === 'dark' || (k === 'auto' && DARK_MQ && DARK_MQ.matches);
+  document.body.classList.toggle('th-earth', k !== 'classic');
+  document.body.classList.toggle('th-dark', k !== 'classic' && dark);
+  document.documentElement.classList.toggle('look-dark', k !== 'classic' && dark);
+  document.documentElement.classList.toggle('look-earth', k !== 'classic' && !dark);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#131314' : '#14202E');
+  document.querySelectorAll('#lookSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.look === k)));
+}
+document.querySelectorAll('#lookSeg button').forEach((b) => b.addEventListener('click', () => { lsSet(LS_LOOK, b.dataset.look); applyLook(); }));
+if (DARK_MQ) { try { DARK_MQ.addEventListener('change', applyLook); } catch (e) { DARK_MQ.addListener && DARK_MQ.addListener(applyLook); } }
+applyLook();
+// header shows the depot from above (one satellite tile, darkened)
+function setHeaderSat() {
+  let c = null;
+  if (typeof AREA !== 'undefined' && AREA) c = [(AREA.south + AREA.north) / 2, (AREA.west + AREA.east) / 2];
+  else { const pts = MAP.poles.filter(hasCoords); if (pts.length) c = [pts.reduce((a, p) => a + p.lat, 0) / pts.length, pts.reduce((a, p) => a + p.lng, 0) / pts.length]; }
+  if (!c) return;
+  const z = 16, xy = tileXY(c[0], c[1], z);
+  document.body.style.setProperty('--e-sat', 'url("' + imgUrl(imgKey(), z, xy[0], xy[1]) + '")');
+}
+
 // ---------- viewer: read-only list ----------
 let VW_KIND = 'all';
 function renderViewerList() {
@@ -2210,6 +2444,8 @@ function renderViewerList() {
   const mapped = all.filter(hasCoords).length;
   const camTotal = CAMS.length || all.reduce((n, p) => n + (Number(p.cameraCount) || 0), 0);
   $('vwCount').textContent = all.length + ' poles (' + mapped + ' on the map) · ' + camTotal + ' cameras' + cacheNote();
+  renderVwHero(all, groups);
+  setHeaderSat();
   const matches = (p, cams) => !q || compactId(p.poleId).indexOf(q) >= 0 || compactId(p.itbNo).indexOf(q) >= 0 ||
     cams.some((c) => compactId(c.cameraId).indexOf(q) >= 0);
   const openOn = (poleId, cam) => { goTab('map').then(() => ovSelect(poleId, cam || '')); };
@@ -2226,6 +2462,7 @@ function renderViewerList() {
     const st = poleStatus(p);
     const t = typeof distTo === 'function' ? distTo(p) : null;
     const head = el('button', { type: 'button', class: 'phead' }, [
+      kindIcon(p),
       el('span', { class: 'cid' }, [String(p.poleId), isSwitchBox(p) ? el('span', { class: 'sb-tag', text: 'TVSS switch box' }) : '', isSwitchBox(p) && needsTrackAccess(p) ? el('span', { class: 'sb-tag trk', text: 'Track access' }) : '']),
       el('span', { class: 'cst', text: st[1] + ' · ' + cams.length + ' cam' + (cams.length === 1 ? '' : 's') + (p.locationDescription ? ' · ' + p.locationDescription : '') }),
       t ? el('span', { class: 'dist', text: t.d < 8 ? 'You are at this pole' : fmtDist(t.d) + ' ' + t.dir + ' of you' }) : el('span'),
