@@ -700,6 +700,12 @@
       <p class="meta" style="margin:0 0 8px">Setting up a teammate? Send them this link. It fills in the web app link for them; they only type their PIN. Add them under Team below first, and give them their PIN separately: it is never in the link.</p>
       <button id="shareSetupBtn" class="btn secondary" type="button">Share setup link</button>
     </div>
+    <div id="imgWrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="meta" style="margin:0 0 8px"><b>Satellite view</b><br><span id="imgNote">OneMap (Singapore Land Authority) is the sharpest for our depots. Esri is the backup if OneMap is down.</span></p>
+      <div id="imgSeg" class="seg" style="display:inline-flex" role="group" aria-label="Satellite view">
+        <button type="button" data-img="onemap">OneMap (sharper)</button><button type="button" data-img="esri">Esri</button>
+      </div>
+    </div>
     <div id="offWrap" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
       <p class="meta" style="margin:0 0 8px"><b>Offline map</b><br><span id="offStatus">Save the depot's satellite map on this phone, so the Map tab, walkways and directions work with no signal.</span></p>
       <button id="offSaveBtn" class="btn secondary" type="button">Save depot map for offline use</button>
@@ -971,7 +977,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-19.1';
+const APP_VERSION = '2026-11-22.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1897,9 +1903,7 @@ function ensureMap() {
   }
   if (!MAP.map) {
     MAP.map = L.map('map', { maxZoom: 21, zoomControl: true, attributionControl: true }).setView([1.3521, 103.8198], 12);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
-    }).addTo(MAP.map);
+    baseLayer(MAP.map);
     MAP.others = L.layerGroup().addTo(MAP.map);
     MAP.areaApplied = false;
     $('mapNote').textContent = 'Blue dot = live GPS, circle = its accuracy. White labels = poles already mapped.';
@@ -1907,6 +1911,54 @@ function ensureMap() {
   setTimeout(() => { if (MAP.map) { MAP.map.invalidateSize(); applyArea(MAP.map); } }, 60);
   return MAP.map;
 }
+
+// ---------- satellite imagery (OneMap by default, Esri as backup) ----------
+const LS_IMG = 'dcc.imagery.v1';
+const IMAGERY = {
+  onemap: { name: 'OneMap', url: 'https://www.onemap.gov.sg/maps/tiles/Satellite/{z}/{x}/{y}.png',
+    attribution: '<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener">OneMap</a> &copy; contributors, Singapore Land Authority' },
+  esri: { name: 'Esri', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' },
+};
+function imgKey() { const k = lsGet(LS_IMG); return IMAGERY[k] ? k : 'onemap'; }
+function imgUrl(key, z, x, y) { return IMAGERY[key].url.replace('{z}', z).replace('{x}', x).replace('{y}', y); }
+const BASES = [];   // [{ map, layer }]
+function baseLayer(map, key) {
+  key = key || imgKey();
+  const layer = L.tileLayer(IMAGERY[key].url, { maxNativeZoom: 19, maxZoom: 21, attribution: IMAGERY[key].attribution });
+  layer._imgKey = key;
+  let ok = 0, bad = 0;
+  layer.on('tileload', () => { ok++; });
+  layer.on('tileerror', () => {   // OneMap not answering (and we're online): fall back to Esri
+    if (++bad >= 8 && ok === 0 && layer._imgKey === 'onemap' && navigator.onLine !== false && !BASES.fellBack) {
+      BASES.fellBack = true;
+      setImagery('esri', true);
+      toast('OneMap satellite isn\'t loading, switched to Esri for now. Change it in Settings.', true);
+    }
+  });
+  layer.addTo(map);
+  layer.bringToBack();
+  BASES.push({ map: map, layer: layer });
+  return layer;
+}
+function setImagery(key, temporary) {
+  if (!IMAGERY[key]) return;
+  if (!temporary) lsSet(LS_IMG, key);
+  BASES.slice().forEach((b) => {
+    if (b.layer._imgKey === key) return;
+    b.map.removeLayer(b.layer);
+    BASES.splice(BASES.indexOf(b), 1);
+    baseLayer(b.map, key);
+  });
+  imgRender(key);
+  if (typeof offRenderStatus === 'function') offRenderStatus();
+}
+function imgRender(key) {
+  key = key || (BASES[0] && BASES[0].layer._imgKey) || imgKey();
+  document.querySelectorAll('#imgSeg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.img === key ? 'true' : 'false'));
+}
+document.querySelectorAll('#imgSeg button').forEach((b) => b.addEventListener('click', () => { BASES.fellBack = false; setImagery(b.dataset.img); }));
+imgRender();
 
 // ---------- depot area lock ----------
 let AREA = null;   // { south, west, north, east } shared via the backend
@@ -2346,9 +2398,7 @@ async function openOverview() {
     const canRotate = typeof L.Map.prototype.setBearing === 'function';   // leaflet-rotate loaded
     OV.map = L.map('ovMap', Object.assign({ maxZoom: 21, zoomControl: false },
       canRotate ? { rotate: true, bearing: 0, touchRotate: false, shiftKeyRotate: false, rotateControl: false } : {})).setView([1.3521, 103.8198], 12);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxNativeZoom: 19, maxZoom: 21, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
-    }).addTo(OV.map);
+    baseLayer(OV.map);
     OV.layer = L.layerGroup().addTo(OV.map);
     OV.map.on('zoomend', ovLabels);
     OV.map.on('moveend zoomend rotate resize', ovDeclutterSoon);
@@ -4279,7 +4329,6 @@ document.querySelectorAll('#ftKind button').forEach((b) => b.addEventListener('c
 // serves them when there is no signal. "Save depot map" fetches every tile of
 // the depot area ahead of time.
 const LS_OFFMAP = 'dcc.offmap.v1';
-const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
 const TILE_CACHE = 'cc-tiles-1';
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
   navigator.serviceWorker.register('./sw.js').catch(() => { /* offline extras just won't be there */ });
@@ -4297,10 +4346,10 @@ function tileXY(lat, lng, z) {
   return [Math.floor((lng + 180) / 360 * n), Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)];
 }
 function offTileUrls(b) {
-  const out = [];
+  const out = [], key = (BASES[0] && BASES[0].layer._imgKey) || imgKey();
   for (let z = 14; z <= 19; z++) {
     const a = tileXY(b.n, b.w, z), c = tileXY(b.s, b.e, z);
-    for (let x = a[0]; x <= c[0]; x++) for (let y = a[1]; y <= c[1]; y++) out.push(TILE_URL + z + '/' + y + '/' + x);
+    for (let x = a[0]; x <= c[0]; x++) for (let y = a[1]; y <= c[1]; y++) out.push(imgUrl(key, z, x, y));
   }
   return out;
 }
@@ -4311,6 +4360,12 @@ function offRenderStatus() {
   try { m = JSON.parse(lsGet(depotKey(LS_OFFMAP)) || 'null'); } catch (e) { m = null; }
   if (!('caches' in window) || !('serviceWorker' in navigator)) { st.textContent = 'This browser can\'t keep the map offline. Add Cam Capture to the home screen and open it from there.'; btn.disabled = true; return; }
   if (m && m.n) {
+    const cur = (BASES[0] && BASES[0].layer._imgKey) || imgKey();
+    if ((m.img || 'esri') !== cur) {
+      st.textContent = 'The saved offline map is the ' + IMAGERY[m.img || 'esri'].name + ' view. Save again to keep the ' + IMAGERY[cur].name + ' view offline.';
+      btn.textContent = 'Save depot map for offline use';
+      return;
+    }
     st.textContent = 'Depot map saved on this phone: ' + m.n + ' map pieces (' + (m.bytes / 1048576).toFixed(1) + ' MB), ' + new Date(m.at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short' }) + '. The Map tab, walkways and directions work without signal.';
     btn.textContent = 'Update saved map';
   }
@@ -4344,7 +4399,7 @@ async function offSaveMap() {
       }
     };
     await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
-    lsSet(depotKey(LS_OFFMAP), JSON.stringify({ at: Date.now(), n: done, bytes: bytes, bounds: b }));
+    lsSet(depotKey(LS_OFFMAP), JSON.stringify({ at: Date.now(), n: done, bytes: bytes, bounds: b, img: (BASES[0] && BASES[0].layer._imgKey) || imgKey() }));
     if (navigator.storage && navigator.storage.persist) { try { await navigator.storage.persist(); } catch (e) { /* optional */ } }
     toast(failed ? 'Saved ' + done + ' of ' + urls.length + ' map pieces (' + failed + ' failed: weak signal?). Tap again to fill the gaps.' : 'Depot map saved. The Map tab now works without signal.', !!failed);
   } catch (e) { toast('Could not save the map: ' + e.message, true); }

@@ -6,8 +6,9 @@
 //   "Save depot map for offline use" in Settings.
 // Nothing from the Apps Script backend is stored here: the app keeps its own
 // copy of the pole list on the phone.
-const SHELL = 'cc-shell-2';
+const SHELL = 'cc-shell-3';
 const TILES = 'cc-tiles-1';
+const ONEMAP_TILE = /^\/maps\/tiles\/Satellite\//;   // OneMap satellite (default view)
 const MAX_TILES = 4000;
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/';
 const ROTATE = 'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js';   // lets the map turn with you
@@ -31,7 +32,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
-  if (url.hostname === 'server.arcgisonline.com' && url.pathname.indexOf('/tile/') >= 0) { e.respondWith(tile(req)); return; }
+  if ((url.hostname === 'server.arcgisonline.com' && url.pathname.indexOf('/tile/') >= 0) ||
+      (url.hostname === 'www.onemap.gov.sg' && ONEMAP_TILE.test(url.pathname))) { e.respondWith(tile(req)); return; }
   if (req.url.startsWith(LEAFLET) || req.url === ROTATE) { e.respondWith(cacheFirst(req.url, SHELL)); return; }
   if (url.origin !== self.location.origin) return;
   if (url.searchParams.has('check')) return;          // the app's "is there a new version?" check: network only
