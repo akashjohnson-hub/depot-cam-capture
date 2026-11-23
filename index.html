@@ -887,8 +887,8 @@
   body.th-earth .tabs button { flex: 0 0 46px; width: 46px; height: 46px; border-radius: 23px; padding: 0; gap: 0; flex-direction: row; align-items: center; justify-content: center;
     background: rgba(255,255,255,.96); color: #444746; box-shadow: 0 2px 8px rgba(60,64,67,.24), 0 1px 2px rgba(60,64,67,.18); }
   body.th-earth .tabs button span { display: inline-block; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-size: 14px; font-weight: 500;
-    transition: max-width .42s cubic-bezier(.2,.8,.2,1), opacity .3s ease; }
-  body.th-earth .tabs button { transition: background-color .35s ease, color .35s ease, padding .42s cubic-bezier(.2,.8,.2,1), gap .42s ease, box-shadow .35s ease, transform .12s ease; }
+    transition: max-width .6s cubic-bezier(.32,.72,0,1), opacity .45s ease; }
+  body.th-earth .tabs button { transition: background-color .5s ease, color .5s ease, padding .6s cubic-bezier(.32,.72,0,1), gap .6s cubic-bezier(.32,.72,0,1), box-shadow .5s ease, transform .15s ease; }
   body.th-earth .tabs svg { flex: none; display: block; }
   body.th-earth .tabs button.active { flex: 0 0 auto; width: auto; padding: 0 14px 0 11px; flex-direction: row; gap: 6px;
     background: var(--e-blue); color: #FFFFFF; box-shadow: 0 4px 12px rgba(11,87,208,.35); }
@@ -908,9 +908,9 @@
   @keyframes tab-in-r { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
   @keyframes tab-in-l { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
   @keyframes tab-in-f { from { opacity: 0; } to { opacity: 1; } }
-  .tab-in-r { animation: tab-in-r .4s cubic-bezier(.2,.8,.2,1) both; }
-  .tab-in-l { animation: tab-in-l .4s cubic-bezier(.2,.8,.2,1) both; }
-  .tab-in-f { animation: tab-in-f .35s ease both; }
+  .tab-in-r { animation: tab-in-r .55s cubic-bezier(.32,.72,0,1) both; }
+  .tab-in-l { animation: tab-in-l .55s cubic-bezier(.32,.72,0,1) both; }
+  .tab-in-f { animation: tab-in-f .45s ease both; }
   @media (prefers-reduced-motion: reduce) {
     .tab-in-r, .tab-in-l, .tab-in-f { animation: none; }
     body.th-earth .tabs button, body.th-earth .tabs button span { transition: none; }
@@ -948,15 +948,15 @@
     border: 1.5px solid rgba(255,255,255,.85);
     box-shadow: inset 0 2px 2px rgba(255,255,255,.9), inset 0 -3px 8px rgba(255,255,255,.35), inset 0 0 14px rgba(120,170,255,.25), 0 10px 28px rgba(20,40,80,.28), 0 2px 6px rgba(20,40,80,.18);
     transition: opacity .22s ease, transform .5s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
-  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .22s ease, transform .2s cubic-bezier(.22,1,.36,1); }
-  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .4s ease .32s, transform .55s cubic-bezier(.22,1.15,.36,1); }
+  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .3s ease, transform .3s cubic-bezier(.32,.72,0,1); }
+  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .45s ease .45s, transform .7s cubic-bezier(.3,1.12,.4,1); }
   body.th-earth.th-dark .tab-lens { border-color: rgba(255,255,255,.45); box-shadow: inset 0 2px 2px rgba(255,255,255,.45), inset 0 -3px 8px rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.55); }
   body.th-earth .tabs.dragging button { transition: color .15s ease, opacity .2s ease; }
-  body.th-earth .tabs button svg { transition: transform .4s cubic-bezier(.22,1,.36,1); }
+  body.th-earth .tabs button svg { transition: transform .55s cubic-bezier(.32,.72,0,1); }
   body.th-earth .tabs.dragging button.peek svg { transform: scale(1.35); }
   @media (prefers-reduced-motion: reduce) { body.th-earth .tab-lens { transition: opacity .15s ease; } }
   /* bubbles pop up under the finger, neighbours lift a little */
-  body.th-earth .tabs.dragging button { transition: transform .45s cubic-bezier(.22,1,.36,1), color .25s ease, opacity .25s ease; }
+  body.th-earth .tabs.dragging button { transition: transform .6s cubic-bezier(.32,.72,0,1), color .35s ease, opacity .35s ease; }
   body.th-earth .tabs button { will-change: transform; }
   body.th-earth .tabs.dragging button.peek { transform: translateY(-16px) scale(1.2); }
   body.th-earth .tabs.dragging button.near { transform: translateY(-6px) scale(1.04); }
@@ -1370,7 +1370,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-23.1';
+const APP_VERSION = '2026-11-23.2';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -1819,7 +1819,7 @@ function tabAnim(from, to) {
   n.classList.add(cls);
   const done = (e) => { if (e.target !== n) return; n.classList.remove(cls); n.removeEventListener('animationend', done); };
   n.addEventListener('animationend', done);
-  setTimeout(() => n.classList.remove(cls), 900);
+  setTimeout(() => n.classList.remove(cls), 1100);
 }
 function goTab(t) {
   const fromTab = currentTab;
@@ -5320,7 +5320,7 @@ function tabDragEnd(e, cancel) {
   TABDRAG.over = null;
   if (!TABDRAG.moved) return;
   const nav = $('tabs');
-  if (target) { const r = target.getBoundingClientRect(); nav.classList.add('lens-snap'); lensAt(r.left + r.width / 2, 1, 1); setTimeout(() => nav.classList.remove('lens-snap'), 700); }
+  if (target) { const r = target.getBoundingClientRect(); nav.classList.add('lens-snap'); lensAt(r.left + r.width / 2, 1, 1); setTimeout(() => nav.classList.remove('lens-snap'), 1000); }
   TABDRAG.justDragged = true; setTimeout(() => { TABDRAG.justDragged = false; }, 350);
   if (!cancel && target && target.dataset.tab !== currentTab) goTab(target.dataset.tab);
 }
