@@ -948,8 +948,8 @@
     border: 1.5px solid rgba(255,255,255,.85);
     box-shadow: inset 0 2px 2px rgba(255,255,255,.9), inset 0 -3px 8px rgba(255,255,255,.35), inset 0 0 14px rgba(120,170,255,.25), 0 10px 28px rgba(20,40,80,.28), 0 2px 6px rgba(20,40,80,.18);
     transition: opacity .22s ease, transform .5s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
-  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .3s ease, transform .3s cubic-bezier(.32,.72,0,1); }
-  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .45s ease .45s, transform .7s cubic-bezier(.3,1.12,.4,1); }
+  body.th-earth .tabs.dragging .tab-lens { opacity: 1; transition: opacity .3s ease, transform .3s cubic-bezier(.32,.72,0,1), width .35s cubic-bezier(.32,.72,0,1), height .35s cubic-bezier(.32,.72,0,1), margin-top .35s cubic-bezier(.32,.72,0,1), border-radius .35s cubic-bezier(.32,.72,0,1); }
+  body.th-earth .tabs.lens-snap .tab-lens { opacity: 0; transition: opacity .45s ease .45s, transform .7s cubic-bezier(.3,1.12,.4,1), width .6s cubic-bezier(.32,.72,0,1), height .6s cubic-bezier(.32,.72,0,1), margin-top .6s cubic-bezier(.32,.72,0,1), border-radius .6s cubic-bezier(.32,.72,0,1); }
   body.th-earth.th-dark .tab-lens { border-color: rgba(255,255,255,.45); box-shadow: inset 0 2px 2px rgba(255,255,255,.45), inset 0 -3px 8px rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.55); }
   body.th-earth .tabs.dragging button { transition: color .15s ease, opacity .2s ease; }
   body.th-earth .tabs button svg { transition: transform .55s cubic-bezier(.32,.72,0,1); }
@@ -1370,7 +1370,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-23.2';
+const APP_VERSION = '2026-11-23.3';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -5286,10 +5286,16 @@ function tabPeek(b) {
   if (b) { const vs = visTabs(), i = vs.indexOf(b); [vs[i - 1], vs[i + 1]].forEach((x) => { if (x) x.classList.add('near'); }); }
   if (b) { b.classList.add('peek'); if (navigator.vibrate) { try { navigator.vibrate(6); } catch (e) { /* not supported */ } } }
 }
-function lensAt(x, sx, sy) {
+// The lens takes the shape of the bubble under the finger: a circle over an icon, a pill over the open tab.
+function lensAt(x, sx, sy, btn, popped) {
   const nav = $('tabs'), r = nav.getBoundingClientRect(), L = $('tabLens');
-  const cx = Math.max(r.left + 26, Math.min(r.right - 26, x)) - r.left - 33;
-  const up = $('tabs').classList.contains('dragging') ? -16 : 0;
+  const b = btn || tabAtX(x);
+  const k = popped ? 1.2 : 1;                      // the bubble grows 20% when it pops up
+  const w = b ? b.offsetWidth * k + 10 : 66, h = b ? b.offsetHeight * k + 10 : 66;
+  L.style.width = w.toFixed(1) + 'px'; L.style.height = h.toFixed(1) + 'px';
+  L.style.marginTop = (-h / 2).toFixed(1) + 'px'; L.style.borderRadius = (h / 2).toFixed(1) + 'px';
+  const cx = Math.max(r.left + w / 2 - 4, Math.min(r.right - w / 2 + 4, x)) - r.left - w / 2;
+  const up = popped ? -16 : 0;
   L.style.transform = 'translate(' + cx.toFixed(1) + 'px,' + up + 'px) scale(' + (sx || 1).toFixed(3) + ',' + (sy || 1).toFixed(3) + ')';
 }
 $('tabs').addEventListener('pointerdown', (e) => {
@@ -5300,14 +5306,14 @@ $('tabs').addEventListener('pointerdown', (e) => {
 window.addEventListener('pointermove', (e) => {
   if (!TABDRAG.on) return;
   if (!TABDRAG.moved && Math.abs(e.clientX - TABDRAG.x0) < 12) return;
-  if (!TABDRAG.moved) lensAt(TABDRAG.x0, .7, .7);
+  if (!TABDRAG.moved) lensAt(TABDRAG.x0, .7, .7, null, true);
   TABDRAG.moved = true;
   $('tabs').classList.add('dragging');
   const now = performance.now(), v = (e.clientX - TABDRAG.lastX) / Math.max(8, now - TABDRAG.lastT);   // px per ms
   TABDRAG.lastX = e.clientX; TABDRAG.lastT = now;
   TABDRAG.v = (TABDRAG.v || 0) * 0.75 + v * 0.25;   // smoothed speed, so the stretch eases in and out
   const st = Math.min(Math.abs(TABDRAG.v) * 0.16, 0.22);   // stretch like a drop of liquid when moving fast
-  lensAt(e.clientX, 1.22 + st, 1.22 - st * 0.5);
+  lensAt(e.clientX, 1 + st, 1 - st * 0.5, tabAtX(e.clientX), true);
   tabPeek(tabAtX(e.clientX));
 });
 function tabDragEnd(e, cancel) {
@@ -5320,7 +5326,7 @@ function tabDragEnd(e, cancel) {
   TABDRAG.over = null;
   if (!TABDRAG.moved) return;
   const nav = $('tabs');
-  if (target) { const r = target.getBoundingClientRect(); nav.classList.add('lens-snap'); lensAt(r.left + r.width / 2, 1, 1); setTimeout(() => nav.classList.remove('lens-snap'), 1000); }
+  if (target) { const r = target.getBoundingClientRect(); nav.classList.add('lens-snap'); lensAt(r.left + r.width / 2, 1, 1, target, false); setTimeout(() => nav.classList.remove('lens-snap'), 1000); }
   TABDRAG.justDragged = true; setTimeout(() => { TABDRAG.justDragged = false; }, 350);
   if (!cancel && target && target.dataset.tab !== currentTab) goTab(target.dataset.tab);
 }
