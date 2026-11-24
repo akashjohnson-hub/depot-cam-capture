@@ -1004,6 +1004,24 @@
   body.th-earth.th-dark .nav-top { background: #0B3A6E; }
   body.th-earth.th-dark .nav-recentre { background: var(--e-surface2); color: var(--e-blue); }
   body.th-earth.th-dark .sheet-handle i { background: rgba(255,255,255,.3); }
+  /* ================= focus while walking ================= */
+  #overview.nav-focus .leaflet-tooltip.pole-label:not(.nk):not(.nt) { display: none !important; }
+  #overview.nav-focus .leaflet-marker-icon:not(.nk):not(.nt) .mk2 { opacity: .5; transform: scale(.5); }
+  #overview.nav-focus .leaflet-marker-icon:not(.nk):not(.nt) .mk2 > i, #overview.nav-focus .leaflet-marker-icon:not(.nk):not(.nt) .mk2 > b,
+  #overview.nav-focus .leaflet-marker-icon:not(.nk):not(.nt) .mk-num, #overview.nav-focus .leaflet-marker-icon:not(.nk):not(.nt) .flt-n { display: none; }
+  #overview.nav-on .leaflet-marker-icon.nt .mk2 { transform: scale(1.45); }
+  #overview.nav-on .leaflet-marker-icon.nt .mk2::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 3px solid #FBBC04; animation: nt-pulse 1.8s ease-out infinite; }
+  @keyframes nt-pulse { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+  #overview.nav-on .leaflet-tooltip.pole-label.nt { background: #FBBC04; color: #202124; font-size: 15px; padding: 3px 10px; border-radius: 8px; visibility: visible !important; }
+  #overview.nav-on .leaflet-tooltip.pole-label.nk { visibility: visible !important; }
+  #overview.nav-focus .leaflet-tile-pane { filter: brightness(.8) saturate(.8); }
+  body.th-dark #overview.nav-focus .leaflet-tile-pane { filter: brightness(.7) saturate(.75); }
+  .nav-showall { position: absolute; right: 10px; bottom: calc(var(--dock) + 96px); z-index: 1004; border: 0; border-radius: 999px; background: rgba(255,255,255,.92);
+    color: #0B57D0; font: 600 14px/1 var(--font); padding: 10px 14px; box-shadow: 0 3px 10px rgba(27,38,49,.25); }
+  .nav-showall[aria-pressed="true"] { background: #0B57D0; color: #FFFFFF; }
+  #overview.nav-details .nav-showall { display: none; }
+  body.th-dark .nav-showall { background: rgba(40,42,44,.94); color: #A8C7FA; }
+  @media (prefers-reduced-motion: reduce) { #overview.nav-on .leaflet-marker-icon.nt .mk2::after { animation: none; } }
 </style>
 </head>
 <body>
@@ -1324,6 +1342,7 @@
     <div class="nav-txt"><div id="navDist" class="nav-dist"></div><div id="navHow" class="nav-how"></div></div>
   </div>
   <button id="navRecentre" class="nav-recentre hidden" type="button">Re-centre</button>
+  <button id="navShowAll" class="nav-showall hidden" type="button" aria-pressed="false">Show all</button>
   <div id="navBar" class="nav-bar hidden">
     <div class="nav-to"><span id="navPlate" class="plate small"></span><span id="navEta" class="nav-eta"></span></div>
     <button id="navMore" class="btn secondary" type="button">Details</button>
@@ -1370,7 +1389,7 @@
 'use strict';
 
 // Bump this on every release; running copies compare it with the live page.
-const APP_VERSION = '2026-11-23.3';
+const APP_VERSION = '2026-11-24.1';
 
 // Optional: paste the Apps Script web app link here so nobody has to type it.
 // Leave it empty if this page is hosted in a public place.
@@ -3216,6 +3235,7 @@ function ovRender() {
   if (WK.mode === 'edit') wkPanel();   // keep the walkway count/details current after a refresh
   if (WK.routeOn) wkUpdateRoute(true);
   if (OV.selected && !$('ovPanel').classList.contains('hidden')) ovSelect(OV.selected.poleId, OV.selected.hit, true);
+  if (NAV.on && navPole()) navMark(navPole());
 }
 
 function ovLabels() {
@@ -3510,8 +3530,9 @@ function navStart(p) {
   OV.showData = false;
   ovStartMe();
   if (!OV.myPos) toast('Finding your location… the way to ' + p.poleId + ' appears once the blue dot shows.');
-  $('overview').classList.add('nav-on');
-  ['navTop', 'navBar'].forEach((id) => $(id).classList.remove('hidden'));
+  $('overview').classList.add('nav-on', 'nav-focus');
+  ['navTop', 'navBar', 'navShowAll'].forEach((id) => $(id).classList.remove('hidden'));
+  navShowAll(false);
   $('navPlate').textContent = String(p.poleId);
   $('navDist').textContent = 'Finding you…'; $('navHow').textContent = 'Walk to ' + p.poleId; $('navEta').textContent = '';
   if (WALKS.length) wkUpdateRoute(true);
@@ -3523,8 +3544,9 @@ function navEnd(silent) {
   const id = NAV.poleId;
   NAV.on = false; NAV.poleId = '';
   WK.routeOn = false; wkClearRoute();
-  $('overview').classList.remove('nav-on', 'nav-details', 'nav-arrived');
-  ['navTop', 'navBar', 'navRecentre'].forEach((x) => $(x).classList.add('hidden'));
+  $('overview').classList.remove('nav-on', 'nav-details', 'nav-arrived', 'nav-focus');
+  ['navTop', 'navBar', 'navRecentre', 'navShowAll'].forEach((x) => $(x).classList.add('hidden'));
+  navMarkClear();
   if (!silent && OV.selected) { ovSelect(id, OV.selected.hit, true); const p = MAP.poles.find((x) => String(x.poleId) === id); if (p) ovFrameSelected(p); }
 }
 function navDetails(on) {
@@ -3539,17 +3561,69 @@ function navFit(force) {
   const p = navPole();
   if (!p || !OV.map || NAV.userPanned || $('overview').classList.contains('nav-details')) return;
   const now = Date.now();
-  if (!force && now - NAV.lastFit < 2500) return;
+  if (!force && now - NAV.lastFit < ($('overview').classList.contains('nav-focus') ? 1200 : 2500)) return;
   NAV.lastFit = now;
   const ovr = $('overview').getBoundingClientRect(), top = $('navTop').getBoundingClientRect(), bar = $('navBar').getBoundingClientRect();
   const padTop = Math.max(90, top.bottom - ovr.top + 24), padBot = Math.max(90, ovr.bottom - bar.top + 24);
-  let pts = [[p.lat, p.lng]];
-  if (OV.myPos) {
-    pts.push([OV.myPos.lat, OV.myPos.lng]);
+  if (!OV.myPos) { OV.map.setView([p.lat, p.lng], 19, { animate: true }); return; }
+  const me = [OV.myPos.lat, OV.myPos.lng], d = metresBetween(me[0], me[1], p.lat, p.lng);
+  if (!$('overview').classList.contains('nav-focus') || force === 'all') {   // overview: whole route on screen
+    let pts = [[p.lat, p.lng], me];
     if (WK.info && WK.info.pts && !WK.info.none) pts = pts.concat(WK.info.pts);
+    OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [36, padTop], paddingBottomRight: [76, padBot], maxZoom: 19, animate: true });
+    return;
   }
-  if (pts.length === 1) { OV.map.setView(pts[0], 19, { animate: true }); return; }
-  OV.map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [36, padTop], paddingBottomRight: [76, padBot], maxZoom: 19, animate: true });
+  // like car navigation: you in the lower part of the screen, the way ahead above you
+  if (d < 35) { OV.map.fitBounds(L.latLngBounds([me, [p.lat, p.lng]]), { paddingTopLeft: [60, padTop + 20], paddingBottomRight: [90, padBot + 20], maxZoom: 20, animate: true }); return; }
+  let dir;
+  if (TURN.on && HEAD.shown !== null) dir = HEAD.shown;
+  else { const a = (WK.info && WK.info.ahead && !WK.info.none) ? WK.info.ahead : [p.lat, p.lng]; dir = bearingDeg(me[0], me[1], a[0], a[1]); }
+  const z = 19, mpp = 156543.03 * Math.cos(me[0] * Math.PI / 180) / Math.pow(2, z);
+  const usable = ovr.height - padTop - padBot;
+  const shiftM = Math.max(20, usable * 0.22 * mpp);            // puts you about a quarter below the middle of the clear area
+  const rad = dir * Math.PI / 180, kLat = 1 / 111320, kLng = 1 / (111320 * Math.cos(me[0] * Math.PI / 180));
+  let c = [me[0] + Math.cos(rad) * shiftM * kLat, me[1] + Math.sin(rad) * shiftM * kLng];
+  // the top strip and bottom bar take different amounts of room: centre on the clear area, not the screen
+  const off = (padTop - padBot) / 2 * mpp;
+  c = [c[0] + Math.cos(rad) * -off * kLat, c[1] + Math.sin(rad) * -off * kLng];
+  OV.map.setView(c, z, { animate: true, duration: 0.8 });
+}
+// --- focus while walking: only the target, the route and the poles at the next turn are labelled ---
+function navMarkClear() {
+  Object.keys(OV.markers || {}).forEach((k) => { const m = OV.markers[k], e = m.getElement && m.getElement(), t = m.getTooltip && m.getTooltip(), te = t && t.getElement && t.getElement();
+    [e, te].forEach((x) => { if (x) x.classList.remove('nk', 'nt'); }); });
+}
+function navLandmarks(p) {
+  if (!OV.myPos) return [];
+  const me = [OV.myPos.lat, OV.myPos.lng];
+  let seq = (WK.info && WK.info.pts && !WK.info.none) ? [me].concat(WK.info.pts) : [me, [p.lat, p.lng]];
+  // first real turn ahead (more than 35 degrees), at least 8 m away; else the point 40 m ahead
+  let turn = null, walked = 0;
+  for (let i = 1; i < seq.length - 1 && !turn; i++) {
+    walked += metresBetween(seq[i - 1][0], seq[i - 1][1], seq[i][0], seq[i][1]);
+    const b1 = bearingDeg(seq[i - 1][0], seq[i - 1][1], seq[i][0], seq[i][1]), b2 = bearingDeg(seq[i][0], seq[i][1], seq[i + 1][0], seq[i + 1][1]);
+    const db = Math.abs(((b2 - b1) % 360 + 540) % 360 - 180);
+    if (walked > 8 && db > 35) turn = seq[i];
+  }
+  if (!turn) turn = WK.info && WK.info.ahead && !WK.info.none ? WK.info.ahead : [p.lat, p.lng];
+  return MAP.poles.filter((x) => hasCoords(x) && String(x.poleId) !== String(p.poleId))
+    .map((x) => ({ k: String(x.poleId).toUpperCase(), d: metresBetween(turn[0], turn[1], x.lat, x.lng) }))
+    .filter((x) => x.d < 25).sort((a, b) => a.d - b.d).slice(0, 2).map((x) => x.k);
+}
+function navMark(p) {
+  if (!NAV.on || !OV.markers) return;
+  const tk = String(p.poleId).toUpperCase(), keep = new Set(navLandmarks(p));
+  Object.keys(OV.markers).forEach((k) => {
+    const m = OV.markers[k], e = m.getElement && m.getElement(), t = m.getTooltip && m.getTooltip(), te = t && t.getElement && t.getElement();
+    [e, te].forEach((x) => { if (!x) return; x.classList.toggle('nt', k === tk); x.classList.toggle('nk', keep.has(k)); });
+    if (k === tk) m.setZIndexOffset(2000);
+  });
+}
+function navShowAll(on) {
+  const ovr = $('overview');
+  ovr.classList.toggle('nav-focus', !on);
+  const b = $('navShowAll'); b.setAttribute('aria-pressed', String(!!on)); b.textContent = on ? 'Focus' : 'Show all';
+  NAV.lastFit = 0; navFit(on ? 'all' : true);
 }
 function navRender(p, t, ri, here, noWalk) {
   const ovr = $('overview');
@@ -3568,6 +3642,7 @@ function navRender(p, t, ri, here, noWalk) {
   }
   const m = ri ? ri.total : (t ? t.d : 0);
   $('navEta').textContent = here ? 'Arrived' : (m ? 'About ' + Math.max(1, Math.round(m / WALK_SPEED / 60)) + ' min' + (ri && ri.gates ? ' · ' + ri.gates + ' gate' + (ri.gates > 1 ? 's' : '') : '') + (ri && ri.crossings ? ' · ' + ri.crossings + ' crossing' + (ri.crossings > 1 ? 's' : '') : '') : '');
+  navMark(p);
   navFit(false);
 }
 function navSyncArrow() {
@@ -3579,6 +3654,7 @@ function navSyncArrow() {
 $('navEnd').addEventListener('click', () => navEnd());
 $('navMore').addEventListener('click', () => navDetails(true));
 $('navRecentre').addEventListener('click', navRecentre);
+$('navShowAll').addEventListener('click', () => navShowAll($('overview').classList.contains('nav-focus')));
 
 // draggable pole card: drag the top of the card up for details, down to shrink it to one line
 (() => {
